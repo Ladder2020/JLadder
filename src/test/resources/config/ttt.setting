@@ -1,0 +1,13 @@
+
+## db.setting文件
+url = jdbc:mysql://192.168.2.17:3066/tmcp_crm?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+user = xiao
+pass = 88691111
+driver =com.mysql.cj.jdbc.Driver
+## 可选配置
+# 是否在日志中显示执行的SQL
+showSql = true
+# 是否格式化显示的SQL
+formatSql = false
+# 是否显示SQL参数
+showParams = true
