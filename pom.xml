@@ -129,12 +129,23 @@
             <scope>compile</scope>
         </dependency>
 
+
+        <!--测试环境-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
+
+
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.7.2</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <repositories>

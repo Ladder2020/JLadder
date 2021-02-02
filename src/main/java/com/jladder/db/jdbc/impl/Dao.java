@@ -7,6 +7,7 @@ import com.jladder.db.annotation.Pk;
 import com.jladder.db.annotation.Table;
 import com.jladder.db.bean.BaseEntity;
 import com.jladder.db.bean.FieldInfo;
+import com.jladder.db.datasource.Global;
 import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.enums.DbGenType;
 import com.jladder.db.jdbc.IBaseSupport;
@@ -38,7 +39,13 @@ public  class Dao implements IDao {
 
 
     public Dao(DbInfo dbInfo){
-
+        if(dbInfo==null){
+            support = new BaseSupportByJDBC();
+            return;
+        }
+        Global.get(dbInfo);
+        support = new BaseSupportByJDBC(dbInfo.getName());
+        support.maskcode = dbInfo.getName();
     }
 
     /**

@@ -1,7 +1,9 @@
 package com.jladder.db;
 
+import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.jdbc.DbDriver;
 import com.jladder.lang.Core;
+import com.jladder.lang.Security;
 import com.jladder.lang.Strings;
 
 public class DbInfo {
@@ -30,6 +32,9 @@ public class DbInfo {
                 switch (dialect.toLowerCase()){
                     case "mysql":
                         this.connection = "jdbc:mysql://" + server + (Strings.isBlank(port) ? "" : ":" + port) + "/" + database + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false";
+                        break;
+                    case "sqlite":
+                        this.connection = "jdbc:sqlite:"+server+database;
                         break;
                 }
                 return this.connection;
@@ -84,6 +89,9 @@ public class DbInfo {
         return this;
     }
     public String getName() {
+        if(Strings.isBlank(name)){
+            return Security.md5(this.server+this.driver+this.dialect+this.username+this.password+this.port+this.database);
+        }
         return name;
     }
 
@@ -108,6 +116,29 @@ public class DbInfo {
         return this.database;
     }
 
+    public DbInfo setDialect(DbDialectType type){
+        switch (type){
+            case MYSQL:
+                this.dialect = "mysql";
+                break;
+            case SQLITE:
+                this.dialect = "sqlite";
+                break;
+            case ORACLE:
+                this.dialect = "oracle";
+                break;
+            case Mssql2012:
+                this.dialect="mssql2012";
+                break;
+            case H2:
+                this.dialect="h2";
+                break;
+            case PostgreSql:
+                this.dialect="postgresql";
+                break;
+        }
+        return this;
+    }
 
     public DbInfo setDriver(String driver) {
         this.driver = driver;

@@ -1,14 +1,16 @@
+package guide;
+
 import bean.MySite;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
 import com.jladder.db.Cnd;
+import com.jladder.db.DbInfo;
 import com.jladder.db.IDao;
 import com.jladder.db.SqlText;
 import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.enums.DbGenType;
 import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.db.jdbc.impl.Dao;
-
 import com.jladder.lang.Core;
 import com.jladder.lang.Times;
 import org.junit.Assert;
@@ -19,11 +21,18 @@ import java.util.List;
 public class DbTest {
 
 	@Test
-	public void queryTest() throws SQLException {
+	public void connTest() throws SQLException {
+		//创建数据库信息
+		DbInfo info =  new DbInfo();
+		info.setDialect(DbDialectType.SQLITE);
+		info.setServer("test.db");
+		//创建数据库操作对象Dao
+		IDao dao = new Dao(info);
+		//执行语句
+		dao.exec(new SqlText("CREATE TABLE IF NOT EXISTS user (username TEXT primary key,password TEXT,email TEXT)"));
+		//插入数据
+		dao.insert("user",new Record("username","xiaoxiao").put("password","123456"));
 
-
-//		final List<Entity> find = Db.use().query("select * from user where age = ?", 18);
-//		Assert.assertEquals("王五", find.get(0).get("name"));
 	}
 
 	@Test

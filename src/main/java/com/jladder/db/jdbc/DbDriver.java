@@ -33,6 +33,8 @@ public class DbDriver {
                 return DRIVER_MYSQL_V6;
             case "sqlserver":
                 return DRIVER_SQLSERVER;
+            case "sqlite":
+                return DRIVER_SQLLITE3;
 
         }
         return "";
@@ -41,7 +43,6 @@ public class DbDriver {
         if(Strings.isBlank(dialect))return DbDialectType.MYSQL;
         switch (dialect.toLowerCase()){
             case "mysql":
-                return DbDialectType.MYSQL;
             case "mysql8":
                 return DbDialectType.MYSQL;
             case "sqlserver":

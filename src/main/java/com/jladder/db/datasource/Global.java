@@ -1,5 +1,8 @@
 package com.jladder.db.datasource;
 
+import com.jladder.configs.Configs;
+import com.jladder.db.DbInfo;
+
 /**
  * 全局的数据源工厂<br>
  * 一般情况下，一个应用默认只使用一种数据库连接池，因此维护一个全局的数据源工厂类减少判断连接池类型造成的性能浪费
@@ -28,22 +31,24 @@ public class Global {
 			}
 		});
 	}
-
-	/**
-	 * 获取默认的数据源工厂，读取默认数据库配置文件<br>
-	 * 此处使用懒加载模式，在第一次调用此方法时才创建默认数据源工厂<br>
-	 * 如果想自定义全局的数据源工厂，请在第一次调用此方法前调用{@link #)} 方法自行定义
+	public static DataSourceFactory get(){
+		return get(null);
+	}
+	/***
 	 *
-	 * @return 当前使用的数据源工厂
+	 * @return
 	 */
-	public static DataSourceFactory get() {
+	public static DataSourceFactory get(DbInfo info) {
 		if (null == factory) {
 			synchronized (lock) {
 				if (null == factory) {
-					factory = DataSourceFactory.create();
+					factory = info == null ?DataSourceFactory.create() :  DataSourceFactory.create(info);
 				}
 			}
+		}else{
+			if(info!=null)Configs.put(info.getName(),info);
 		}
+
 		return factory;
 	}
 

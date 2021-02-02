@@ -50,6 +50,23 @@
 
   Data：JLadder封装一些数据结构体，比如返回值的，分页的，结果集的，树形的
 
+### 开始使用
+
+#### 基本数据库操作
+
+```
+//创建数据库信息
+DbInfo info =  new DbInfo();
+info.setDialect(DbDialectType.SQLITE);
+info.setServer("test.db");
+//创建数据库操作对象Dao
+IDao dao = new Dao(info);
+//执行语句
+dao.exec(new SqlText("CREATE TABLE IF NOT EXISTS user (username TEXT primary key,password TEXT,email TEXT)"));
+//插入数据
+dao.insert("user",new Record("username","xiaoxiao").put("password","123456"));
+```
+
 
 
 
