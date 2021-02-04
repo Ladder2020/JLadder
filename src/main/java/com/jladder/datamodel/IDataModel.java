@@ -136,6 +136,26 @@ public abstract class  IDataModel
     /// <param name="param">参数列表</param>
     /// <returns></returns>
     public abstract int FromDataTable(DataModelTable dt, String param);
+
+    /***
+     * 添加列模型
+     * @param fieldname 列名称
+     * @param title 列标题
+     * @param as 列别名
+     */
+    public abstract void addColumn(String fieldname,String title,String as);
+
+    /***
+     * 添加列模型
+     * @param column 列模型
+     */
+    public abstract void addColumn(Map<String,Object> column);
+
+    /***
+     * 添加列模型
+     * @param json JSON数据，支持Array Object，String
+     */
+    public abstract void addColumn(String json);
     /// <summary>
     /// 过滤列字段
     /// </summary>

@@ -45,6 +45,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
 
     @Override
     public List<Record> query(SqlText sqltext, boolean serialize, Func2<Record, Boolean> callback) {
+        LogForSql log = new LogForSql(sqltext).setTag(tag).setConn(maskcode);
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -70,17 +71,20 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 }
                 records.add(record);
             }
+            log.setEnd();
             return records;
         }
         catch (Exception e){
+            error=e.getMessage();
+            log.setEnd(true).setCause(error);
             return null;
         }
         finally {
-            release(conn,ps,rs);
+            release(conn,ps,rs,log);
         }
     }
 
-    private static void release(Connection conn, Statement state, ResultSet rs){
+    private static void release(Connection conn, Statement state, ResultSet rs,LogForSql log){
         if(rs!=null){
             try {
                 rs.close();
@@ -101,6 +105,9 @@ public class BaseSupportByJDBC extends IBaseSupport {
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
+        }
+        if(log != null){
+            Logs.writeSql(log);
         }
     }
     @Override
@@ -151,8 +158,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return null;
         }
         finally {
-            release(conn,ps,rs);
-            Logs.writeSql(log);
+            release(conn,ps,rs,log);
         }
     }
 
@@ -198,8 +204,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return null;
         }
         finally {
-            release(conn,ps,rs);
-            log.write();
+            release(conn,ps,rs,log);
         }
     }
 
@@ -234,8 +239,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return null;
         }
         finally {
-            release(conn,ps,rs);
-            log.write();
+            release(conn,ps,rs,log);
         }
     }
 
@@ -295,8 +299,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return -1;
         }
         finally {
-            release(autocreate?conn:null,ps,null);
-            log.write();
+            release(autocreate?conn:null,ps,null,log);
         }
 
 
@@ -323,7 +326,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }finally {
-                release(transaction,null,null);
+                release(transaction,null,null,null);
                 transaction=null;
             }
         }
@@ -339,7 +342,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 throwables.printStackTrace();
                 return false;
             }finally {
-                release(transaction,null,null);
+                release(transaction,null,null,null);
                 transaction=null;
             }
 
@@ -409,7 +412,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return null;
         }
         finally {
-            release(conn,pre,rs);
+            release(conn,pre,rs,null);
         }
     }
 
@@ -472,10 +475,14 @@ public class BaseSupportByJDBC extends IBaseSupport {
             return null;
         }
         finally {
-            release(conn,stmt,null);
-            log.write();
+            release(conn,stmt,null,log);
         }
         return ret;
+    }
+
+    @Override
+    public boolean isTraning() {
+        return this.transaction!=null;
     }
 
     private Object handler(Object dat,ResultSet rs,ResultSetMetaData md,int index){

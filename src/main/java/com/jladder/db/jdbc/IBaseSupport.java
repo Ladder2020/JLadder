@@ -107,4 +107,8 @@ public abstract class IBaseSupport {
 
 
     public abstract List<Object> pro(String name,List<DbParameter> parameters);
+
+
+    public abstract boolean isTraning();
+
 }

@@ -189,13 +189,16 @@ public class LogForSql {
     public LogForSql setEnd(){
         return setEnd(false);
     }
-    /// <summary>
-    /// 设置结束点
-    /// </summary>
-    /// <returns></returns>
-    public LogForSql setEnd(boolean iserror)
+
+    /***
+     * 设置结束点
+     * @param isError 是否含有错误
+     * @return
+     */
+
+    public LogForSql setEnd(boolean isError)
     {
-        this.isError = iserror;
+        this.isError = isError;
         endtime = new Date();
         long time = (endtime.getTime() - starttime.getTime());
         if (time > DataHub.SqlWarnTime) this.isOverTime = true;

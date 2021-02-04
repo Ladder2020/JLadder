@@ -1,0 +1,7 @@
+{
+  "defaultDatabase": {
+    "driver": "org.sqlite.JDBC",
+    "dialect": "sqlite",
+    "server": "test.db"
+  }
+}

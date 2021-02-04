@@ -3,6 +3,7 @@ package com.jladder.db.jdbc.impl;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
 import com.jladder.db.*;
+import com.jladder.db.annotation.Column;
 import com.jladder.db.annotation.Pk;
 import com.jladder.db.annotation.Table;
 import com.jladder.db.bean.BaseEntity;
@@ -17,6 +18,7 @@ import com.jladder.lang.func.Func2;
 import com.jladder.lang.func.Func3;
 import com.jladder.lang.func.Tuple3;
 
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,12 +29,9 @@ public  class Dao implements IDao {
     public IBaseSupport support;
 
     public Dao(){
-        //support = new BaseSupportByJDBC();
         support = new BaseSupportByJDBC();
     }
     public Dao(String conn){
-//        support = new BaseSupportByJDBC(conn);
-//        support.maskcode = conn;
         support = new BaseSupportByJDBC(conn);
         support.maskcode = conn;
     }
@@ -48,46 +47,20 @@ public  class Dao implements IDao {
         support.maskcode = dbInfo.getName();
     }
 
-    /**
-     * 是否写日志
-     */
-    public Boolean isWriteLog = null;
-    /// <summary>
-    /// 数据库连接标记码
-    /// </summary>
-    public String MarkCode = null;
+
 
     /// <summary>
     /// 标签名称,数据模型标签
     /// </summary>
     public String Tag =null;
-    /// <summary>
-    /// 执行的sql语句数组
-    /// </summary>
-    List<String> SqlTexts=null;
-    /// <summary>
-    /// 连接文本
-    /// </summary>
-    String ConnectString=null;
+
 
     /// <summary>
     /// 数据库方言
     /// </summary>
     public DbDialectType Dialect=null;
 
-    /// <summary>
-    /// 错误文本
-    /// </summary>
-    String ErrorString=null;
 
-
-    /// <summary>
-    /// 是否处于事务中
-    /// </summary>
-    boolean isTraning=false;
-
-
-    Connection connection=null;
 
 
     @Override
@@ -95,15 +68,15 @@ public  class Dao implements IDao {
         return this.support.dialect;
     }
 
-    @Override
-    public void create(String conn) {
-        support = new BaseSupportByJDBC();
-    }
-
-    @Override
-    public void create(DbInfo dbInfo) {
-        //support = new BaseSupportByHu(conn);
-    }
+//    @Override
+//    public void create(String conn) {
+//        support = new BaseSupportByJDBC();
+//    }
+//
+//    @Override
+//    public void create(DbInfo dbInfo) {
+//        //support = new BaseSupportByHu(conn);
+//    }
     
     @Override
     public <T> List<T> query(String tableName, Cnd cnd, Pager pager, Class<T> clazz) {
@@ -126,33 +99,6 @@ public  class Dao implements IDao {
     @Override
     public List<Record> query(SqlText sqltext) {
         return support.query(sqltext);
-//        try{
-//            PreparedStatement pre = connection.prepareStatement(sqltext.getText());
-//            if(sqltext.Parameters!=null && sqltext.Parameters.size()>0){
-//                for (int i = 0; i < sqltext.Parameters.size(); i++) {
-//                    pre.setString(i+1,sqltext.Parameters.get(i).value.toString());
-//                }
-//            }
-//            ResultSet rs = pre.executeQuery();
-//            System.out.println("sql:"+pre.toString());
-//            long count = rs.getMetaData().getColumnCount();
-//            List<Record> list=new ArrayList<Record>();
-//            while (rs.next()) {
-//                Record map = new Record();
-//                for (int i = 0; i < count; i++) {
-//                    Object values = rs.getObject(i + 1);
-//                    String countName = rs.getMetaData().getColumnLabel(i + 1);
-//                    map.put(countName, values);
-//                }
-//                list.add(map);
-//            }
-//            return list;
-//
-//        }catch (Exception e){
-//            System.out.println(e.getMessage()+e.getCause()+e.getStackTrace());
-//        }
-//
-//        return null;
     }
 
     @Override
@@ -694,7 +640,7 @@ public  class Dao implements IDao {
 
     @Override
     public boolean isTraning() {
-        return false;
+        return support.isTraning();
     }
 
     @Override
@@ -711,6 +657,15 @@ public  class Dao implements IDao {
     @Override
     public String getErrorMessage() {
         return support.error;
+    }
+
+    @Override
+    public <T extends BaseEntity> boolean create(Class<T> clazz) {
+
+        Table attr = getClass().getAnnotation(Table.class);
+        String tablename =  attr.value();
+        if (Strings.isBlank(tablename)) return false;
+        throw Core.makeThrow("未实现[0668]");
     }
 
     @Override

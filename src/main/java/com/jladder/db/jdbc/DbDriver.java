@@ -35,6 +35,12 @@ public class DbDriver {
                 return DRIVER_SQLSERVER;
             case "sqlite":
                 return DRIVER_SQLLITE3;
+            case "oracle":
+                return DRIVER_ORACLE;
+            case "postgresql":
+                return DRIVER_POSTGRESQL;
+            case "h2":
+                return DRIVER_H2;
 
         }
         return "";

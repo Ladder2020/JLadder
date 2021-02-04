@@ -1,12 +1,10 @@
 package guide;
 
 import bean.MySite;
+import com.jladder.configs.Configs;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
-import com.jladder.db.Cnd;
-import com.jladder.db.DbInfo;
-import com.jladder.db.IDao;
-import com.jladder.db.SqlText;
+import com.jladder.db.*;
 import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.enums.DbGenType;
 import com.jladder.db.enums.DbSqlDataType;
@@ -24,6 +22,7 @@ public class DbTest {
 	public void connTest() throws SQLException {
 		//创建数据库信息
 		DbInfo info =  new DbInfo();
+		//设置数据方言
 		info.setDialect(DbDialectType.SQLITE);
 		info.setServer("test.db");
 		//创建数据库操作对象Dao
@@ -31,152 +30,50 @@ public class DbTest {
 		//执行语句
 		dao.exec(new SqlText("CREATE TABLE IF NOT EXISTS user (username TEXT primary key,password TEXT,email TEXT)"));
 		//插入数据
-		dao.insert("user",new Record("username","xiaoxiao").put("password","123456"));
-
-	}
-
-	@Test
-	public void TestBaseSupport1() {
-
-		int i = 0;
-		// Setting setting2 = new Setting("config/db.setting");
-		// Setting setting3 = new Setting("config/1db1.setting");
-		// Setting setting1 = new Setting("config/ttt.setting");
-		//
-		//
-		// DSFactory.create(setting1);
-		 Dao dao = new Dao("database12");
-
-//		 "select * from user where name=?"
-//		"select * from user where name=@name and age=@age"
-
-		final List<Record> rs = dao.query(new SqlText("select * from user where name=@name or age=@age or att=@att", "age,name,att", "18"));
-		//Assert.assertEquals("王五", name);
-
-//		List<Entity> find = null;
-//		try {
-//			find = Db.use().query("select * from user where age = ?", 18);
-//			Assert.assertEquals("王五", find.get(0).get("name"));
-//		} catch (SQLException throwables) {
-//			throwables.printStackTrace();
-//		}
-
-	}
-	@Test
-	public void testDao_query(){
-		Dao dao = new Dao();
-		Record record = new Record();
-		record.put("title","xiaoxiao1");
-		record.put("project","project1");
-
-		//dao.update("dd",record,new Cnd("filename","=",12, Or).put("").and(new CNd()))
-
-
-		String title = dao.getValue(SqlText.create("select title from del_sys_site limit 1"),String.class);
-		//dao.save("tablename",record,new Cnd())
-		int row = dao.save("del_sys_site",record,"id",DbGenType.ID);
-		dao.getErrorMessage();
-		Assert.assertEquals(row,1);
-		int tt = dao.exec(new SqlText(),(r,conn)->{
-			return r;
-		});
-
-	}
-	@Test
-	public void testDao_pager(){
-		Dao dao = new Dao("mysql");
-
-		Record record = dao.fetch(SqlText.create("select * from sys_user where username = @name", "name", "xiaoxiao"));
-		List<Record> r1 = dao.query("sys_user", new Cnd("username", "xiaoxiao"), new Pager(1, 1));
-//		SqlText sql = dao.PagingSqlText(SqlText.create("select * from user"), new Pager(0, 20), DbDialectType.MYSQL);
-		SqlText sql = dao.pagingSqlText(SqlText.create("select * from user"), new Pager(5, 20).setField("id"), DbDialectType.SQLSERVER);
-
-		System.out.println(sql.cmd);
-
-	}
-
-	@Test
-	public  void  testquery()
-	{
-
-		Dao dao=new Dao("mysql1");
-		//List<Record>  r= dao.query(new SqlText("select * from jtabletest"));
-
-
-		dao.beginTran();
-		for(Integer i=0;i<5;i++)
-		{
-
-			Record bean = new Record("id","").put("name", "动物"+i.toString()).put("value","王八666").put("is_delete","1");
-		//	if(i==2) bean.put("id","3");
-
-			dao.save("jtabletest",bean,"id",DbGenType.ID);
-			if(!dao.getErrorMessage().isEmpty()){
-				dao.rollback();
-				break;
-			}
-
-
-
+		for (int i = 0; i < 100; i++) {
+			dao.insert("user",new Record("username","xiaoxiao"+i).put("password","1234561"+i).put("email","xxx"+i+"@ladder.com"));
 		}
-		//dao.rollback();
-		boolean as=dao.commitTran();
-
-
-
-
-
-
-
-		//dao.delete("jtabletest",new Cnd("id","<>","123"));
+		//查询
+		List<Record> rs1 = dao.query("user", new Cnd("username", "like", "xiao"), new Pager(1, 20));
+		//查询
+		SqlText sqltext = new SqlText("select username from user where name like @name","name","xiaoxiao");
+		List<Record> rs2 = dao.query(sqltext);
+		//获取sql错误
+		String error = dao.getErrorMessage();
+		//error = "[SQLITE_ERROR] SQL error or missing database (no such column: name)"
 
 	}
-
 
 	@Test
-	public void testInsert(){
-
-		Dao dao = new Dao("mysql");
+	public void BeanTest() {
+		//从配置文件加载
+		Configs.LoadSettingsFromFile("config.json");
+		//defaultDatabase节点是默认数据库连接，可以直接使用
+		IDao dao = new Dao();
+		//创建数据库表
+		//dao.create(MySite.class);
+		dao.exec(new SqlText("CREATE TABLE IF NOT EXISTS del_sys_site (id TEXT primary key,title TEXT,project TEXT,config_path TEXT)"));
+		//创建一个实体
 		MySite site = new MySite();
+		site.id=Core.genUuid();
+		site.setTitle("测试一下");
+		site.setProject("测试项目");
+		site.setOutPath("这是额外字段");//这个属性不写入数据库中
+		site.setConfig_path("路径");
+		//有多种方式处理，三选一
+		dao.insert(site,"");//columns代表那些属性插入数据库和@Column(isExt = true)相同功效
+		site.insert();//实体对象自身可以执行，但必须配置默认数据库
+		site.insert(dao,"");//和dao.insert(site,"")相同
+		//保存方法
+		dao.save(site);//如果存在更新，不存在新增
+		dao.save(site,new Cnd("project","测试项目"),"");//此时主键条件不起作用，以project='测试项目'为条件
+		//查询
+		List<MySite> sites = dao.query(new Cnd("project", "测试项目"), MySite.class);
+		MySite site1 = dao.fetch(new Cnd("project", "测试项目"), MySite.class);
+		//未封装 dao.query(site)之类的API方法，因为实际项目中实体类全部条件查询的，小肖碰到的不多
 
-		site.id = Core.genUuid();
-		site.title ="ceshi";
-		site.config_path = Times.getNow();
-		site.outPath = "xiaoxiao";
 
-
-
-
-
-
-
-		Record bean = new Record("title","dd").put("id", Core.genUuid()).put("config_path","224").put("xiaozhuo",111);
-		int ddt = dao.insert("del_sys_site",site,"id,config_path,title,project",true);
 
 	}
-	@Test
-	public void TestBeanTool(){
-		MySite site = new MySite();
-		site.id = Core.genUuid();
-		site.title ="ceshi";
-		site.config_path = Times.getNow();
-		site.outPath = "xiaoxiao";
-		Record bean = site.GenBean(DbSqlDataType.Insert);
-		System.out.println(bean);
-	}
-	@Test
-	public void TestEntry(){
-		MySite site = new MySite();
-		site.id = "176657af3a5c41b9a29ef90c75589e48";
-		site.title ="标题1";
-		site.config_path = Times.getNow();
-		site.outPath = "xiaoxiao";
-		IDao dao = new Dao("mysql");
-//		int row = site.insert(dao,"id,title,config_path");
-		site.title ="校长呀222";
-		int row = site.update(dao);
 
-
-		List<MySite> rs = site.select(dao, null);
-	}
 }

@@ -598,6 +598,65 @@ public class DataModelForMap extends IDataModel{
         if (Strings.hasValue(Raw.Permission)) CheckPermission(Raw.Permission);
         return 1;
     }
+    /***
+     * 添加列模型
+     * @param fieldname 列名称
+     * @param title 列标题
+     * @param as 列别名
+     */
+    @Override
+    public void addColumn(String fieldname, String title, String as) {
+        if(Strings.isBlank(fieldname))return;
+
+        Record column = new Record("fieldname",fieldname);
+        if(Strings.hasValue(title))column.put("title",title);
+        if(Strings.hasValue(as))column.put("as",as);
+        if(ColumnList==null)ColumnList = new ArrayList<Map<String,Object>>();
+        if(AllColumns==null)AllColumns = new ArrayList<Map<String,Object>>();
+        ColumnList.add(column);
+        AllColumns.add(column);
+    }
+    /***
+     * 添加列模型
+     * @param column 列模型
+     */
+    @Override
+    public void addColumn(Map<String, Object> column) {
+        if(column==null)return;
+        if(ColumnList==null) ColumnList = new ArrayList<Map<String,Object>>();
+        if(AllColumns==null)AllColumns = new ArrayList<Map<String,Object>>();
+        ColumnList.add(column);
+        AllColumns.add(column);
+    }
+    /***
+     * 添加列模型
+     * @param json JSON数据，支持Array Object，String
+     */
+    @Override
+    public void addColumn(String json) {
+        if(Strings.isBlank(json))return;
+        if(Strings.isJson(json)){
+            if(ColumnList==null)ColumnList = new ArrayList<Map<String,Object>>();
+            if(AllColumns==null)AllColumns = new ArrayList<Map<String,Object>>();
+            if(Strings.isJson(json,1)){
+                Map<String, Object> map = Json.toObject(json, new TypeReference<Map<String, Object>>() {});
+                if(map!=null){
+                    ColumnList.add(map);
+                    AllColumns.add(map);
+                }
+            }
+            else{
+                List<Map<String, Object>> array = Json.toObject(json, new TypeReference<List<Map<String, Object>>>() { });
+                for (Map<String, Object> map : array) {
+                    if(map==null)continue;
+                    ColumnList.add(map);
+                    AllColumns.add(map);
+                }
+            }
+        }else{
+            addColumn(json,null,null);
+        }
+    }
     /// <summary>
     /// 获取原始数据模板
     /// </summary>

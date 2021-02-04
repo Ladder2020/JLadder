@@ -16,16 +16,16 @@ public interface IDao
 {
 
     DbDialectType getDialect();
-    /// <summary>
-    /// 从默认配置初始化
-    /// </summary>
-    void create(String conn);
-
-    /// <summary>
-    /// 从数据库连接信息对象初始化
-    /// </summary>
-    /// <param name="dbInfo">数据库连接信息对象</param>
-    void create(DbInfo dbInfo);
+//    /// <summary>
+//    /// 从默认配置初始化
+//    /// </summary>
+//    void create(String conn);
+//
+//    /// <summary>
+//    /// 从数据库连接信息对象初始化
+//    /// </summary>
+//    /// <param name="dbInfo">数据库连接信息对象</param>
+//    void create(DbInfo dbInfo);
 
     /// <summary>
     /// 基本查询接口
@@ -533,6 +533,9 @@ public interface IDao
 
 
     String getErrorMessage();
+
+    <T extends BaseEntity> boolean create(Class<T> clazz);
+
 
 //    <T extends BaseEntity> List<T> query(SqlText sqltext, Class<? extends BaseEntity> aClass);
 

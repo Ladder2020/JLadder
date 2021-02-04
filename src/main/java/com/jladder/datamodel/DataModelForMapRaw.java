@@ -1,7 +1,10 @@
 package com.jladder.datamodel;
 
 import com.jladder.data.Record;
+import com.jladder.lang.Json;
+import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
+import com.jladder.lang.TypeReference;
 
 import java.util.List;
 import java.util.Map;
@@ -140,5 +143,21 @@ public class DataModelForMapRaw
     /// 统计项目
     /// </summary>
     public String AnalyzeItems;
+
+
+    public static DataModelForMapRaw From(IDataModel dm){
+        DataModelForMapRaw raw = new DataModelForMapRaw();
+
+        raw.Put("el_columns", Strings.hasValue(dm.GetColumn()) && Regex.isMatch(dm.GetColumn(), "\\$\\{([\\W\\w])*?\\}"));
+        //raw.Put("el_evnets", Strings.hasValue(Json.toJson(dm.Get)) &&  Regex.isMatch(Json.toJson(dm.Events), "\\$\\{([\\W\\w])*?\\}"));
+        raw.Put("el_tablename", Strings.hasValue(dm.TableName) && Regex.isMatch(dm.TableName, "\\$\\{([\\W\\w])*?\\}"));
+        raw.AllColumns = dm.GetFullColumns();
+        raw.QueryForm = dm.GetQueryForm()==null?"":dm.GetQueryForm().toString();
+        raw.Type = dm.Type.name();
+        raw.Script = dm.GetScript();
+        return raw;
+
+
+    }
 
 }
