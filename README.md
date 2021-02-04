@@ -107,7 +107,7 @@ Data：JLadder封装一些数据结构体，比如返回值的，分页的，结
     //未封装 dao.query(site)之类的API方法，因为实际项目中实体类全部条件查询的，小肖碰到的不多
 ```
 
-###基本数据模型操作
+### 基本数据模型操作
 
 ```
     //创建一个模型
@@ -128,8 +128,145 @@ Data：JLadder封装一些数据结构体，比如返回值的，分页的，结
     QueryAction.getCount("xiaoxiao",new Cnd("username","xx"));
 
 ```
+##### 特殊用法
+
+```
+    //不建模型,格式为:*.{db}.{table}
+    QueryAction.getBean("*test.sys_settings",new Cnd("name","like","基本设置"));
+    SaveAction.insert("*test.sys_settings",new Record("name","基本设置"));
+
+```
+
+### 数据模型的集成方案
+
+#### json模式(dm1.json)
+
+```
+{
+    ticket_nodefile:{
+      "name": "open_ticket_nodefile",
+      "sort": "Ticket",
+      "type": "table",
+      "title": "工单附件表",
+      "cacheitems": "",
+      "depends": "",
+      "tablename": "open.ticket_nodefile",
+      "columns": [
+        {"fieldname": "id","type": "int", "title": "ID","gen": "autonum","length": "50"},
+        {"fieldname": "path","type": "string","title": "路径"},
+        {"fieldname": "node_id","type": "string","title": "节点编码"},
+        {"fieldname": "order_id","type": "string","title": "工单编码","lenth": 50,},
+        {"fieldname": "uploader","type": "string","title": "上传者","lenth": 50},
+        {"fieldname": "fullname","type": "string","title": "用户全名","lenth": 50},
+        {"fieldname": "createtime","title": "创建时间","gen": "datetime","op": "=","type": "datetime","sign": "createtime"},
+        {"fieldname": "showname","type": "string","title": "显示名","lenth": 500},
+        {"fieldname": "order_no","type": "string","title": "工单号","lenth": 50},
+        {"fieldname": "channel","type": "string","title": "系统通道","lenth": 50},
+        {"fieldname": "size","type": "int","title": "文件大小","length": "11"},
+        {"fieldname": "format","type": "string","title": "文件格式"},
+        {"fieldname": "filepath","type": "string","title": "文件路径"}
+      ],
+      "queryform": "",
+      "conn": "",
+      "permission": "",
+      "descr": "",
+      "events": "",
+      "script": "",
+      "data": "",
+      "params": ""
+    }
+}
+
+```
+```
+//第一种：可在启动时加载,
+DataHub.LoadJsonFile("dm1.json");
+//或者
+DataModelForMap dm = new DataModelForMap();
+dm.FromJsonFile("dm1.json","ticket_nodefile");
+DataHub.WorkCache.addDataModelCache("ticket_nodefile",dm.Raw);
+
+//query或者save操作
+QueryAction.getCount("ticket_nodefile",new Cnd("format",".png"));
+```
 
 
+
+#### xml格式(dm1.xml)
+
+```
+<mapping name="open_ticket_nodefile" title="工单附件表" type="table">
+    <tableName>open.ticket_nodefile</tableName>
+    <columns>
+        <column  fieldname="id"  type="int"  title="ID"  lenth=""  isnull="false"  dvalue=""  gen="autonum"  length="50" ></column>
+        <column  fieldname="path"  type="string"  title="路径"  lenth="255"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="node_id"  type="string"  title="节点编码"  lenth="255"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="order_id"  type="string"  title="工单编码"  lenth="50"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="uploader"  type="string"  title="上传者"  lenth="50"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="fullname"  type="string"  title="用户全名"  lenth="50"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="createtime"  title="创建时间"  gen="datetime"  op="="  type="datetime"  sign="createtime" ></column>
+        <column  fieldname="showname"  type="string"  title="显示名"  lenth="500"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="order_no"  type="string"  title="工单号"  lenth="50"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="channel"  type="string"  title="系统通道"  lenth="50"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="size"  type="int"  title="文件大小"  lenth=""  isnull="false"  dvalue=""  length="11" ></column>
+        <column  fieldname="format"  type="string"  title="文件格式"  lenth="10"  isnull="false"  dvalue="" ></column>
+        <column  fieldname="filepath"  type="string"  title="文件路径"  lenth="500"  isnull="false"  dvalue="" ></column>
+    </columns>
+    <data></data>
+    <conn></conn>
+</mapping>
+
+```
+```
+//加载xml模型文件
+DataHub.LoadXmlFile("dm1.xml");
+//query或者save操作
+QueryAction.getCount("ticket_nodefile",new Cnd("format",".png"));
+```
+
+注意:json和xml的文件管理和存放位置，可根据项目和个人习惯自由处理，另外目前JLadder没有文件监视功能，文件变更时，手动调用DataHub.WorkCache.removeAllDataModelCache();
+
+#### 数据库模式
+
+```
+CREATE TABLE `lader_models` (
+  `Id` varchar(100) NOT NULL,
+  `sort` varchar(100) DEFAULT NULL COMMENT '分属',
+  `Name` varchar(100) DEFAULT NULL COMMENT '键名',
+  `TableName` text COMMENT '真实表名',
+  `Title` varchar(100) DEFAULT NULL COMMENT '标题',
+  `Columns` text COMMENT '列模型',
+  `QueryForm` text COMMENT '表单查询',
+  `Type` varchar(100) DEFAULT NULL COMMENT '类型',
+  `Enable` int(11) DEFAULT '1' COMMENT '使能位',
+  `Fromer` varchar(100) DEFAULT NULL COMMENT '来源处',
+  `Permission` varchar(100) DEFAULT NULL COMMENT '权限',
+  `Data` longtext COMMENT '交换数据',
+  `Updatetime` datetime DEFAULT NULL COMMENT '更新时间',
+  `Events` text COMMENT '事件列表',
+  `Script` text COMMENT '脚本代码',
+  `Params` text COMMENT '参数列表',
+  `Conn` varchar(500) DEFAULT NULL COMMENT '连接器',
+  `Descr` varchar(500) DEFAULT NULL COMMENT '备注说明',
+  `VisitTimes` varchar(200) DEFAULT '0' COMMENT '访问次数',
+  `CacheItems` varchar(50) DEFAULT NULL,
+  `Depends` varchar(500) DEFAULT NULL COMMENT '依赖项',
+  `AnalyzeItems` varchar(200) DEFAULT NULL COMMENT '分析项目',
+  `IsDelete` int(11) DEFAULT '0' COMMENT '是否已删除',
+  PRIMARY KEY (`Id`) USING BTREE,
+  KEY `sys_data_name` (`Name`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+
+```
+
+```
+//配置模型数据库
+DataHub.TemplateTableName="lader_models";
+DataHub.TemplateConn="defaultDatabase";//defaultDatabase时，可以忽略
+
+//query或者save操作
+QueryAction.getCount("ticket_nodefile",new Cnd("format",".png"));
+```
 
 
 
