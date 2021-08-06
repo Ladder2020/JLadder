@@ -1,6 +1,7 @@
 package com.jladder.db;
 
 import com.jladder.data.Record;
+import com.jladder.db.enums.FieldAdaptor;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
 
@@ -51,16 +52,14 @@ public class DbDifferentcs {
             List<Record> result = dao.query(new SqlText(sqltext), x ->
             {
                 x.put("fieldname", x.getString("fieldname").toLowerCase());
-//                x.put("type", FieldAdaptor.FindFieldTypeText(x.GetString("type")));
-                x.put("type", x.getString("type"));
+                x.put("type", FieldAdaptor.findFieldTypeText(x.getString("type"),dao.getDialect()));
                 if (Strings.hasValue(x.getString("auto"))) x.put("gen", "autonum");
                 Matcher match = Regex.match(x.getString("column_type"), x.getString("type") + "\\((\\d*)\\,?(\\d*)\\)");
-
                 if (match.find() && Strings.isBlank(x.getString("length"))) {
                     x.put("length",match.group(1));
                     if (Strings.hasValue(match.group(2))) x.put("holden", match.group(2));
                 }
-                x.put("isnull", x.getString("isNull") == "YES");
+                x.put("isnull","YES".equals(x.getString("isNull") ));
                 x.delete("column_type", "auto");
                 String dvalue = x.getString("dvalue");
                 if (dvalue.equals("NULL")  || dvalue .equals( "''") || dvalue.equals("CURRENT_TIMESTAMP") || dvalue.equals("uuid()") ){

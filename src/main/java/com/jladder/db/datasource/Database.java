@@ -16,6 +16,7 @@ public class Database implements DataSource, Closeable, Cloneable{
     private final DataSource ds;
 //    private final String driver;
     private final DbInfo info;
+    private int error=0;
     /**
      * 构造
      *
@@ -58,9 +59,16 @@ public class Database implements DataSource, Closeable, Cloneable{
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
-
-        return ds.getConnection();
+    public Connection getConnection(){
+        Connection ret;
+        try{
+            ret = ds.getConnection();
+        }catch (SQLException e){
+            error++;
+            if(error>5)Global.get().destroy();
+            return null;
+        }
+        return ret;
     }
 
     @Override

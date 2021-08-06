@@ -453,6 +453,8 @@ public interface IDao
     /// </summary>
     boolean commitTran();
 
+    List<String> getValues(SqlText sqltext,String columns);
+    List<String> getValues(SqlText sqltext);
     /// <summary>
     /// 获取查询值
     /// </summary>

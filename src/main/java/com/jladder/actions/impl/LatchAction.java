@@ -134,35 +134,35 @@ public class LatchAction
     public static BasicPageResult getPageData(IDataModel dm, Pager pager)
     {
 
-        if (Strings.isBlank(dm.Raw.CacheItems)) return new PageResult(404);
+        if (Strings.isBlank(dm.getRaw().CacheItems)) return new PageResult(404);
         //return null;
         if (!Instance.Enable) return new PageResult(405);
         BasicPageResult pageresult = null;
-        if (dm.DbDialect == DbDialectType.Default)
+        if (DbDialectType.Default.equals(dm.getDialect() ))
         {
 //                dm.DbDialect = (dm.Dao == null ? (DaoSeesion.GetDao(dm.Conn)?.Dialect) : dm.Dao.Dialect);
-            if (dm.Dao == null)
+            if (dm.getDao() == null)
             {
-                IDao dao = DaoSeesion.GetDao(dm.Conn);
-                dm.DbDialect = dao.getDialect();
+                IDao dao = DaoSeesion.GetDao(dm.getConn());
+                dm.setDialect(dao.getDialect());
             }
             else
             {
-                dm.DbDialect = dm.Dao.getDialect();
+                dm.setDialect(dm.getDao().getDialect());
             }
         }
         SqlText sqlText=new SqlText();//缓存的sql文
-        switch (dm.Raw.CacheItems)
+        switch (dm.getRaw().CacheItems)
         {
             case "CndCache":
-                sqlText = dm.PagingSqlText(dm.DbDialect, pager);
-                pageresult =(BasicPageResult) DataHub.WorkCache.getLatchDataCache(dm.Raw.Name, Security.md5(sqlText.toString()) + "page");
+                sqlText = dm.pagingSqlText(dm.getDialect(), pager);
+                pageresult =(BasicPageResult) DataHub.WorkCache.getLatchDataCache(dm.getName(), Security.md5(sqlText.toString()) + "page");
                 break;
             case "CndRAM":
-                sqlText = dm.PagingSqlText(dm.DbDialect, pager);
-                if (RamData.containsKey(dm.Raw.Name + "_" + Security.md5(sqlText.toString())))
+                sqlText = dm.pagingSqlText(dm.getDialect(), pager);
+                if (RamData.containsKey(dm.getName() + "_" + Security.md5(sqlText.toString())))
                 {
-                    pageresult = (BasicPageResult)RamData.get(dm.Raw.Name + "_" + Security.md5(sqlText.toString()) + "page");
+                    pageresult = (BasicPageResult)RamData.get(dm.getName() + "_" + Security.md5(sqlText.toString()) + "page");
                 }
                 break;
             case "CndLocal":
@@ -228,7 +228,7 @@ public class LatchAction
 //                }
                 break;
             case "DataModel":
-                if (Strings.hasValue(dm.Raw.Data))
+                if (Strings.hasValue(dm.getRaw().Data))
                 {
 //                    List<Record> rs = Json.toObject(dm.Raw.Data, new TypeReference<List<Record>>() { });
 //                    rs = rs.Find(dm);
@@ -288,10 +288,10 @@ public class LatchAction
 
     public static Receipt getData(IDataModel dm)
     {
-        if (Strings.isBlank(dm.Raw.CacheItems)) return new Receipt(false, "无缓存策略");
-        if(!Instance.Enable && dm.Raw.CacheItems!= "DataModel") return new Receipt(false,"缓存策略禁用");
+        if (Strings.isBlank(dm.getRaw().CacheItems)) return new Receipt(false, "无缓存策略");
+        if(!Instance.Enable && dm.getRaw().CacheItems!= "DataModel") return new Receipt(false,"缓存策略禁用");
         List<Record> rs = null;
-        switch (dm.Raw.CacheItems)
+        switch (dm.getRaw().CacheItems)
         {
             case "CndCache":
                 //rs = (List<Record>) DataHub.WorkCache.GetLatchDataCache(dm.Raw.Name, dm.SqlText()?.ToString().Md5());
@@ -370,9 +370,9 @@ public class LatchAction
     /// <returns></returns>
     public static void setData(IDataModel dm, List<Record> rs)
     {
-        if (Strings.isBlank(dm.Raw.CacheItems) || Core.isEmpty(rs)) return;
+        if (Strings.isBlank(dm.getRaw().CacheItems) || Core.isEmpty(rs)) return;
         if (!Instance.Enable) return;
-        switch (dm.Raw.CacheItems)
+        switch (dm.getRaw().CacheItems)
         {
             case "CndCache":
                 //DataHub.WorkCache.AddLatchDataCache(dm.Raw.Name, dm.SqlText().ToString().Md5(), rs,LatchHub.StayTime);
@@ -393,7 +393,7 @@ public class LatchAction
 //                    }
                 break;
             case "TableRAM":
-                RamData.put(dm.Raw.Name, rs);
+                RamData.put(dm.getRaw().Name, rs);
                 break;
 
             case "ExternCondition":

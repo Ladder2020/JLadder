@@ -1,15 +1,25 @@
 package com.jladder.web;
 
+import com.jladder.data.Record;
+import com.jladder.data.UploadFile;
 import com.jladder.lang.Collections;
+import com.jladder.lang.Core;
+import com.jladder.lang.Strings;
 import com.jladder.lang.func.Tuple2;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import javax.servlet.http.*;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class WebContext {
-
     public static HttpServletRequest getRequest() {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) return null;
@@ -25,8 +35,32 @@ public class WebContext {
         HttpServletResponse res = requestAttributes.getResponse();
         return res;
     }
+    public static Map<String, List<UploadFile>> getUploadFiles(){
+        return getUploadFiles(getRequest());
+    }
+    public static Map<String, List<UploadFile>> getUploadFiles(HttpServletRequest request){
+        try{
+            MultipartHttpServletRequest mr = (MultipartHttpServletRequest) request;
+            if(mr==null)return null;
+            MultiValueMap<String, MultipartFile> filemap = mr.getMultiFileMap();
+            Map<String,List<UploadFile>> ret = new HashMap<String,List<UploadFile>>();
+            filemap.forEach((k, v) ->{
+                try{
+                    List<UploadFile> ups = new ArrayList<UploadFile>();
+                    v.forEach(f->{
+                        try{
+                            ups.add(new UploadFile(f.getOriginalFilename(),f.getBytes(),k).SetLength(f.getSize()));
+                        }catch (Exception e) { }
+                    });
+                    ret.put(k,ups);
+                }catch (Exception e){}
+            });
+            return ret;
+        }catch (Exception e){
+            return null;
+        }
 
-    ;
+    }
 
     public static HttpSession getSession() {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -51,7 +85,7 @@ public class WebContext {
         return ret.item1 ? ret.item2.getValue() : null;
     }
 
-    public static void SetCookiesForServer(String name, String value) {
+    public static void setCookiesForServer(String name, String value) {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) return;
         Cookie cookie = new Cookie(name, value);
@@ -70,7 +104,14 @@ public class WebContext {
         if (null == val) return null;
         return val.toString();
     }
-
+    public static boolean setAttribute(String name,Object value) {
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes == null) return false;
+        HttpServletRequest request = requestAttributes.getRequest();
+        if (request == null) return false;
+        request.setAttribute(name,value);
+        return true;
+    }
     public static String getReferer() {
         return getReferer(null);
     }
@@ -89,7 +130,7 @@ public class WebContext {
         if (request == null) request = getRequest();
         if (request == null) return null;
         String url = request.getRequestURL().toString();
-        int index = url.lastIndexOf("/", 10);
+        int index = url.indexOf("/", 10);
         if (index < 0) return url;
         return url.substring(0, index);
     }
@@ -147,6 +188,14 @@ public class WebContext {
             e.printStackTrace();
         }
     }
+    public static String getHead(String name){
+        try {
+            return getRequest().getHeader(name);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
 
     public static void redirect(String url) {
         try {
@@ -154,6 +203,16 @@ public class WebContext {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+    }
+    /**
+     * 获取请求码
+     * @return
+     */
+    public static String getRequestMark() {
+        String mark = getAttribute("__requestmark__");
+        if(Strings.hasValue(mark))return mark;
+        mark = Core.genUuid();
+        setAttribute("__requestmark__",mark);
+        return mark;
     }
 }

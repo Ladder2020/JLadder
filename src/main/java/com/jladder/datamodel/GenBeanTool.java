@@ -29,7 +29,7 @@ public class GenBeanTool {
                 }
             });
         }
-        List<Map<String,Object>> columnsMapping = com.jladder.lang.Collections.where(dm.ParseColumsList(), x->{
+        List<Map<String,Object>> columnsMapping = com.jladder.lang.Collections.where(dm.parseColumsList(), x->{
             String isext = com.jladder.lang.Collections.getString(x,"isext",true);
             if(Strings.isBlank(isext))return true;
             if("1".equals(isext))return false;
@@ -66,19 +66,19 @@ public class GenBeanTool {
                     {
                         case "id":
                             //如果id为整数型，一般由数据库自增
-                            if (option == DbSqlDataType.Insert)
-                                saveEntity.put(fieldname, "{sql:'(select Max(" + fieldname + ")+1 from " + dm.GetTableName() + ")'}");
+                            if ( DbSqlDataType.Insert.equals(option))
+                                saveEntity.put(fieldname, "{sql:'(select Max(" + fieldname + ")+1 from " + dm.getTableName() + ")'}");
                             break;
                         case "uuid":
-                            if (option == DbSqlDataType.Insert)
+                            if (DbSqlDataType.Insert.equals(option))
                             {
                                 saveEntity.put(fieldname, Strings.isBlank(com.jladder.lang.Collections.getString(beanDic,fieldname)) ? Core.genUuid() : com.jladder.lang.Collections.getString(beanDic,fieldname));
                             }
                             break;
                         case "nuid":
-                            if (option == DbSqlDataType.Insert)
+                            if ( DbSqlDataType.Insert.equals(option))
                             {
-//                                saveEntity.put(fieldname, beanDic.GetString(fieldname).IsBlank() ? Core.GenNuid() : beanDic.GetString(fieldname));
+                               saveEntity.put(fieldname, Strings.isBlank(beanDic.getString(fieldname)) ? Core.genNuid() : beanDic.getString(fieldname));
                             }
                             break;
                         case "sysdate":
@@ -136,7 +136,7 @@ public class GenBeanTool {
                     if (Strings.isBlank(dvalue)) continue;
                     key = fieldname;
                     //默认值并替换环境变量
-                    beanDic.put(key, com.jladder.lang.Collections.getString(map,"sign") != "rawdata" ? Strings.mapping(dvalue) : dvalue);
+                    if(beanDic!=null)beanDic.put(key, com.jladder.lang.Collections.getString(map,"sign") != "rawdata" ? Strings.mapping(dvalue) : dvalue);
                 }
                 String str = com.jladder.lang.Collections.getString(beanDic,key);
                 //检查bean实体中key的值是否为空
@@ -192,7 +192,7 @@ public class GenBeanTool {
                 }
                 else
                 {
-                    if (option == DbSqlDataType.Update || option == DbSqlDataType.Save)
+                    if ( DbSqlDataType.Update.equals(option) ||  DbSqlDataType.Save.equals(option))
                     {
                         saveEntity.put(fieldname, null);
                     }

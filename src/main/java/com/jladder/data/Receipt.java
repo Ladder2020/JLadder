@@ -53,6 +53,9 @@ public class Receipt<T>
         this.result = result;
         message = result ? "" : "执行错误";
     }
+    public T getData(){
+        return data;
+    }
     /// <summary>
     /// 设置携带数据
     /// </summary>

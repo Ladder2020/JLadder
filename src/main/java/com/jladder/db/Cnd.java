@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Cnd {
+
     public final int AND=0;
     public final int OR=1;
     public DbDialectType dialect;
@@ -47,6 +48,12 @@ public class Cnd {
         put(fieldname, op, value, AND);
         return this;
     }
+
+    /**
+     * 并且
+     * @param cnds 组合
+     * @return {@link Cnd}
+     */
     public Cnd and(Cnd ... cnds){
 
         if (cnds == null || cnds.length < 1) return this;
@@ -76,7 +83,7 @@ public class Cnd {
     public Cnd(IDataModel dm)
     {
         dialect = DaoSeesion.GetDao().getDialect();
-        initFieldMapping(dm.ParseColumsList());
+        initFieldMapping(dm.parseColumsList());
     }
     public Cnd(String conditionText)
     {
@@ -124,7 +131,7 @@ public class Cnd {
                 String[] cstr = keys[0].split(":");
                 String fileName = cstr[0];
                 String op = cstr.length > 1 ? cstr[1] : "=";
-                if ((cstr.length > 2 && cstr[2].toLowerCase() == "or"))
+                if ((cstr.length > 2 &&  "or".equals(cstr[2].toLowerCase())))
                 {
                     put(fileName, op, item.getValue(), OR);
                 }
@@ -145,7 +152,7 @@ public class Cnd {
                 if (Regex.isMatch(fileName, "\\$and\\d*$")) fileName = "and";
                 if (Regex.isMatch(fileName, "\\$or\\d*$")) fileName = "or";
                 String op = cstr.length > 1 ? cstr[1] : "=";
-                if (cstr.length < 3 || (cstr.length > 2 && cstr[2].toLowerCase() == "or"))
+                if (cstr.length < 3 || (cstr.length > 2 && "or".equals(cstr[2].toLowerCase())))
                 {
                     cnd.put(fileName, op, item.getValue(), OR);
                 }
@@ -258,6 +265,24 @@ public class Cnd {
         ret.dialect = dialect;
         return ret.put(cnd);
     }
+
+    public Cnd put(boolean can, String propnames, Object val)
+    {
+        if (can) return put(propnames, val);
+        return this;
+    }
+    public Cnd put(boolean can, String propnames, String op, Object val)
+    {
+        if (can) return put(propnames, op, val);
+        return this;
+    }
+    public Cnd put(boolean can, String propnames, String op, Object val, int option)
+    {
+        if (can) return put(propnames, op, val, option);
+        return this;
+    }
+
+
     /***
      *     放置条件
      * @param propnames 属性名
@@ -270,14 +295,14 @@ public class Cnd {
     {
 
         if (Strings.isBlank(propnames))throw Core.makeThrow("条件对象属性值不能为空");
-        if (propnames.trim().toLowerCase() == "and")
+        if ("and".equals(propnames.trim().toLowerCase()))
         {
             and(val instanceof Record  ? Cnd.parseRecord(Record.parse(val),mapping.fm,dialect):Cnd.parse(val));
             return this;
         }
-        if (propnames.trim().toLowerCase() == "or")
+        if ("or".equals(propnames.trim().toLowerCase()))
         {
-            //or(val is Dictionary<string, object> || val is JObject ? Cnd.ParseRecord(Record.Parse(val), FieldMapping, DialectType) : Cnd.Parse(val));
+            or(val instanceof Record || val instanceof JSONObject ? Cnd.parseRecord(Record.parse(val), mapping.fm, dialect) : Cnd.parse(val));
             return this;
         }
         if (Strings.isBlank(op)) op = "=";
@@ -359,7 +384,7 @@ public class Cnd {
                             {
                                 long _t = Times.ams(val.toString());
                                 if (_t == 0) return this;
-                                val = "'" + Times.sD(Times.D(_t)) + "'";
+                                val =Times.sD(Times.D(_t));
                                 _q = "";
                                 _h = "";
                                 switch (dialect)
@@ -609,8 +634,8 @@ public class Cnd {
                 {
                     IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param"));
                     if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
-                    dm.MatchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
-                    dm.SetCondition(com.jladder.lang.Collections.getString(dic,"condition,where", true));
+                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
+                    dm.setCondition(com.jladder.lang.Collections.getString(dic,"condition,where", true));
                     List<String> rst = QueryAction.getValues(tableName, com.jladder.lang.Collections.getString(dic, "columns,column,columnstring", true), com.jladder.lang.Collections.getString(dic, "condition,where", true), com.jladder.lang.Collections.getString(dic, "param"), String.class);
                     return new SqlText(Strings.arraytext(rst));
                 }
@@ -619,10 +644,10 @@ public class Cnd {
                     //throw new Exception("需要确认逻辑");
                     IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param"));
                     if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
-                    dm.MatchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
+                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
                     Object condition = com.jladder.lang.Collections.get(dic,"condition,where", true);
-                    dm.SetCondition(Cnd.parse(condition,dm));
-                    return dm.SqlText();
+                    dm.setCondition(Cnd.parse(condition,dm));
+                    return dm.getSqlText();
                 }
             }
             return null;
@@ -818,7 +843,7 @@ public class Cnd {
     /// <returns></returns>
     public static Cnd parse(Object cnd, IDataModel dm)
     {
-        Cnd result= Cnd.parse(cnd, dm.ParseColumsList(),dm.DbDialect!=null ? dm.DbDialect : DbDialectType.Default);
+        Cnd result= Cnd.parse(cnd, dm.parseColumsList(),dm.getDialect()!=null ? dm.getDialect() : DbDialectType.Default);
         return result;
     }
     public boolean hasValue()

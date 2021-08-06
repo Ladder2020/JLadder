@@ -3,11 +3,10 @@ package com.jladder.logger;
 import com.jladder.actions.impl.EnvAction;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
-import com.jladder.net.HttpHelper;
+import com.jladder.net.http.HttpHelper;
 import com.jladder.web.ArgumentMapping;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.util.Date;
 
 public class LogFoRequest {
@@ -130,13 +129,9 @@ public class LogFoRequest {
         method = request.getMethod();
         referer = request.getHeader("referer");
         url = request.getRequestURL().toString();
-        try {
-            this.request = Json.toJson(ArgumentMapping.GetRequestParams(request));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.request = Json.toJson(ArgumentMapping.getRequestParams(request));
         starttime = new Date();
-        userinfo = EnvAction.GetEnvValue("username");
+        //userinfo = EnvAction.GetEnvValue("username");
 //        //去处地址栏参数
         if (Strings.hasValue(url))
         {

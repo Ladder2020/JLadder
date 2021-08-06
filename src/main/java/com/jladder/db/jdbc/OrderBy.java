@@ -90,7 +90,7 @@ public class OrderBy
     public OrderBy Push(String fieldName, String od, int index)
     {
         if (Strings.isBlank(od)) od = "asc";
-        Tuple3 old = Collections.first(_orders, (x, y) -> x.toLowerCase() == fieldName.toLowerCase());
+        Tuple3 old = Collections.first(_orders, (x, y) -> Core.is(x.toLowerCase() , fieldName.toLowerCase()) );
 
         OrderStruct orderitem=new OrderStruct();
         orderitem.key = fieldName;
@@ -114,7 +114,7 @@ public class OrderBy
     public OrderBy Put(String fieldName, String od, int index)
     {
         if (Strings.isBlank(od)) od = "asc";
-        Tuple3 old = Collections.first(_orders, (x, y) -> x.toLowerCase() == fieldName.toLowerCase());
+        Tuple3 old = Collections.first(_orders, (x, y) -> Core.is(x.toLowerCase() , fieldName.toLowerCase()) );
 
         OrderStruct orderitem=new OrderStruct();
         orderitem.key = fieldName;
@@ -147,7 +147,7 @@ public class OrderBy
             orderItem.od = numberMatch.group(1);
         }
         Tuple3<Boolean, String, OrderStruct> first = Collections.first(_orders, (k, v) -> {
-            return k.toLowerCase() == fieldName.toLowerCase();
+            return Core.is(k.toLowerCase(),fieldName.toLowerCase());
         });
         if(!first.item1){
             _orders.put(fieldName, orderItem);

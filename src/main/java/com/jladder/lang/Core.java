@@ -13,7 +13,9 @@ public class Core {
     public static String genUuid(){
         return UUID.randomUUID().toString().replace("-", "");
     }
-
+    public static String genNuid(){
+        return SnowFlake.Instance().nextId()+"";
+    }
     public static RuntimeException makeThrow(String format, Object... args) {
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         StackTraceElement father = stackTrace[2];
@@ -106,10 +108,14 @@ public class Core {
         if(obj.getClass().getName().equals(Regex.replace(type.getTypeName(),"^class\\s*","")))return true;
         return false;
     }
+//    public static <T> T get1(Object parent,T val){
+//        if(parent==null)return null;
+//        return val;
+//    }
     public static <T extends Object> T or(T... value){
         if(value==null)return null;
         for (int i = 0; i < value.length; i++) {
-            if(value[i]!=null)return value[i];
+            if(value[i]!=null && Strings.hasValue(value[i].toString()))return value[i];
         }
         return null;
     }

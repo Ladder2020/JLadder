@@ -15,9 +15,9 @@ public class WebScope {
     public static IDataModel MappingConn(IDataModel dm, String name)
     {
         if (dm == null) return null;
-        if (Strings.isBlank(name)) name = dm.Raw.Name;
-        Tuple2<Boolean, String> ret = MappingConn(dm.Conn, name);
-        if (ret.item1) dm.Conn = ret.item2;
+        if (Strings.isBlank(name)) name = dm.getName();
+        Tuple2<Boolean, String> ret = MappingConn(dm.getConn(), name);
+        if (ret.item1) dm.setConn(ret.item2);
         return dm;
     }
 

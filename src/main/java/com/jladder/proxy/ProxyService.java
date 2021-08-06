@@ -1,4 +1,7 @@
 package com.jladder.proxy;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.jladder.actions.WebScope;
 import com.jladder.actions.impl.QueryAction;
 import com.jladder.actions.impl.SaveAction;
@@ -11,12 +14,16 @@ import com.jladder.entity.DbProxy;
 import com.jladder.hub.DataHub;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
+import com.jladder.lang.Collections;
+import com.jladder.lang.script.Script;
 import com.jladder.logger.LogFoRequest;
-import com.jladder.net.HttpHelper;
+import com.jladder.logger.Logs;
+import com.jladder.net.http.HttpHelper;
+import com.jladder.openapi30.Operation;
+import com.jladder.openapi30.PathItem;
+import com.jladder.web.WebContext;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class ProxyService {
 //    private static TimedCache<String, AjaxResult> TimedCache = CacheUtil.newTimedCache(3600);
@@ -29,6 +36,8 @@ public class ProxyService {
 //        return (CrossAccessAuthInfo)WebScope.GetValue("proxy_auth_info");
         return null;
     }
+
+
     /// <summary>
     /// 代理服务执行方法
     /// </summary>
@@ -38,7 +47,7 @@ public class ProxyService {
     /// <param name="header">请求头信息</param>
     /// <param name="authinfo">认证信息</param>
     /// <returns></returns>
-    public static AjaxResult Execute(ProxyConfig config, Record data, int env, Record header, CrossAccessAuthInfo authinfo, String follow)
+    public static AjaxResult execute(ProxyConfig config, Record data, int env, Record header, CrossAccessAuthInfo authinfo, String follow)
     {
         //声明运行时实例对象
         ProxyRunning running = new ProxyRunning(data, authinfo, header, config, env, follow);
@@ -46,10 +55,10 @@ public class ProxyService {
         {
             //获取调用环境
             ProxyFunctionInfo funinfo = config.Get(env);
-            if (funinfo == null) return End(new AjaxResult(500, "未找到相应调用环境[0292]"), running);
+            if (funinfo == null) return end(new AjaxResult(500, "未找到相应调用环境[0292]"), running);
             if ("polymer".equals(funinfo.type ) && Strings.hasValue(follow))
             {
-                return End(HandlePolymer((ProxyPolymer)funinfo.result, running), running);
+                return end(handlePolymer((ProxyPolymer)funinfo.result, running), running);
             }
             if (authinfo != null)
             {
@@ -94,13 +103,13 @@ public class ProxyService {
                 for (ProxyMapping mapping : config.mappings)
                 {
                     String key = data.haveKey(mapping.paramname);
-                    if (Strings.isBlank(key) && "0".equals(mapping.ignore)) return End(new AjaxResult(400, "参数不足"+mapping.paramname), running);
+                    if (Strings.isBlank(key) && "0".equals(mapping.ignore)) return end(new AjaxResult(400, "参数不足"+mapping.paramname), running);
                     //移除大文本的日志记录
                     if (Regex.isMatch(mapping.datatype, "(file)|(text)")) ignoreLogKeys += key + ",";
                     Object v = Strings.hasValue(key) ? data.get(key) : mapping.dvalue;
                     if (("1".equals(mapping.ignore) || "启用".equals(mapping.ignore)) && (v == null || Strings.isBlank(v.toString())))
                     {
-                        if (Strings.hasValue(mapping.valid)) return End(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0125]"), running);
+                        if (Strings.hasValue(mapping.valid)) return end(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0125]"), running);
                         continue;
                     }
                     //默认日期时间
@@ -130,10 +139,10 @@ public class ProxyService {
                     //验证器
                     if (Strings.hasValue(mapping.valid))
                     {
-                        if (v == null) return End(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0155]"), running);
+                        if (v == null) return end(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0155]"), running);
                         Receipt check = Strings.check(v.toString(),mapping.valid);
                         if (!check.isSuccess())
-                            return End(new AjaxResult(444, "参数[" + mapping.paramname + "]" + check.message), running);
+                            return end(new AjaxResult(444, "参数[" + mapping.paramname + "]" + check.message), running);
                     }
                     //格式化
                     if (Strings.hasValue(mapping.format))
@@ -193,7 +202,7 @@ public class ProxyService {
                     String key = running.paramdata.haveKey(param.paramname);
                     String stringvalue = (Strings.isBlank(key) ? param.dvalue : running.paramdata.getString(key));
                     if ("1".equals(param.required) && Strings.isBlank(stringvalue)){
-                        return End(new AjaxResult(444).setMessage("[" + param.paramname + "]未被填充[0211]"), running);
+                        return end(new AjaxResult(444).setMessage("[" + param.paramname + "]未被填充[0211]"), running);
                     }
                     //参数可空,且默认值为空，用户传值也为空
                     if("0".equals(param.required) && Strings.isBlank(key) && Strings.isBlank(stringvalue))continue;
@@ -220,7 +229,7 @@ public class ProxyService {
                     }
                     if (Strings.hasValue(param.valid)){
                         Receipt check = Strings.check(stringvalue,param.valid);
-                        if (!check.isSuccess())return End(new AjaxResult(444, "映射参数[" + param.paramname + "]" + check.message), running);
+                        if (!check.isSuccess())return end(new AjaxResult(444, "映射参数[" + param.paramname + "]" + check.message), running);
                     }
                     switch (param.datatype.toLowerCase()){
                         case "int":
@@ -228,7 +237,7 @@ public class ProxyService {
                                 newparamData.put(param.paramname, 0);
                             }
                             else{
-                                if (!Strings.isNumber(stringvalue)) return End(new AjaxResult(444, "映射参数[" + param.paramname + "]不是整数类型"), running);
+                                if (!Strings.isNumber(stringvalue)) return end(new AjaxResult(444, "映射参数[" + param.paramname + "]不是整数类型"), running);
                                 newparamData.put(param.paramname, Convert.toInt(stringvalue));
                             }
                             break;
@@ -247,11 +256,11 @@ public class ProxyService {
                             break;
                         case "date":
                             if (!Strings.isDate(stringvalue))
-                                return End(new AjaxResult(444, "映射参数[" + param.paramname + "]不是日期类型"), running);
+                                return end(new AjaxResult(444, "映射参数[" + param.paramname + "]不是日期类型"), running);
                             newparamData.put(param.paramname, Convert.toDate(stringvalue));
                             break;
                         case "datetime":
-                            if (!Strings.isDateTime(stringvalue)) return End(new AjaxResult(444, "映射参数[" + param.paramname + "]不是日期时间类型"), running);
+                            if (!Strings.isDateTime(stringvalue)) return end(new AjaxResult(444, "映射参数[" + param.paramname + "]不是日期时间类型"), running);
                             newparamData.put(param.paramname, Convert.toDate(stringvalue));
                             break;
                         case "number":
@@ -260,7 +269,7 @@ public class ProxyService {
                                 newparamData.put(param.paramname, 0);
                             }
                             else{
-                                if (!Strings.isDecimal(stringvalue)) return End(new AjaxResult(444, "映射参数[" + param.paramname + "]不是数字类型"), running);
+                                if (!Strings.isDecimal(stringvalue)) return end(new AjaxResult(444, "映射参数[" + param.paramname + "]不是数字类型"), running);
                                 newparamData.put(param.paramname, Convert.toDouble(stringvalue));
                             }
                             break;
@@ -298,7 +307,7 @@ public class ProxyService {
                     if (old != null)
                     {
                         running.hashstatus = true;
-                        return End(old, running);
+                        return end(old, running);
                     }
                     else
                     {
@@ -310,81 +319,139 @@ public class ProxyService {
             //替换参数
             if(funinfo.param!=null)funinfo.param.forEach((k,v) -> running.paramdata.put(k, v));
             //配置调用环境类型直接返回结果
-            if (Strings.isBlank(funinfo.type)) return End(res.Ok().setData(funinfo), running);
-                //region 转换调用环境的数据，包括Data和Head
+            if (Strings.isBlank(funinfo.type)) return end(res.Ok().setData(funinfo), running);
+            //region 转换调用环境的数据，包括Data和Head
 
             ReStruct<Record, Record> tResult = WebHub.CrossAccess.DoTransition(running.paramdata, config, env, header);
-            if (!tResult.Success) return End(res.set(506, "不具备调用执行条件[0300]"), running);
+            if (!tResult.Success) return end(res.set(506, "不具备调用执行条件[0300]"), running);
             running.paramdata = tResult.ResultA;
             header = tResult.ResultB;
-                //endregion
-
-            //处理过程事件
+            //endregion
+            //region 处理过程事件
             AjaxResult callResult = WebHub.CrossAccess.OnCall(config, running.paramdata, header, authinfo);
-            if (callResult != null) return End(callResult, running);
-
-                //region 处理条件分发
-            if ("route".equals(funinfo.type.toLowerCase()))
-            {
-                boolean ismatch = false;
-                List<ProxyRouteFunctionInfo> routes = (List<ProxyRouteFunctionInfo>)funinfo.result ;
-                if (routes == null || routes.size() < 1) return End(new AjaxResult(840, "分发路由未匹配"), running);
-                ProxyFunctionInfo def = null;
-                for (ProxyRouteFunctionInfo ri : routes)
+            if (callResult != null) return end(callResult, running);
+            //endregion
+            switch (funinfo.type.toLowerCase()){
+                //region 多接口聚合结果
+                case "join":
                 {
-                    if ("default".equals(ri.condition))
-                    {
-                        def = ri.funinfo;
-                        continue;
+                    String joinconfig = Json.toJson(funinfo.result);
+                    //对象
+                    if(Strings.isJson(joinconfig,1)){
+                        JSONObject c = JSONObject.parseObject(joinconfig);
+                        Record r = new Record();
+                        c.forEach((k,v)->{
+                            Record p = Record.parse(v);
+                            String tag =  p.getString("tag");
+                            String version =  p.getString("version");
+                            Record pm =  Record.parse(Strings.mapping(p.getString("data"),running.paramdata) );
+                            AjaxResult tt = ProxyService.execute(ProxyService.getProxyConfig(tag, version), pm, running.envcode, running.header, running.authinfo, running.follow);
+                            r.put(k,tt.data);
+                        });
+                        return end(new AjaxResult().setData(r), running);
                     }
-                    boolean ret = Script.eval(Strings.mapping(Strings.mapping(ri.condition,running.paramdata, false),header),Boolean.class);
-                    if (ret)
-                    {
-                        funinfo = ri.funinfo;
-                        ismatch = true;
-                        break;
+                    //数组
+                    if(Strings.isJson(joinconfig,2)){
+                        JSONArray c = JSONArray.parseArray(joinconfig);
+                        List<Object> r = new ArrayList<Object>();
+                        c.forEach((v)->{
+                            Record p = Record.parse(v);
+                            String tag =  p.getString("tag");
+                            String version =  p.getString("version");
+                            Record pm =  Record.parse(Strings.mapping(p.getString("data"),running.paramdata) );
+                            AjaxResult tt = ProxyService.execute(ProxyService.getProxyConfig(tag, version), pm, running.envcode, running.header, running.authinfo, running.follow);
+                            r.add(tt.data);
+                        });
+                        return end(new AjaxResult().setData(r), running);
                     }
                 }
-
-                if (!ismatch)
-                {
-                    if (def == null) return End(new AjaxResult(841, "分发路由未匹配"), running);
-                    else funinfo = def;
-                }
-            }
-
+                break;
                 //endregion
+                //region 自定义配置
+                case "config":
+                {
+                    String configjson = Json.toJson(funinfo.result);
+                    //对象
+                    if(Strings.isJson(configjson,1)){
+                        JSONObject c = JSONObject.parseObject(configjson);
+                        Record r = new Record();
+                        c.forEach((k,v)->{
+                            ProxyFunctionInfo func = Json.toObject(Strings.mapping(Json.toJson(v),running.paramdata), ProxyFunctionInfo.class);
+                            AjaxResult tt = call(func,running);
+                            r.put(k,tt.data);
+                        });
+                        return end(new AjaxResult().setData(r), running);
+                    }
+                    //数组
+                    if(Strings.isJson(configjson,2)){
+                        JSONArray c = JSONArray.parseArray(configjson);
+                        List<Object> r = new ArrayList<Object>();
+                        c.forEach((v)->{
+                            ProxyFunctionInfo func = Json.toObject(Strings.mapping(Json.toJson(v),running.paramdata), ProxyFunctionInfo.class);
+                            AjaxResult tt = call(func,running);
+                            r.add(tt.data);
+                        });
+                        return end(new AjaxResult().setData(r), running);
+                    }
+                }
+                break;
+                //endregion
+                //region 处理条件分发
+                case "route":
+                {
+                    boolean ismatch = false;
+                    List<ProxyRouteFunctionInfo> routes = (List<ProxyRouteFunctionInfo>)funinfo.result ;
+                    if (routes == null || routes.size() < 1) return end(new AjaxResult(840, "分发路由未匹配"), running);
+                    ProxyFunctionInfo def = null;
+                    for (ProxyRouteFunctionInfo ri : routes)
+                    {
+                        if ("default".equals(ri.condition))
+                        {
+                            def = ri.funinfo;
+                            continue;
+                        }
+                        boolean ret = Script.eval(Strings.mapping(Strings.mapping(ri.condition,running.paramdata, false),header),Boolean.class);
+                        if (ret)
+                        {
+                            funinfo = ri.funinfo;
+                            ismatch = true;
+                            break;
+                        }
+                    }
 
+                    if (!ismatch)
+                    {
+                        if (def == null) return end(new AjaxResult(841, "分发路由未匹配"), running);
+                        else funinfo = def;
+                    }
+                }
+                break;
+                //endregion
                 //region 负载平衡
-            if ("balance".equals(funinfo.type.toLowerCase()))
-            {
-                List<ProxyRouteFunctionInfo> routes = (List<ProxyRouteFunctionInfo>)funinfo.result;
-                if (routes == null || routes.size() < 1) return End(new AjaxResult(842, "负载路由未匹配"), running);
-                try
-                {
-                    funinfo = routes.get(config.GetWeightIndex()).funinfo;
-                }
-                catch (Exception e)
-                {
-                    //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = config.Name, Type = "Proxy" }, LogOption.Error);
-                    return End(new AjaxResult(843, "负载路由计算异常"), running);
-                }
-            }
-            ///endregion
-
-
-            switch (funinfo.type.toLowerCase())
-            {
-                case "polymer":
-
-                    return End(HandlePolymer((ProxyPolymer)funinfo.result, running), running);
-                case "job":
-
-
-
+                case "balance":
+                    {
+                        List<ProxyRouteFunctionInfo> routes = (List<ProxyRouteFunctionInfo>)funinfo.result;
+                        if (routes == null || routes.size() < 1) return end(new AjaxResult(842, "负载路由未匹配"), running);
+                        try
+                        {
+                            funinfo = routes.get(config.GetWeightIndex()).funinfo;
+                        }
+                        catch (Exception e)
+                        {
+                            //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = config.Name, Type = "Proxy" }, LogOption.Error);
+                            return end(new AjaxResult(843, "负载路由计算异常"), running);
+                        }
+                    }
                     break;
+                //endregion
+                case "polymer":
+                    return end(handlePolymer((ProxyPolymer)funinfo.result, running), running);
+                case "job":
+                    break;
+                case "replace":
+                    return ProxyService.execute(ProxyService.getProxyConfig(funinfo.functionname,funinfo.uri),running.paramdata,running.envcode,running.header,running.authinfo,running.follow);
                 default:
-                    return End(Call(funinfo, running), running);
+                    return end(call(funinfo, running), running);
             }
             return new AjaxResult(400, "未进行有效处理[0390]");
         }
@@ -401,6 +468,8 @@ public class ProxyService {
             running.trace.forEach((k,v) ->{
                 logText.append("--" + k+ "_start--" + System.lineSeparator() + v + System.lineSeparator() + "--" + k + "_end--" + System.lineSeparator());
             });
+            String out = logText.toString();
+            if(Strings.hasValue(out))Logs.writeLog(out,"proxy/"+ config.name+"/" +Times.getDate());
             //if (logText.length() > 0) Logs.WriteLog("----" + running.Uuid + "----" + System.lineSeparator() + logText + "----" + running.Uuid + "----", "Proxy/" + config.Name);
         }
     }
@@ -412,7 +481,7 @@ public class ProxyService {
     /// <param name="result">处理结果</param>
     /// <param name="running">运行时信息</param>
     /// <returns></returns>
-    private static AjaxResult End(AjaxResult result, ProxyRunning running)
+    private static AjaxResult end(AjaxResult result, ProxyRunning running)
     {
         if (result.success)
         {
@@ -497,9 +566,7 @@ public class ProxyService {
 //            Logs.Write(new LogForError(e.Message, "ProxyEnd").SetStackTrace(e.StackTrace).SetModule("ProxyService"), LogOption.Error);
         }
         running.stopWatch.stop();
-        Record rel = new Record("uuid", running.uuid).put("name", running.config.name);
-        if (running.hashstatus) rel.put("hashcode", running.hashcode);
-        return result.setDuration(running.stopWatch).setRel(rel.toString());
+        return result.setDuration(running.stopWatch).setRel(running.hashstatus?  new Record("uuid", running.uuid).put("hashcode", running.hashcode).put("name", running.config.name).toString():running.uuid);
     }
     /// <summary>
     /// 调用执行
@@ -507,7 +574,7 @@ public class ProxyService {
     /// <param name="funInfo">调用信息</param>
     /// <param name="running">运行时信息</param>
     /// <returns></returns>
-    private static AjaxResult Call(ProxyFunctionInfo funInfo, ProxyRunning running)
+    private static AjaxResult call(ProxyFunctionInfo funInfo, ProxyRunning running)
     {
         ///region 进行环境方法调用
         switch (funInfo.type.toLowerCase())
@@ -677,17 +744,11 @@ public class ProxyService {
             {
                 Receipt result = Refs.invoke(funInfo.path, running.paramdata, funInfo.functionname);
                 return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
-                //throw Core.makeThrow("未实现[0692]","PorxyService");
-//                Receipt result = null;
-//                var ext = Path.GetExtension(funInfo.Path ?? "").ToLower();
-//                result = (ext == ".dll" ? Refs.Invoke(funInfo.FunctionName, running.ParamData, null, funInfo.Path) : Refs.Invoke(funInfo.Path, running.ParamData, funInfo.FunctionName));
-//                return result.Result ? new AjaxResult().SetData(result.Data) : new AjaxResult(500, result.Message);
-//                break;
             }
             case "replace":
             {
                 ProxyConfig rconigs = getProxyConfig(funInfo.functionname, funInfo.uri);
-                return rconigs == null ? new AjaxResult(506, "未找到相应调用环境") : ProxyService.Execute(rconigs, running.paramdata, running.envcode, running.header, running.authinfo,null);
+                return rconigs == null ? new AjaxResult(506, "未找到相应调用环境") : ProxyService.execute(rconigs, running.paramdata, running.envcode, running.header, running.authinfo,null);
             }
                 ///endregion
                 ///region 网络请求
@@ -695,17 +756,18 @@ public class ProxyService {
             case "httpjson":
             case "postjson":
             {
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(funInfo.path, running.config, running.paramdata, running.header);
+
+                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
-                Receipt<String> re = HttpHelper.RequestByJson(rpath.data, running.paramdata.toString(), running.header);
+                Receipt<String> re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
                 {
-                    re = HttpHelper.RequestByJson(rpath.data, running.paramdata.toString(), running.header);
+                    re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 }
 
                 if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
                 {
-                    re = HttpHelper.RequestByJson(rpath.data, running.paramdata.toString(), running.header);
+                    re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 }
 
                 if (!re.isSuccess())
@@ -734,7 +796,7 @@ public class ProxyService {
             case "get":
             case "web":
             {
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(funInfo.path, running.config, running.paramdata, running.header);
+                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
                 if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
@@ -747,8 +809,7 @@ public class ProxyService {
                 }
                 if (!re.isSuccess())
                 {
-
-//                    Logs.WriteLog($"错误消息:{re.Message}\n数据备注:{re.Data}", "proxy_error_httpget");
+                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httpget");
                     return new AjaxResult(505, re.message+"[0754]").setData(re.data);
                 }
                 else
@@ -770,7 +831,7 @@ public class ProxyService {
             case "post":
             case "webpost":
             {
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(funInfo.path, running.config, running.paramdata, running.header);
+                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
                 if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
@@ -784,8 +845,7 @@ public class ProxyService {
                 if (!re.isSuccess())
                 {
 
-//                    Logs.WriteLog($"错误消息:{re.Message}\n数据备注:{re.Data}", "proxy_error_httppost");
-
+                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httppost");
                     return new AjaxResult(505, re.message+"[0791]").setData(re.data);
                 }
                 else
@@ -806,55 +866,65 @@ public class ProxyService {
             case "upload":
             case "httpupload":
             {
-                throw Core.makeThrow("未实现[0822]","ProxyService");
-//                var rpath = WebHub.CrossAccess.DoPath(funInfo.Path, running.Config, running.ParamData, running.Header);
-//                if (!rpath.Success) return new AjaxResult(501, rpath.Message);
-//                var files = new List<UploadFile>();
-//                var ps = new Dictionary<String, Object>();
-//                foreach (var kv in running.ParamData)
-//                {
-//                    if (kv.Value is UploadFile)
-//                    {
-//                        var uploadfile = kv.Value as UploadFile;
-//                        if (uploadfile == null || uploadfile.Data.IsBlank()) continue;
-//                        files.Add(uploadfile);
-//                    }
-//                            else ps.Put(kv.Key, kv.Value);
-//                }
-//
-//                var re = HttpHelper.Upload(rpath.Result, files, ps);
-//                if (!re.IsSuccess() && re.Message.Contains("基础连接已经关闭"))
-//                {
-//                    re = HttpHelper.Upload(rpath.Result, files, ps);
-//                }
-//                if (!re.IsSuccess() && re.Message.Contains("(502) 错误的网关"))
-//                {
-//                    re = HttpHelper.Upload(rpath.Result, files, ps);
-//                }
-//                if (!re.IsSuccess())
-//                {
-//
-//                    Logs.WriteLog($"错误消息:{re.Message}\n数据备注:{re.Data}", "proxy_error_upload");
-//
-//                    return new AjaxResult(505, re.Message);
-//                }
-//                else
-//                {
-//
-//                    StringBuilder uploadlog = new StringBuilder($"上传文件个数:" + files.Count + System.lineSeparator());
-//                    files.ForEach(fileinfo =>
-//                            {
-//                    if (fileinfo == null) return;
-//                    var savefilename = $"{Times.TimeStamp}_" + fileinfo.FileName;
-//                    uploadlog.Append($"文件名:{fileinfo.FileName};表单名:{fileinfo.FormName};文件码:{fileinfo.FileCode};Md5:{fileinfo.Md5}" + System.lineSeparator());
-//                    uploadlog.Append($"文件保存到:{savefilename}" + System.lineSeparator());
-//                    fileinfo.SaveAs(Logs.GetCatalogDir("Proxy/" + running.config.name + "/Files/") + savefilename);
-//                            });
-//                    running.Trace.Put("upload", uploadlog);
-//                    var retText = re.Data.ToString();
-//                    return (retText.IsJson() ? new AjaxResult().SetData(Json.ToObject<object>(retText)).SetDataType("html") : new AjaxResult().SetData(retText).SetDataType("html"));
-//                }
-
+                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
+                if (!rpath.result) return new AjaxResult(501, rpath.message);
+                List<UploadFile> files = new ArrayList<UploadFile>();
+                Record ps = new Record();
+                running.paramdata.forEach((k,v)->{
+                    if (v instanceof UploadFile)
+                    {
+                        UploadFile uploadfile = (UploadFile)v;
+                        if (uploadfile == null || Core.isEmpty(uploadfile.getData())) return;
+                        files.add(uploadfile);
+                        return;
+                    }
+                    if (v instanceof List)
+                    {
+                        List<UploadFile> uploadfiles = (List<UploadFile>)v;
+                        if (uploadfiles == null || uploadfiles.size()<1) return;
+                        files.addAll(uploadfiles);
+                        return;
+                    }
+                    ps.put(k,v);
+                });
+                Receipt<String> re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
+                if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
+                {
+                    re = HttpHelper.upload(rpath.data, files, ps);
+                }
+                if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
+                {
+                    re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
+                }
+                if (!re.isSuccess())
+                {
+                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_upload");
+                    return new AjaxResult(505, re.message);
+                }
+                else
+                {
+                    if(!Core.isEmpty(files)){
+                        StringBuilder uploadlog = new StringBuilder("上传文件个数:" + files.size() + System.lineSeparator());
+                        files.forEach(fileinfo ->{
+                            if (fileinfo == null) return;
+                            String savefilename = Times.timestamp()+"_" + fileinfo.getFilename();
+                            uploadlog.append("文件名:"+fileinfo.getFilename()+";表单名:"+fileinfo.getFormname()+";文件码:"+fileinfo.getFilecode()+";Md5:"+fileinfo.getMd5() + System.lineSeparator());
+                            uploadlog.append("文件保存到:"+savefilename + System.lineSeparator());
+                            //fileinfo.SaveAs(Logs.GetCatalogDir("Proxy/" + running.config.name + "/Files/") + savefilename);
+                        });
+                        running.trace.put("upload", uploadlog);
+                    }
+                    String  retText = re.data;
+                    boolean isJson = Strings.isJson(retText);
+                    if (isJson)
+                    {
+                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
+                    }
+                    else
+                    {
+                        return new AjaxResult().setData(retText).setDataType("html");
+                    }
+                }
             }
 
                 //endregion
@@ -910,7 +980,7 @@ public class ProxyService {
     /// <param name="polymer">多组聚合对象</param>
     /// <param name="running">运行时信息</param>
     /// <returns></returns>
-    private static AjaxResult HandlePolymer(ProxyPolymer polymer, ProxyRunning running)
+    private static AjaxResult handlePolymer(ProxyPolymer polymer, ProxyRunning running)
     {
         //redis数据库的序号
         throw Core.makeThrow("未实现");
@@ -1169,7 +1239,7 @@ public class ProxyService {
     /// <param name="key">服务的键名</param>
     /// <param name="data">请求数据</param>
     /// <returns></returns>
-    public static AjaxResult Execute(String key, Record data)
+    public static AjaxResult execute(String key, Record data)
     {
         ProxyConfig config = DataHub.WorkCache.getProxyCache(key);
         if (config == null)
@@ -1183,9 +1253,13 @@ public class ProxyService {
             config = new ProxyConfig(bean);
             DataHub.WorkCache.addProxyCache(key, config);
         }
-        return Execute(config, data,0,null,null,null);
+        return execute(config, data,0,null,null,null);
     }
 
+
+    public static AjaxResult execute(String service, String tag, Record data, String sign, String key, String version){
+        return execute(service,tag,data,sign,key,version,"POST",0,null);
+    }
     /****
      * 执行代理服务
      * @param service
@@ -1199,7 +1273,7 @@ public class ProxyService {
      * @param header
      * @return
      */
-    public static AjaxResult Execute(String service, String tag, Record data, String sign, String key, String version, String method, int envcode, Record header)
+    public static AjaxResult execute(String service, String tag, Record data, String sign, String key, String version, String method, int envcode, Record header)
     {
 
         Receipt<Record> hhh = Security.encryptByHead(tag, data, sign, key, version, envcode, header);
@@ -1210,7 +1284,7 @@ public class ProxyService {
         return new AjaxResult(500,hhh.message);
     }
 
-    public static Object GetResultCache(String key)
+    public static Object getResultCache(String key)
     {
         throw Core.makeThrow("未实现[1215]","ProxyService");
 //        return LocalCache.GetCache(key, "Proxy_Result_Cache");
@@ -1278,4 +1352,31 @@ public class ProxyService {
         DataHub.WorkCache.removeProxyCache(key);
     }
 
+    public static String getMarkDown(String key){
+
+        return "";
+
+    }
+    public static PathItem getOpenAPI(String key){
+        ProxyConfig config = getProxyConfig(key,null);
+        PathItem item = new PathItem();
+        item.setSummary(config.raw.title);
+        item.setDescription(config.raw.descr);
+        Operation request = new Operation();
+        request.setTag(config.name);
+        if(Strings.isBlank(config.raw.method))config.raw.method="ALL";
+        switch (config.raw.method){
+            case "ALL":
+            case "POST":
+                request.setParametersByPost(config.mappings);
+                item.setPost(request);
+                break;
+            case "GET":
+                request.setParametersByGet(config.mappings);
+                item.setGet(request);
+                break;
+        }
+        return item;
+
+    }
 }

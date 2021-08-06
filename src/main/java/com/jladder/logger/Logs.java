@@ -89,6 +89,9 @@ public class Logs {
         //logger.info(Json.toJson(sql));
         //logger.error(sql);
     }
+    public static void writeLog(String log) {
+        getLogger("comm").info(log);
+    }
     public static void writeLog(String log, String moudle) {
         getLogger(moudle).info(log);
     }
@@ -136,7 +139,7 @@ public class Logs {
         Layout layout = PatternLayout.newBuilder().withConfiguration(myconfig).withPattern("%msg%n").build();;
         Appender appender = FileAppender.newBuilder()
                 .withBufferedIo(true).withLocking(false)
-                .setName(loggerName).withFileName("log"+File.separator+loggerName+".log")
+                .setName(loggerName).withFileName("logs"+File.separator+loggerName+".log")
                 .withAppend(true).setConfiguration(myconfig).setLayout(layout).build();
         myconfig.addAppender(appender);
         AppenderRef[] refs = new AppenderRef[]{AppenderRef.createAppenderRef("" + loggerName, null, null)};

@@ -8,15 +8,17 @@ import com.jladder.db.Cnd;
 import com.jladder.db.DaoSeesion;
 import com.jladder.hub.DataHub;
 import com.jladder.hub.WebHub;
-import com.jladder.lang.Core;
-import com.jladder.lang.Json;
-import com.jladder.lang.Regex;
-import com.jladder.lang.Strings;
-import com.jladder.net.HttpHelper;
+import com.jladder.lang.*;
+import com.jladder.net.http.HttpHelper;
 import com.jladder.utils.RedisHelper;
+import com.jladder.utils.VCodeGenerator;
 import com.jladder.web.WebContext;
 
+import javax.imageio.ImageIO;
 import javax.servlet.http.Cookie;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
 public class UpmsAction {
 
@@ -26,11 +28,19 @@ public class UpmsAction {
     public static String Key_UUID= "logininfo";
 
 
-//    public static Tuple<byte[],String> GetCheckCode()
-//    {
-//        var st1 = ImageDraw.DrawCalcImage();
-//        return new Tuple<byte[], String>(st1.Item1,st1.Item2+"");
-//    }
+    public static ReStruct<String,String> getCheckCode(){
+        VCodeGenerator vcode = new VCodeGenerator();
+        String code = vcode.generatorVCode();
+        BufferedImage bImage = vcode.generatorRotateVCodeImage(code, true);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            ImageIO.write(bImage, "png", out);
+        } catch (IOException e) {
+            return new ReStruct<>(e.getMessage());
+        }
+        byte[] data = out.toByteArray();
+        return new ReStruct<>(true,code ,Security.encryptByBase64(data));
+    }
 
     /***
      *
@@ -88,10 +98,11 @@ public class UpmsAction {
     {
         try
         {
-//            if (RunTime.IsWeb && WebContext.Current?.Session != null)
-//            {
-//                return GetUserInfo()?.UserName;
-//            }
+            if (WebContext.getSession()!= null)
+            {
+                BaseUserInfo userinfo = getUserInfo(BaseUserInfo.class);
+                return userinfo==null?"":userinfo.username;
+            }
         }
         catch (Exception e)
         {
@@ -110,7 +121,11 @@ public class UpmsAction {
         boolean has = DataHub.WorkCache.hasModuleCache(uuid,"_user_");
         if(has)return true;
         has = RedisHelper.Instance.hasKey(uuid);
-        if(has)return true;
+        if(has){
+            Receipt<BaseUserInfo> user = RedisHelper.Instance.getCache(uuid, BaseUserInfo.class);
+            if(user.isSuccess())DataHub.WorkCache.addModuleCache(uuid, user.data,  "_user_",20*60);
+            return true;
+        }
         return false;
     }
 
@@ -210,7 +225,7 @@ public class UpmsAction {
         {
             TreeModel tm = new TreeModel();
             IDataModel dm = DaoSeesion.getDataModel(DataModelForGroup);
-            String tableName = dm.GetTableName();
+            String tableName = dm.getTableName();
             tm.RecurFromTable(userinfo.groupId, tableName);
             List<String> cids = tm.GetIds();
             cids.add(userinfo.groupId);
@@ -219,6 +234,9 @@ public class UpmsAction {
         return userinfo;
     }
 
+    public static void loginout(){
+        loginout(null);
+    }
     /***
      * 退出登录
      */

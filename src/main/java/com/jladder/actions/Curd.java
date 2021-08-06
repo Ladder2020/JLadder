@@ -102,7 +102,11 @@ public class Curd
         this.Condition = condition;
         this.Rel = rel;
     }
-
+    public Curd(String tableName, Object bean, DbSqlDataType option){
+        TableName = tableName;
+        Bean = Record.parse(bean).toString();
+        Option = option.getIndex();
+    }
     /// <summary>
     /// 构造方法
     /// </summary>

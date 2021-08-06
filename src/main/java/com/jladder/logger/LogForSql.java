@@ -70,7 +70,8 @@ public class LogForSql {
     /// <summary>
     /// 访问者
     /// </summary>
-    public String visitor = EnvAction.GetEnvValue("username");
+//    public String visitor = EnvAction.GetEnvValue("username");
+    public String visitor;
     /// <summary>
     /// 请求标示
     /// </summary>
@@ -203,6 +204,7 @@ public class LogForSql {
         long time = (endtime.getTime() - starttime.getTime());
         if (time > DataHub.SqlWarnTime) this.isOverTime = true;
         duration = time + "ms";
+        requestmark=WebContext.getRequestMark();
         return this;
     }
     public LogForSql SetData(List<DbParameter> data)

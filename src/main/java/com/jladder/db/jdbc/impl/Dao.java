@@ -32,6 +32,10 @@ public  class Dao implements IDao {
         support = new BaseSupportByJDBC();
     }
     public Dao(String conn){
+        if(Strings.isBlank(conn)){
+            support = new BaseSupportByJDBC();
+            return;
+        }
         support = new BaseSupportByJDBC(conn);
         support.maskcode = conn;
     }
@@ -512,6 +516,17 @@ public  class Dao implements IDao {
         return support.commitTran();
     }
 
+
+    @Override
+    public List<String> getValues(SqlText sqltext,String columns) {
+        List<Record> rs = support.query(sqltext);
+        if(rs==null)return null;
+        return Collections.select(rs,(x)-> Strings.isBlank(columns) ? x.getString(0):x.getString(columns));
+    }
+    @Override
+    public List<String> getValues(SqlText sqltext) {
+        return support.getValue(sqltext,null);
+    }
     @Override
     public <T> T getValue(SqlText sqltext,Class<T> clazz) {
         return support.getValue(sqltext,clazz);

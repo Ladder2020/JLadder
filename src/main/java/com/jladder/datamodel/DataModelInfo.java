@@ -7,29 +7,41 @@ import java.util.Date;
 /// </summary>
 public class DataModelInfo
 {
-    /// <summary>
-    /// 类型
-    /// </summary>
-    public String Type ;
+    public DataModelInfo(String type, String path,String node, long lastWriteTime) {
+        this.type = type;
+        this.path = path;
+        this.node = node;
+        this.lastWriteTime = lastWriteTime;
+        this.enable=true;
+    }
 
     /// <summary>
     /// 类型
     /// </summary>
-    public String Path;
+    public String type ;
+
+    /// <summary>
+    /// 类型
+    /// </summary>
+    public String path;
 
     /// <summary>
     /// 节点
     /// </summary>
-    public String Node;
+    public String node;
 
     /// <summary>
     /// 最后修改时间
     /// </summary>
-    public Date LastWriteTime;
+    public long lastWriteTime;
+
+    public void setEnable(boolean enable) {
+        this.enable = enable;
+    }
 
     /// <summary>
     /// 是否可用
     /// </summary>
-    public boolean Enable;
+    public boolean enable;
 
 }

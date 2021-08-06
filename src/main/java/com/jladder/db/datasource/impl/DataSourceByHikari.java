@@ -37,14 +37,13 @@ public class DataSourceByHikari extends IDataSource {
 
         final HikariConfig hikariConfig = new HikariConfig(config);
         //hikariConfig.setDataSourceProperties(connProps);
-        //hikariConfig.setMaximumPoolSize(20);
+        hikariConfig.setMaximumPoolSize(200);
         HikariDataSource dataSource = new HikariDataSource(hikariConfig);
-//        dataSource.setIdleTimeout(60000);
-//        dataSource.setConnectionTimeout(60000);
-//        dataSource.setValidationTimeout(3000);
-////        dataSource.setLoginTimeout(5);
-//        dataSource.setMaxLifetime(60000);
-//        dataSource.setMaximumPoolSize(20);
+        dataSource.setIdleTimeout(60000);
+        dataSource.setConnectionTimeout(60000);
+        dataSource.setValidationTimeout(3000);
+        dataSource.setMaxLifetime(30000);
+        dataSource.setMaximumPoolSize(500);
         return dataSource;
     }
 }

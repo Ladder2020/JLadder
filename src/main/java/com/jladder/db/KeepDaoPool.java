@@ -88,7 +88,7 @@ public class KeepDaoPool
     public void Close(String markcode)
     {
         Daos.forEach(x->{
-            if(x.IsAllowClose && x.Dao.getMarkCode()==markcode){
+            if(x.IsAllowClose && Core.is( x.Dao.getMarkCode(),markcode)){
                 x.Dao.close();
             }
         });
@@ -349,7 +349,7 @@ public class KeepDaoPool
     public boolean TryAllCommitBySequence(int sequence)
     {
 
-        if (Collections.first(Daos,x -> x.Sequence==sequence && x.FinishTimes != x.TakeTimes).item2 != null) return false;
+        if (Collections.first(Daos,x -> Core.is( x.Sequence,sequence) && x.FinishTimes != x.TakeTimes).item2 != null) return false;
         else
         {
             AllCommitBySequence(sequence);
@@ -363,7 +363,7 @@ public class KeepDaoPool
     /// <param name="sequence">序列号</param>
     public void AllCommitBySequence(int sequence)
     {
-        Daos.forEach(x -> { if (x != null && x.IsAllowClose&&x.Sequence==sequence && x.IsManageTran) x.Dao.commitTran(); });
+        Daos.forEach(x -> { if (x != null && x.IsAllowClose&& Core.is( x.Sequence,sequence) && x.IsManageTran) x.Dao.commitTran(); });
     }
     /// <summary>
     /// 按序列强制回滚所有数据库事务(由锁存器创建的)
@@ -372,7 +372,7 @@ public class KeepDaoPool
     /// <param name="isClose">是否后续关闭</param>
     public void AllRollBackBySequence(int sequence,boolean isClose)
     {
-        Daos.forEach(x -> { if (x != null && x.Sequence==sequence && x.IsAllowClose && x.IsManageTran) x.Dao.rollback(); });
+        Daos.forEach(x -> { if (x != null && Core.is(x.Sequence,sequence)  && x.IsAllowClose && x.IsManageTran) x.Dao.rollback(); });
         if (isClose) AllCloseBySequence(sequence);
     }
 

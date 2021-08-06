@@ -28,7 +28,7 @@ public class Regex {
     }
 
     public static Pattern getPattern(String regex) {
-        return Pattern.compile(regex);
+        return Pattern.compile(regex,Pattern.CASE_INSENSITIVE);
 //        Pattern pattern = cache.get(regex);
 //        if (pattern == null) {
 //            pattern = Pattern.compile(regex);

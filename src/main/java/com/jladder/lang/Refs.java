@@ -2,6 +2,8 @@ package com.jladder.lang;
 import com.jladder.data.ReStruct;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
+import com.sun.xml.internal.ws.util.UtilException;
+import org.springframework.util.Assert;
 
 import java.lang.reflect.*;
 import java.util.ArrayList;
@@ -10,9 +12,73 @@ import java.util.regex.Matcher;
 
 public class Refs {
 
+
+    public static Class getClazz(String className){
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    }
+
+    public static Method getMethod(Class clazz,String methodName){
+        if(clazz==null)return null;
+        if(Strings.isBlank(methodName))return null;
+        try{
+            Matcher match = Regex.match(methodName, "(\\s*\\([\\w\\W]*?\\)\\s*)\\s*$");
+            if (match.find()){
+                List<Class> ts = new ArrayList<Class>();
+                String typestring = match.group(0);
+                methodName = methodName.replace(typestring, "");
+                typestring =  match.group(1).substring(1, typestring.length() - 1);
+                String[] typearray = typestring.split(",");
+                for (String s : typearray)
+                {
+                    switch (s.toLowerCase())
+                    {
+                        case "string":
+                            ts.add(String.class);
+                        case "charsequence":
+                        case "chars":
+                            ts.add(CharSequence.class);
+                            break;
+                        case "int":
+                            ts.add(int.class);
+                            break;
+                        case "integer":
+                            ts.add(Integer.class);
+                            break;
+                        case "bool":
+                        case "boolean":
+                            ts.add(boolean.class);
+                            break;
+                        case "object":
+                            ts.add(Object.class);
+                            break;
+                    }
+                }
+                Class[] ttss = ts.toArray(new Class[ts.size()]);
+                Method method = clazz.getMethod(methodName,ttss);
+                return method;
+
+            }else{
+                Method[] ms = clazz.getMethods();
+                for(Method m : ms){
+                    if(methodName.equals(m.getName())){
+                        return m;
+                    }
+                }
+            }
+        }catch (Exception e){
+            return null;
+        }
+        return null;
+    }
+
     public static ReStruct<Class, Method> getMethod(String methodPath){
         return getMethod(methodPath,null);
     }
+
     public static ReStruct<Class, Method> getMethod(String className,String methodName){
         if (Strings.isBlank(className)) return new ReStruct<Class, Method>("类名不能为空");
         if (Strings.isBlank(methodName))
@@ -61,6 +127,12 @@ public class Refs {
                 return new ReStruct<Class, Method>(true,clazz,method);
 
             }else{
+                try{
+                    Method ms = clazz.getMethod(methodName);
+                    if(ms!=null)return new ReStruct<Class, Method>(true,clazz,ms);
+                }catch (Exception e){
+
+                }
                 Method[] ms = clazz.getMethods();
                 for(Method m : ms){
                     if(methodName.equals(m.getName())){
@@ -89,7 +161,29 @@ public class Refs {
             return new Receipt(false,e.getMessage());
         }
     }
-
+    public static Receipt invoke (Method method, Object data){
+        boolean canNull = false;//返回值是否为void类型
+        if (method.getReturnType().equals(Void.class)) canNull = true;
+        int modify = method.getModifiers();
+        Object[] param=mappingMethodParam(method,data);
+        Object ret;
+        try {
+            if(Modifier.isStatic(modify)){
+                ret = method.invoke(null,param);
+            }else{
+                ret = method.invoke(method.getDeclaringClass().newInstance(),param);
+            }
+            if (ret == null && !canNull)
+            {
+                return new Receipt(false,"返回结果为空");
+            }
+            return new Receipt().setData(ret);
+        } catch (Exception e) {
+            e.printStackTrace();
+            new Receipt(false,e.getMessage());
+        }
+        return new Receipt(false,"未有效执行");
+    }
 
     public static Receipt invoke (String className, Object data,String methodName){
 
@@ -179,4 +273,81 @@ public class Refs {
         }
         return ret;
     }
+
+    public static <T> T newInstance(Class<T> clazz, Object... params) throws Exception {
+        if (Core.isEmpty(params)) {
+            final Constructor<T> constructor = getConstructor(clazz);
+            try {
+                return constructor.newInstance();
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+
+        final Class<?>[] paramTypes = Clazz.getClasses(params);
+        final Constructor<T> constructor = getConstructor(clazz, paramTypes);
+        if (null == constructor) {
+            throw new UtilException("No Constructor matched for parameter types: [{}]", new Object[]{paramTypes});
+        }
+        try {
+            return constructor.newInstance(params);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    public static <T> Constructor<T> getConstructor(Class<T> clazz, Class<?>... parameterTypes) {
+        if (null == clazz) {
+            return null;
+        }
+
+        final Constructor<?>[] constructors = getConstructors(clazz);
+        Class<?>[] pts;
+        for (Constructor<?> constructor : constructors) {
+            pts = constructor.getParameterTypes();
+            if (Clazz.isAllAssignableFrom(pts, parameterTypes)) {
+                // 构造可访问
+                setAccessible(constructor);
+                return (Constructor<T>) constructor;
+            }
+        }
+        return null;
+    }
+    public static <T> Constructor<T>[] getConstructors(Class<T> beanClass) throws SecurityException {
+        Assert.notNull(beanClass);
+        Constructor<?>[] constructors = null;
+        if (null != constructors) {
+            return (Constructor<T>[]) constructors;
+        }
+
+        constructors = getConstructorsDirectly(beanClass);
+        return (Constructor<T>[]) constructors;
+    }
+    /**
+     * 获得一个类中所有构造列表，直接反射获取，无缓存
+     *
+     * @param beanClass 类
+     * @return 字段列表
+     * @throws SecurityException 安全检查异常
+     */
+    public static Constructor<?>[] getConstructorsDirectly(Class<?> beanClass) throws SecurityException {
+        Assert.notNull(beanClass);
+        return beanClass.getDeclaredConstructors();
+    }
+
+
+    /**
+     * 设置方法为可访问（私有方法可以被外部调用）
+     *
+     * @param <T> AccessibleObject的子类，比如Class、Method、Field等
+     * @param accessibleObject 可设置访问权限的对象，比如Class、Method、Field等
+     * @return 被设置可访问的对象
+     */
+    public static <T extends AccessibleObject> T setAccessible(T accessibleObject) {
+        if (null != accessibleObject && false == accessibleObject.isAccessible()) {
+            accessibleObject.setAccessible(true);
+        }
+        return accessibleObject;
+    }
+
 }

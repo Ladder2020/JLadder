@@ -9,6 +9,7 @@ import com.jladder.db.datasource.Database;
 import com.jladder.db.datasource.Global;
 import com.jladder.db.jdbc.DbDriver;
 import com.jladder.db.jdbc.IBaseSupport;
+import com.jladder.lang.Core;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
 import com.jladder.lang.func.Func2;
@@ -66,8 +67,11 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 Record record = new Record();
                 if(md == null) md = rs.getMetaData();
                 for(int i=0;i<md.getColumnCount();i++){
-                    if(serialize)record.put(md.getColumnName(i+1).toLowerCase(),handler(rs.getObject(i+1),rs,md,i+1));
-                    else record.put(md.getColumnName(i+1),rs.getObject(i+1));
+                    if(serialize)record.put(md.getColumnLabel(i+1).toLowerCase(),handler(rs.getObject(i+1),rs,md,i+1));
+                    else record.put(md.getColumnLabel(i+1),rs.getObject(i+1));
+                }
+                if(callback!=null && !callback.invoke(record)){
+                   continue;
                 }
                 records.add(record);
             }
@@ -122,6 +126,10 @@ public class BaseSupportByJDBC extends IBaseSupport {
         PreparedStatement ps = null;
         ResultSet rs = null;
         try{
+            Record fm = new Record();
+            for (Field field : clazz.getDeclaredFields()) {
+                fm.put(field.getName(),field.getName().toLowerCase());
+            }
             ResultSetMetaData md = null;
             KeyValue<String, Object[]> sql = sqltext.getSql();
             conn = db.getConnection();
@@ -139,12 +147,18 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 if(md == null) md = rs.getMetaData();
                 for(int i=0;i<md.getColumnCount();i++){
                     String fieldname = md.getColumnName(i+1);
-
+                    fieldname = fm.haveKey(fieldname);
+                    if(Strings.isBlank(fieldname))continue;
                     Field field = clazz.getDeclaredField(fieldname);
                     if(field!=null){
                         Object fieldValue = rs.getObject(fieldname,field.getType());
                         field.setAccessible(true);
-                        field.set(bean, fieldValue);
+                        if(fieldValue == null && Core.isBaseType(field.getType(),false)){
+                            field.set(bean, 0);
+                        }else{
+                            field.set(bean, fieldValue);
+                        }
+
                     }
                 }
                 records.add(bean);
@@ -179,11 +193,10 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 }
             }
             rs = ps.executeQuery();
-
             if (rs.next()){
-                if(clazz==String.class)return (T)rs.getString(1);
-                if(clazz==Integer.class)return (T)Integer.valueOf(rs.getInt(1));
-                if(clazz==Long.class)return (T)Long.valueOf(rs.getLong(1));
+                if(String.class.equals(clazz))return (T)rs.getString(1);
+                if(Integer.class.equals(clazz))return (T)Integer.valueOf(rs.getInt(1));
+                if(Long.class.equals(clazz))return (T)Long.valueOf(rs.getLong(1));
                 else {
                     log.setEnd();
                     return rs.getObject(1,clazz);
@@ -217,7 +230,6 @@ public class BaseSupportByJDBC extends IBaseSupport {
         try{
             KeyValue<String, Object[]> sql = sqltext.getSql();
             conn = db.getConnection();
-            List<T> records = new ArrayList<T>();
             ps = conn.prepareStatement(sql.key);
             if(sql.value!=null){
                 for (int i = 0; i < sql.value.length; i++) {
@@ -230,7 +242,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 ret.add(rs.getObject(1,clazz));
             }
             log.setEnd();
-            return records;
+            return ret;
         }
         catch (Exception e){
             e.printStackTrace();

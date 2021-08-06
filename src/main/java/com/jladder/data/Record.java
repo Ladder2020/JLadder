@@ -84,7 +84,10 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
             return ret;
         }
         if(obj instanceof String){
-            return Json.toObject(obj.toString(), Record.class);
+            String data = obj.toString();
+            if(Strings.isJson(data)){
+                return Json.toObject(obj.toString(), Record.class);
+            }else return null;
         }
         if(Strings.hasValue(clazz.getSimpleName())){
             System.out.println(clazz.getSimpleName());
@@ -120,19 +123,20 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
             }
             else i++;
         }
-        if(Object.class==clazz)return (T)v;
+        if(Object.class.equals(clazz))return (T)v;
         if(v==null)return null;
-        if(String.class==clazz)return (T)v.toString();
+        if(String.class.equals(clazz))return (T)v.toString();
         return Convert.convert(clazz,v);
     }
 
-    public <T>  T get(String key,Class<T> clazz){
+    public <T> T get(String key,Class<T> clazz){
 
         Object v= get(key);
         if(v==null)return null;
         if(clazz.equals(v.getClass()))return (T)v;
         else {
             if(Core.isBaseType(clazz,false))return Convert.convert(clazz,v);
+            if(Date.class.equals(clazz))return (T)Convert.toDate(v);
             return Json.toObject(Json.toJson(v),clazz);
         }
     }
@@ -294,7 +298,7 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
     public Object find(String path)
     {
         if (Strings.isBlank(path)) return null;
-        String[] nodes = path.split(".");
+        String[] nodes = path.split(path.contains("/")?"/":".");
         Object data = this;
         try
         {

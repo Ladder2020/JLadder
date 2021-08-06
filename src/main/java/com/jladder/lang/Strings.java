@@ -5,21 +5,31 @@ import com.jladder.configs.Configs;
 import com.jladder.data.AjaxResult;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
+
+import java.io.StringReader;
 import java.util.*;
 import java.util.regex.Matcher;
 
 public class Strings {
     protected Strings() {}
 
+    public static List<String> list(String ...str){
+        if(str==null)return null;
+        List<String> array = new ArrayList<>();
+        for (String s : str) {
+            array.add(s);
+        }
+        return array;
+    }
     public static boolean isNumber(String str)
     {
 
-        return !isBlank(str) && Regex.isMatch(str, "^\\d*\\.?\\d*$");
+        return !isBlank(str) && Regex.isMatch(str, "^-?\\d*\\.?\\d*$");
     }
     public static int toInt(CharSequence source){
         if(isBlank(source))return 0;
         String data = source.toString().trim();
-        if(Regex.isMatch(data, "^\\d*$"))return Integer.parseInt(data);
+        if(Regex.isMatch(data, "^-?\\d*$"))return Integer.parseInt(data);
         return 0;
     }
 
@@ -43,7 +53,17 @@ public class Strings {
         }
         return new String(charr);
     }
-
+    /**
+     * 获得StringReader
+     * @param str 字符串
+     * @return StringReader
+     */
+    public static StringReader getReader(CharSequence str) {
+        if (null == str) {
+            return null;
+        }
+        return new StringReader(str.toString());
+    }
     /***
      *
      * @param src
@@ -417,7 +437,7 @@ public class Strings {
         //环境变量部分##name##
         Matcher match = Regex.match(oldStr, "##(\\w+)##");
         while (match.find()){
-            for (int i = 1; i < match.groupCount(); i++)
+            for (int i = 1; i <= match.groupCount(); i++)
             {
                 String keyword = match.group(i);
                 String value = EnvAction.GetEnvValue(keyword);
@@ -438,7 +458,7 @@ public class Strings {
         //环境变量${$env.name}
         match = Regex.match(oldStr, "\\$\\{\\$env\\.(\\w+)\\}");
         while (match.find()){
-            for (int i = 1; i < match.groupCount(); i++)
+            for (int i = 1; i <= match.groupCount(); i++)
             {
                 String keyword = match.group(1);
                 String value = EnvAction.GetEnvValue(keyword);
@@ -559,6 +579,7 @@ public class Strings {
         {
             String keyword = match.group(1);
             String value = Collections.getString(dic,keyword,true);
+            if(value==null)value="";
             if (ispaading || Strings.hasValue(value))oldStr = oldStr.replace("${" + keyword + "}", value);
         }
         //以对象型替换 形式：${dd.name}

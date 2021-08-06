@@ -55,6 +55,9 @@ public  class Collections {
         }
     }
 
+    public static <E> E first(E[] array){
+        return first(array,null).item2;
+    }
     /***
      *
      * @param array
@@ -81,7 +84,7 @@ public  class Collections {
      *
      * @param map
      * @param fun
-     * @param <K,V>
+     * param &lt;K,V&gt;
      * @return
      */
     public static <K,V> Tuple3<Boolean,K,V> first(Map<K,V> map, Func3<K,V,Boolean> fun){

@@ -1,53 +1,76 @@
 package com.jladder.web;
 
 import com.jladder.data.Record;
+import com.jladder.data.UploadFile;
 import com.jladder.lang.Strings;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
 
 public class ArgumentMapping {
 
 
-
-    public static Record GetRequestParams(){
-        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        Record ret = new Record();
-        if(null != requestAttributes) {
-            HttpServletRequest request = requestAttributes.getRequest();
-            request.getParameterMap().forEach((k,v)->{
-                ret.put(k.toString(),v);
-            });
-        }
-        return ret;
+    public static Record getRequestParams(){
+        return getRequestParams(WebContext.getRequest(),FileFormat.None);
+    }
+    public static Record getRequestParams(HttpServletRequest request){
+        return getRequestParams(request,FileFormat.None);
+    }
+    public static Record getRequestParams(FileFormat format){
+        return getRequestParams(WebContext.getRequest(),format);
     }
 
-    public static Record GetRequestParams(HttpServletRequest request) throws IOException {
-
-        Record ret = (Record) request.getAttribute("___ArgumentMapping_GetRequestParams____");
-        if(ret != null)return ret;
-        String contentType = request.getContentType();
-        if(Strings.hasValue(contentType) && contentType.contains("application/json")){
-            String postStr = getRequestPostStr(request);
-            ret = Record.parse(postStr);
+    public static Record getRequestParams(HttpServletRequest request,FileFormat format){
+        try{
+            Record ret = (Record) request.getAttribute("___ArgumentMapping_GetRequestParams____");
+            if(ret != null){
+                if (FileFormat.None.equals(format))return ret;
+                Map<String, List<UploadFile>> files = WebContext.getUploadFiles(request);
+                if(files!=null)ret.putAll(files);
+                return ret;
+            }
+            String contentType = request.getContentType();
+            if(Strings.hasValue(contentType) && contentType.contains("application/json")){
+                String postStr = getRequestPostStr(request);
+                ret = Record.parse(postStr);
+                request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
+            }else{
+                ret = new Record();
+                Record finalRet = ret;
+                request.getParameterMap().forEach((k, v)->{
+                    if(v instanceof String[]){
+                        finalRet.put(k.toString(),((String[])v)[0]);
+                        return;
+                    }
+                    finalRet.put(k.toString(),v);
+                });
+            }
             request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
-        }else{
-            ret = new Record();
-            Record finalRet = ret;
-            request.getParameterMap().forEach((k, v)->{
-                if(v instanceof String[]){
-                    finalRet.put(k.toString(),((String[])v)[0]);
-                    return;
-                }
-                finalRet.put(k.toString(),v);
-            });
+
+            if (FileFormat.None.equals(format))return ret;
+            else {
+                Map<String, List<UploadFile>> files = WebContext.getUploadFiles(request);
+                if(files!=null)ret.putAll(files);
+            }
+            return ret;
+        }catch (Exception e)
+        {
+            return new Record();
         }
-        request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
-        return ret;
+
     }
+
+
+
     public static byte[] getRequestPostBytes(HttpServletRequest request) throws IOException {
         int contentLength = request.getContentLength();
         if(contentLength<0){

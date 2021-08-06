@@ -1,10 +1,8 @@
 package com.jladder.datamodel;
 
 import com.jladder.data.Record;
-import com.jladder.lang.Json;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
-import com.jladder.lang.TypeReference;
 
 import java.util.List;
 import java.util.Map;
@@ -123,7 +121,7 @@ public class DataModelForMapRaw
                 ret = QueryForm;
                 break;
             default:
-                ret = Extra.get(key);
+                if(Extra!=null)ret = Extra.get(key);
                 break;
         }
         return ret;
@@ -148,13 +146,14 @@ public class DataModelForMapRaw
     public static DataModelForMapRaw From(IDataModel dm){
         DataModelForMapRaw raw = new DataModelForMapRaw();
 
-        raw.Put("el_columns", Strings.hasValue(dm.GetColumn()) && Regex.isMatch(dm.GetColumn(), "\\$\\{([\\W\\w])*?\\}"));
+        raw.Put("el_columns", Strings.hasValue(dm.getColumn()) && Regex.isMatch(dm.getColumn(), "\\$\\{([\\W\\w])*?\\}"));
         //raw.Put("el_evnets", Strings.hasValue(Json.toJson(dm.Get)) &&  Regex.isMatch(Json.toJson(dm.Events), "\\$\\{([\\W\\w])*?\\}"));
         raw.Put("el_tablename", Strings.hasValue(dm.TableName) && Regex.isMatch(dm.TableName, "\\$\\{([\\W\\w])*?\\}"));
-        raw.AllColumns = dm.GetFullColumns();
-        raw.QueryForm = dm.GetQueryForm()==null?"":dm.GetQueryForm().toString();
-        raw.Type = dm.Type.name();
-        raw.Script = dm.GetScript();
+        raw.AllColumns = dm.getFullColumns();
+        raw.QueryForm = dm.getQueryForm()==null?"":dm.getQueryForm().toString();
+        raw.Type = dm.getType().name();
+        raw.Script = dm.getScript();
+        raw.Table=dm.getTableName();
         return raw;
 
 

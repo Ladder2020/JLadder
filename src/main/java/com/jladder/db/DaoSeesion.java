@@ -20,6 +20,8 @@ public class DaoSeesion {
 
     private static Map<String, DataSource> datasources = new HashMap<>();
 
+    private static Map<String,DbDialectType> dialects=new HashMap<>();
+
     public static Connection getConnection(String conn){
         try{
             DataSource datasource = datasources.get(conn);
@@ -45,7 +47,17 @@ public class DaoSeesion {
     /// <returns></returns>
     public static DbDialectType GetDialect(String conn)
     {
-        throw Core.makeThrow("未实现");
+        if(Strings.isBlank(conn))conn="defaultDatabase";
+        if(dialects.containsKey(conn))return dialects.get(conn);
+        IDao dao = new Dao(conn);
+        try{
+            if(dao==null)return DbDialectType.Default;
+            dialects.put(conn,dao.getDialect());
+            return dao.getDialect();
+        }finally {
+            dao.close();
+        }
+        //throw Core.makeThrow("未实现");
         //return GetDao(conn).Dialect;
     }
     /// <summary>
@@ -86,18 +98,18 @@ public class DaoSeesion {
     public static IDataModel getDataModel(IDao dao, String tableName, String param)
     {
         if (Strings.isBlank(tableName)) return null;
-       DataModelForMapRaw raw = DataHub.WorkCache.getDataModelCache(tableName);
+        DataModelForMapRaw raw = DataHub.WorkCache.getDataModelCache(tableName);
         if (raw == null || (Strings.isBlank(raw.Type) || (Regex.isMatch("table|sql", raw.Type)) && (raw.AllColumns == null || raw.AllColumns.size() < 1)))
         {
-//            var dm = DataHub.Gen(tableName);
-//            if (dm != null)
-//            {
-//                raw = dm.Raw;
-//                DataHub.WorkCache.AddDataModelCache(tableName, dm.Raw);
-//                return param.IsBlank() ? WebScope.MappingConn(dm,tableName)  : WebScope.MappingConn(new DataModelForMap(raw, param),tableName);
-//            }
-            DataModelForMap dm = new DataModelForMap(dao, tableName, param);
-            DataHub.WorkCache.addDataModelCache(tableName, dm.Raw);
+            DataModelForMap dm = DataHub.gen(tableName,true);
+            if (dm != null)
+            {
+                raw = dm.getRaw();
+                DataHub.WorkCache.addDataModelCache(tableName,raw);
+                return Strings.isBlank(param) ? WebScope.MappingConn(dm,tableName)  : WebScope.MappingConn(new DataModelForMap(raw, param),tableName);
+            }
+            dm = new DataModelForMap(dao, tableName, param);
+            DataHub.WorkCache.addDataModelCache(tableName, dm.getRaw());
             WebScope.MappingConn(dm, tableName);
             return dm;
         }
@@ -134,7 +146,7 @@ public class DaoSeesion {
 //                return WebScope.MappingConn(dm, tableName);
 //            }
             DataModelForMap dm= new DataModelForMap(tableName);
-            DataHub.WorkCache.addDataModelCache(tableName, dm.Raw);
+            DataHub.WorkCache.addDataModelCache(tableName, dm.getRaw());
             return WebScope.MappingConn(dm, tableName);
         }
         else

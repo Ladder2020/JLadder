@@ -13,7 +13,10 @@ import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.hub.DataHub;
 import com.jladder.lang.*;
 import com.jladder.lang.func.Func1;
+import com.jladder.net.http.HttpHelper;
+import com.jladder.web.WebContext;
 
+import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -170,7 +173,7 @@ public class SaveAction{
      * @return
      */
     public static AjaxResult save(String tableName, Object bean, Object condition){
-        return save(tableName,bean,condition);
+        return save(tableName,bean,condition,true);
     }
     /**
      * 新增或者保存方法
@@ -184,7 +187,7 @@ public class SaveAction{
     {
         IDataModel dm = DaoSeesion.getDataModel(tableName);
         if(dm==null||dm.isNull())return new AjaxResult(701);
-        dm.SetCondition(Cnd.parse(condition, dm));
+        dm.setCondition(Cnd.parse(condition, dm));
         return save(dm, bean,null, supportTran);
     }
 
@@ -202,7 +205,9 @@ public class SaveAction{
         return saveBean(dataModel,bean, condition, DbSqlDataType.Save,supportTran);
     }
 
-
+    public static AjaxResult saveBean(String tableName, String bean, String condition, int option, String rel){
+        return saveBean(tableName,bean,condition,option,rel,true);
+    }
     /**
      * 通用保存方法
      * @param tableName 模版名称(键名)
@@ -423,10 +428,25 @@ public class SaveAction{
         }
         return new AjaxResult(400, "请求格式未识别");
     }
+    public static Receipt saveBeans(Collection<Curd> curds){
+        return saveBeans(curds,true);
+    }
 
-
-    public static AjaxResult saveBeans(Collection<Curd> curds){
-        throw Core.makeThrow("未实现[430]");
+    public static Receipt saveBeans(Collection<Curd> curds,boolean supportTran){
+        KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
+        List<AjaxResult> results = new ArrayList<AjaxResult>();
+        for (Curd curd : curds)
+        {
+            AjaxResult receipt = saveBean(keepDaoPool, curd.TableName, curd.Bean, curd.Option, curd.Condition, curd.Rel);
+            results.add(receipt);
+            if (!receipt.success)
+            {
+                keepDaoPool.AllClose();
+                return new Receipt(false, receipt.message).setData(results);
+            }
+        }
+        keepDaoPool.End();
+        return new Receipt().setData(results);
     }
 
 
@@ -466,7 +486,7 @@ public class SaveAction{
         if (dataModel == null || dataModel.isNull()) return new AjaxResult(700);
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
         Record entityBean = GenBeanTool.GenBean(dataModel, Record.parse(entity), action);
-        if (cnd != null) dataModel.SetCondition(Cnd.parse(cnd, dataModel));
+        if (cnd != null) dataModel.setCondition(Cnd.parse(cnd, dataModel));
         AjaxResult result = saveBean(keepDaoPool, dataModel, entityBean, action.getIndex(), null, null);
         if (keepDaoPool.getTranDiff() != 0)
         {
@@ -496,7 +516,7 @@ public class SaveAction{
         if (dataModel == null || dataModel.isNull()) return new AjaxResult(700, "配置条件不满足请求");
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
         Record bean = Record.parse(entity);
-        if (action == DbSqlDataType.Insert || action == DbSqlDataType.Update)
+        if ( DbSqlDataType.Insert.equals(action) ||  DbSqlDataType.Update.equals(action))
         {
             bean = GenBeanTool.GenBean(dataModel, bean, action);
         }
@@ -528,9 +548,9 @@ public class SaveAction{
         long starttime = System.currentTimeMillis() ;
         if (keepDaoPool == null) return new AjaxResult(201);
         if (dataModel == null || dataModel.isNull()) return new AjaxResult(700).setDuration(starttime);
-        KeepDao keepDao = keepDaoPool.CreateKeepDao(dataModel.Conn);
+        KeepDao keepDao = keepDaoPool.CreateKeepDao(dataModel.getConn());
         IDao dao = keepDao.Dao;
-        dao.setTag( dataModel.Raw.Name);
+        dao.setTag( dataModel.getRaw().Name);
         //提请一次
         keepDao.Take();
         //置当前连接为最前链接
@@ -545,18 +565,18 @@ public class SaveAction{
                 analyze.EndPoint();
                 return new AjaxResult(404, "保存数据不存在").setDuration(starttime);
             }
-            AjaxResult ajaxJson = new AjaxResult(200, "新增保存成功").setRel(rel).setDataName(dataModel.Raw.Name);
+            AjaxResult ajaxJson = new AjaxResult(200, "新增保存成功").setRel(rel).setDataName(dataModel.getRaw().Name);
             Func1<AjaxResult> EndPoint = () -> { analyze.EndPoint(); return ajaxJson;};
             if (option == DbSqlDataType.Save.getIndex())
             {
-                dataModel.SetCondition(condition);
+                dataModel.setCondition(condition);
                 condition = null;
-                if (dataModel.GetWhere().isBlank()){
+                if (dataModel.getWhere().isBlank()){
                     keepDaoPool.AllRollBack();
                     analyze.EndPoint();
                     return new AjaxResult(404, "保存数据条件未指定").setDuration(starttime);
                 }
-                int count = dao.count(dataModel.GetTableName(),dataModel.GetWhere());
+                int count = dao.count(dataModel.getTableName(),dataModel.getWhere());
                 option = count < 1 ? DbSqlDataType.Insert.getIndex() : DbSqlDataType.Update.getIndex();
                 //如果是新增重新加载一下默认值
                 if (option ==  DbSqlDataType.Insert.getIndex()){
@@ -567,7 +587,7 @@ public class SaveAction{
             {
                 analyze.Action = DbSqlDataType.Insert;
                 //是否含有唯一性字段
-                List<String> cols = dataModel.HasUniqueFields();
+                List<String> cols = dataModel.hasUniqueFields();
                 if (cols.size() > 0)
                 {
                     Cnd cnd = new Cnd();
@@ -580,32 +600,32 @@ public class SaveAction{
                             */
                         cnd.put(key, "=", saveEntity.getString(key, true));
                     }
-                    int c = dao.count(dataModel.GetTableName(), cnd);
+                    int c = dao.count(dataModel.getTableName(), cnd);
                     if (c > 0){
                         final String[] fieldnametitles = {""};
-                        cols.forEach(key -> fieldnametitles[0] += Collections.getString(dataModel.GetFieldConfig(key),"title")+"["+key+"],");
+                        cols.forEach(key -> fieldnametitles[0] += Collections.getString(dataModel.getFieldConfig(key),"title")+"["+key+"],");
                         return EndPoint.invoke().setStatusCode(600).setMessage("新增数据出现重复:" + Strings.rightLess(fieldnametitles[0],1)).setDuration(starttime);
                     }
                 }
                 List rs = new ArrayList<Record>();
                 rs.add(saveEntity);
                 //新增前检查
-                List<Record> checkrelations = dataModel.GetRelationAction("insertcheck");
+                List<Record> checkrelations = dataModel.getRelationAction("insertcheck");
                 Receipt ret = handAction(keepDaoPool, checkrelations, rs, null, dataModel, true,null);
                 if (checkrelations != null && !ret.isSuccess()){
                     return EndPoint.invoke().setStatusCode(405).setMessage("删除未通过检查").setData(ret).setDuration(starttime);
                 }
                 //新增前动作
-                List<Record> relations = dataModel.GetRelationAction("insertbefore");
+                List<Record> relations = dataModel.getRelationAction("insertbefore");
                 ret = handAction(keepDaoPool, relations, rs, null, dataModel,false,(Record)ret.data);
                 if (relations != null && !ret.isSuccess()){
                     return EndPoint.invoke().setStatusCode(500).setMessage("新增操作失败").setData(ret).setDuration(starttime);
                 }
                 Record finalSaveEntity = saveEntity;
-                rows = dao.insertData(dataModel.GetTableName(), saveEntity, (rn, conn)->
+                rows = dao.insertData(dataModel.getTableName(), saveEntity, (rn, conn)->
                 {
                     //处理自增字段
-                    List<String> autos = dataModel.GetFields("gen", "autonum");
+                    List<String> autos = dataModel.getFields("gen", "autonum");
                     if (autos != null && autos.size() > 0)
                     {
                         ResultSet resultSet=null;
@@ -632,13 +652,13 @@ public class SaveAction{
                 }
                 analyze.SetDataForAfter(saveEntity);
 
-                List<Record> irelations = dataModel.GetRelationAction("insertafter");
+                List<Record> irelations = dataModel.getRelationAction("insertafter");
                 ret = handAction(keepDaoPool, irelations, rs, null, dataModel,false, (Record)ret.data);
                 if (irelations != null && !ret.isSuccess())
                 {
                     return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(starttime);
                 }
-                LatchAction.clearLatch(dataModel.GetTableName());
+                LatchAction.clearLatch(dataModel.getTableName());
                 keepDao.Finish();
                 analyze.EndPoint();
                 //Log.writelog(daoHelper.GetTableName() + "新增:" + Json.toJson(saveEntity));
@@ -656,16 +676,16 @@ public class SaveAction{
                 //                        return ajaxJson.SetDataName(dataModel.GetTableName()).SetData(rebean);
                 //                    }
                 //                    else
-                return ajaxJson.setDataName(dataModel.GetTableName()).setData(saveEntity).setDuration(starttime);
+                return ajaxJson.setDataName(dataModel.getTableName()).setData(saveEntity).setDuration(starttime);
             }
 
             if (option == DbSqlDataType.Delete.getIndex() || option == DbSqlDataType.Update.getIndex() || option == DbSqlDataType.Truncate.getIndex())
             {
-                dataModel.SetCondition(condition);
-                if (dataModel.GetWhere().isBlank())
+                dataModel.setCondition(condition);
+                if (dataModel.getWhere().isBlank())
                 {
                     analyze.EndPoint();
-                    return new AjaxResult(500, "对不起，您的更新条件不合法").setDataName(dataModel.Raw.Name).setRel(rel).setDuration(starttime);
+                    return new AjaxResult(500, "对不起，您的更新条件不合法").setDataName(dataModel.getName()).setRel(rel).setDuration(starttime);
                 }
             }
             final boolean[] geted = {false};//已经取过记录集
@@ -677,7 +697,7 @@ public class SaveAction{
                 }
                 else
                 {
-                    _rs[0] = dao.query(dataModel.SqlText());
+                    _rs[0] = dao.query(dataModel.getSqlText());
                     geted[0] = true;
                     if (Strings.hasValue(dao.getErrorMessage()))
                     {
@@ -697,7 +717,7 @@ public class SaveAction{
             {
                 analyze.Action = DbSqlDataType.Update;
                 //重复字段的验证
-                List<String> cols = dataModel.HasUniqueFields(saveEntity);
+                List<String> cols = dataModel.hasUniqueFields(saveEntity);
                 if (cols.size() > 0)
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
@@ -705,8 +725,8 @@ public class SaveAction{
                     {
                         return EndPoint.invoke().setStatusCode(500).setMessage("修改操作中含有重复检查，不能进行批量修改").setDuration(starttime);
                     }
-                    List<String> gens = dataModel.GetFields("pk");
-                    if (gens == null || gens.size() < 1) gens = dataModel.GetFields("gen", "uuid", "id", "autonum");
+                    List<String> gens = dataModel.getFields("pk");
+                    if (gens == null || gens.size() < 1) gens = dataModel.getFields("gen", "uuid", "id", "autonum");
                     List<String> finalGens = gens;
                     if (gens == null || gens.size() < 1 || Collections.count(old.invoke(), x -> Strings.isBlank(Collections.haveKey(x, finalGens.get(0)))) > 0)
                     {
@@ -719,11 +739,11 @@ public class SaveAction{
                         cnd.put(key, saveEntity.getString(key, true));
 
                     }
-                    int c = dao.count(dataModel.GetTableName(), cnd);
+                    int c = dao.count(dataModel.getTableName(), cnd);
                     if (c > 0)
                     {
                         final String[] fieldnametitles = {""};
-                        cols.forEach(key -> fieldnametitles[0] += Collections.getString(dataModel.GetFieldConfig(key),"title")+"["+key+"],");
+                        cols.forEach(key -> fieldnametitles[0] += Collections.getString(dataModel.getFieldConfig(key),"title")+"["+key+"],");
                         return EndPoint.invoke().setStatusCode(600).setMessage("对不起,修改操作中出现数据重复:" + Strings.rightLess(fieldnametitles[0],1)).setDuration(starttime);
                     }
                 }
@@ -737,7 +757,7 @@ public class SaveAction{
                 }
 
                 //修改的检查
-                List<Record> relations = dataModel.GetRelationAction("updatecheck");
+                List<Record> relations = dataModel.getRelationAction("updatecheck");
                 if (!Core.isEmpty(relations))
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
@@ -748,7 +768,7 @@ public class SaveAction{
                     }
                 }
                 //更新前的后续动作
-                relations = dataModel.GetRelationAction("updatebefore");
+                relations = dataModel.getRelationAction("updatebefore");
                 if (!Core.isEmpty(relations))
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
@@ -758,13 +778,13 @@ public class SaveAction{
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(starttime);
                     }
                 }
-                relations = dataModel.GetRelationAction("updateafter");
+                relations = dataModel.getRelationAction("updateafter");
                 if (!Core.isEmpty(relations))
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
                 }
                 if (geted[0] && Rs.isBlank(_rs[0])) assertBlank.invoke();
-                rows = dao.update(dataModel.GetTableName(), saveEntity, dataModel.Condition);
+                rows = dao.update(dataModel.getTableName(), saveEntity, dataModel.getCondition());
                 if (rows < 0)
                 {
                     return EndPoint.invoke().setStatusCode(500).setMessage("修改操作失败").setData(dao.getErrorMessage()).setDuration(starttime);
@@ -775,17 +795,17 @@ public class SaveAction{
                     return assertBlank.invoke();
                 }
                 //更新后事件
-                relations = dataModel.GetRelationAction("updateafter");
+                relations = dataModel.getRelationAction("updateafter");
                 if (!Core.isEmpty(relations))
                 {
-                    ret = handAction(keepDaoPool, relations, old.invoke(), saveEntity, dataModel, false, (Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), saveEntity, dataModel, false, ret==null?null:(Record)ret.data);
                     if (!ret.isSuccess())
                     {
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(starttime);
                     }
                 }
                 //更新修改报告
-                relations = dataModel.GetRelationAction("updatereport");
+                relations = dataModel.getRelationAction("updatereport");
 
                 if (!Core.isEmpty(relations))
                 {
@@ -798,12 +818,12 @@ public class SaveAction{
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(starttime);
                     }
                 }
-                LatchAction.clearLatch(dataModel.GetTableName());
+                LatchAction.clearLatch(dataModel.getTableName());
                 keepDao.Finish();
                 analyze.EndPoint();
                 //if (rs.Count > 1) return new AjaxResult("修改保存成功").SetData(rs).SetRel(rel).SetDuration(starttime); ;
                 return new AjaxResult(200, "成功修改"+rows+"条数据").setData(saveEntity).setDuration(starttime)
-                        .setDataName(dataModel.Raw.Name)
+                        .setDataName(dataModel.getName())
                         .setXData(analyze.DifferentChange(null,null))
                     .setRel(rel);
             }
@@ -814,31 +834,31 @@ public class SaveAction{
                 Receipt ret = null;
                 analyze.Action = DbSqlDataType.Delete;
                 //删除前检查
-                List<Record> relations = dataModel.GetRelationAction("deletecheck");
+                List<Record> relations = dataModel.getRelationAction("deletecheck");
                 if (!Core.isEmpty(relations))
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
                     ret = handAction(keepDaoPool, relations, old.invoke(), null, dataModel, true,null);
                     if (!ret.isSuccess())
                     {
-                        return EndPoint.invoke().setStatusCode(405).setMessage("删除未通过检查").setDataName(dataModel.Raw.Name).setData(ret).setDuration(starttime);
+                        return EndPoint.invoke().setStatusCode(405).setMessage("删除未通过检查").setDataName(dataModel.getName()).setData(ret).setDuration(starttime);
                     }
 
                 }
 
                 //删除前关联操作
-                relations = dataModel.GetRelationAction("deletebefore");
+                relations = dataModel.getRelationAction("deletebefore");
                 if (!Core.isEmpty(relations))
                 {
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
                     ret = handAction(keepDaoPool, relations, old.invoke(), null, dataModel, false, ret==null?null:(Record)ret.data);
                     if ( !ret.isSuccess())
                     {
-                        return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.Raw.Name).setData(ret).setDuration(starttime);
+                        return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.getName()).setData(ret).setDuration(starttime);
                     }
                 }
                 //删除后事件，进行前置检查
-                relations = dataModel.GetRelationAction("deleteafter");
+                relations = dataModel.getRelationAction("deleteafter");
                 if (!Core.isEmpty(relations) && Core.isEmpty(old.invoke())) return assertBlank.invoke();
                 if (geted[0] && Rs.isBlank(_rs[0])) return assertBlank.invoke();
                 //强制删除
@@ -847,17 +867,17 @@ public class SaveAction{
                     analyze.Action = DbSqlDataType.Delete;
                     analyze.SetDataForDeleteBefore(old);
                     if (geted[0] && Rs.isBlank(_rs[0])) return assertBlank.invoke();
-                    rows = dao.delete(dataModel.GetTableName(), dataModel.GetWhere());
+                    rows = dao.delete(dataModel.getTableName(), dataModel.getWhere());
                 }
                 else
                 {
                     //是否含有删除位
-                    List<String> deleteFields = dataModel.GetFields("sign", "isdelete");
+                    List<String> deleteFields = dataModel.getFields("sign", "isdelete");
                     if (Core.isEmpty(deleteFields))
                     {
                         analyze.SetDataForDeleteBefore(old);
                         if (geted[0] && Rs.isBlank(_rs[0])) return assertBlank.invoke();
-                        rows = dao.delete(dataModel.GetTableName(), dataModel.GetWhere());
+                        rows = dao.delete(dataModel.getTableName(), dataModel.getWhere());
                     }
                     else
                     {
@@ -867,12 +887,12 @@ public class SaveAction{
                         analyze.SetDataForUpdateBefore(old);
                         analyze.SetDataForAfter(record);
                         if (geted[0] && Rs.isBlank(_rs[0])) return assertBlank.invoke();
-                        rows = dao.update(dataModel.GetTableName(), record, dataModel.Condition);
+                        rows = dao.update(dataModel.getTableName(), record, dataModel.getCondition());
                     }
                 }
                 if (rows < 0)
                 {
-                    return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.Raw.Name).setData(dao.getErrorMessage()).setDuration(starttime);
+                    return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.getName()).setData(dao.getErrorMessage()).setDuration(starttime);
                 }
                 if (rows == 0)
                 {
@@ -885,13 +905,13 @@ public class SaveAction{
                     ret = handAction(keepDaoPool, relations, old.invoke(), null, dataModel, false, ret==null?null:(Record)ret.data);
                     if (!ret.isSuccess())
                     {
-                        return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.Raw.Name).setData(ret).setDuration(starttime);
+                        return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dataModel.getName()).setData(ret).setDuration(starttime);
                     }
                 }
-                LatchAction.clearLatch(dataModel.GetTableName());
+                LatchAction.clearLatch(dataModel.getTableName());
                 keepDao.Finish();
                 analyze.EndPoint();
-                return new AjaxResult(200, "成功删除"+rows+"条数据数据").setRel(rel).setDataName(dataModel.Raw.Name).setDuration(starttime);
+                return new AjaxResult(200, "成功删除"+rows+"条数据数据").setRel(rel).setDataName(dataModel.getName()).setDuration(starttime);
             }
 
 
@@ -900,11 +920,11 @@ public class SaveAction{
         {
             e.printStackTrace();
             analyze.EndPoint();
-            return new AjaxResult(500, "执行操作失败").setRel(rel).setData(e.getMessage()).setDataName(dataModel.Raw.Name).setDuration(starttime);
+            return new AjaxResult(500, "执行操作失败").setRel(rel).setData(e.getMessage()).setDataName(dataModel.getName()).setDuration(starttime);
         }
         analyze.EndPoint();
         keepDao.Finish();
-        return new AjaxResult(400, "未知错误").setDataName(dataModel.Raw.Name).setRel(rel).setDuration(starttime);
+        return new AjaxResult(400, "未知错误").setDataName(dataModel.getName()).setRel(rel).setDuration(starttime);
     }
 
     /***
@@ -924,12 +944,11 @@ public class SaveAction{
         if (dm.isNull()) return new AjaxResult(700);
         if (option == 3)
         {
-            KeepDao keyDao = keepDaoPool.CreateKeepDao(dm.Conn);
-
-            dm.DbDialect = keyDao.Dao.getDialect();
-            dm.SetCondition(Cnd.parse(condition, dm));
+            KeepDao keyDao = keepDaoPool.CreateKeepDao(dm.getConn());
+            dm.setDialect(keyDao.Dao.getDialect());
+            dm.setCondition(Cnd.parse(condition, dm));
             long count = 0;
-            if (dm.Type == DataModelType.Data)
+            if (DataModelType.Data.equals(dm.Type ))
             {
                 Receipt latch = LatchAction.getData(dm);
                 if (latch.isSuccess())
@@ -937,7 +956,7 @@ public class SaveAction{
                     count = ((List<Record>) latch.data).size();
                 }
             }
-            count = keyDao.Dao.getValue(new SqlText("select count(1) from " + dm.GetTableName() + dm.GetWhere().cmd + dm.GetGroup(),dm.Condition.parameters),Long.class);
+            count = keyDao.Dao.getValue(new SqlText("select count(1) from " + dm.getTableName() + dm.getWhere().cmd + dm.getGroup(),dm.getCondition().parameters),Long.class);
             if(count==-1)return new AjaxResult(404,"获取条件数据失败");
             option = count > 0 ? 2 : 1;
         }
@@ -991,133 +1010,68 @@ public class SaveAction{
                 String actionName = act.getString("name", true);
                 String option = act.getString("option", true);
                 //执行script脚本
-//                    if (option.HasValue() && (int)option.ChangeType(typeof(int)) == (int)SqlDataAction.Script)
-//                    {
-//                        var jscode = act.GetString("script", true);
-//                        if (jscode.IsBlank()) jscode = dm.GetScript();
-//                        if (jscode.IsBlank()) continue;
-//                        var fname = act.GetString("function,funname,tablename", true);
-//                        if (fname.IsBlank()) continue;
-//                        fname = fname.Replace("()", "").Trim();
-//                        if (Regex.IsMatch(jscode, "function\\s*" + fname + "\\s*\\("))
-//                        {
-//                            String re = "";
-//                            ScriptAction scriptAction = null;
-//                            try
-//                            {
-//                                scriptAction = new ScriptAction(jscode);
-//                                scriptAction.LoadDefaultFuns();
-//                                scriptAction.PushKeepDaoPool(keepDaoPool);
-//                                re = scriptAction.Exec(fname, r);
-//                                scriptAction.Dispose();
-//                                if (re.HasValue()) re = re.Trim();
-//                                if (re.HasValue())
-//                                {
-//                                    //                                    如果是AjaxResult结果
-//                                    if (re.StartsWith("{") && re.EndsWith("}") && re.Contains("statusCode"))
-//                                    {
-//                                        var jsResult = Json.fromJson<AjaxResult>(re);
-//                                        if (!jsResult.Success) return new Receipt(false);
-//                                        if (check && (int)jsResult.data.ChangeType(typeof(int)) > 0) return new Receipt(false);
-//                                    }
-//                                    else
-//                                    {
-//                                        if (re.ToLower() == "false") return new Receipt(false);
-//                                        if (check && (int)re.ChangeType(typeof(int)) > 0) return new Receipt(false);
-//                                    }
-//                                }
-//                                if(actionName.HasValue()) retData.Put("actionName", re);
-//                            }
-//                            catch (Exception e)
-//                            {
-//                                scriptAction?.Dispose();
-//                                return new Receipt(false, "执行脚本出现异常"+ e.Message);
-//                            }
-//                            finally
-//                            {
-//                                scriptAction?.Dispose();
-//                            }
-//                        }
-//
+                if (Strings.hasValue(option) && Convert.toInt(option)==DbSqlDataType.Script.getIndex()){
+                        return new Receipt(false, "不支持脚本命令");
+//                        String jscode = act.getString("script", true);
+//                        if (Strings.isBlank(jscode)) jscode = dm.getScript();
+//                        if (Strings.isBlank(jscode)) continue;
+//                        String fname = act.getString("function,funname,tablename", true);
+//                        if (Strings.isBlank(fname)) continue;
+//                        fname = fname.replace("()", "").trim();
 //                        continue;
-//                    }
-//                    //执行后台C#逻辑过程
-//                    if (option.HasValue() && (int)option.ChangeType(typeof(int)) == (int)SqlDataAction.Program)
-//                    {
-//                        var className = act.GetString("class,type,function,tablename", true);
-//                        if (className.IsBlank()) continue;
-//                        var methodName = act.GetString("method,function", true);
-//                        if (className.IsBlank()) continue;
-//                        if (methodName.IsBlank())
-//                        {
-//                            methodName = className.Split('.').Last();
-//                            className = className.RightLess(methodName.Length + 1);
-//                        }
-//                        var methodRecord = (Record.Parse(act.GetString("params,bean"))??new Record()).Mapping(r);
-////                        var ps = act.GetString("params,bean").Mapping(r);
-////                        var methodRecord = Record.Parse(ps) ?? new Record();
-//                        methodRecord.Put("_bean", r);
-//                        methodRecord.Put("_tableName", dm.TableName);
-//                        var path = act.GetString("path", true);
-//                        Type pclass = null;
-//                        if (path.HasValue())
-//                        {
-//                            return new Receipt(false, "不支持从dll文件加载");
-//                            //                            className = className.Replace("|", ".");
-//                            //                            if (path.Contains("~")) path = path.Replace("~", Configs.BasicPath());
-//                            //                            if (!path.Contains("/") && !path.Contains("\\"))
-//                            //                            {
-//                            //                                path = Configs.BasicPath() + "/bin/" + path;
-//                            //                                path = Path.GetFullPath(path);
-//                            //                                if (!Files.IsExistFile(path)) throw new Exception("dll文件[" + path + "]不存在或者内容为空");
-//                            //                                var assembly = Assembly.LoadFile(path);
-//                            //                                pclass = assembly.GetType(className);
-//                            //                            }
-//                            //                            else
-//                            //                            {
-//                            //                                path = Path.GetFullPath(path);
-//                            //                                byte[] btyes = Files.GetFileBytes(path); //驱动文件的字节集
-//                            //                                if (btyes == null) throw new Exception("dll文件[" + path + "]不存在或者内容为空");
-//                            //                                Assembly.
-//                            //                                var assembly = Assembly.Load(new AssemblyName(btyes));
-//                            //                                pclass = assembly.GetType(className);
-//                            //                            }
-//                        }
-//                        else
-//                        {
-//
-//
-//                            var cp = className.Split('.')[0];
-//                            if (className.IndexOf("|", StringComparison.Ordinal) > 0)
-//                            {
-//                                cp = className.Split('|')[0];
-//                                className = className.Replace("|", ".");
-//                            }
-//                            var assembly = Assembly.Load(new AssemblyName(cp));
-//                            pclass = assembly.GetType(className);
-//                        }
-//
-//                        if (pclass == null) throw new Exception("类[" + className + "]不存在");
-//                        var method = pclass.GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
-//                        if (method == null) continue;
-//                        var ret = Refs.Invoke(pclass, method, methodRecord);
-//                        if (ret == null) continue;
-//                        if (ret is boolean && !(bool)ret) return new Receipt(false);
-//                        if (ret is AjaxResult && !((AjaxResult)ret).Success) return new Receipt(false, ((AjaxResult)ret).message);
-//                        if (actionName.HasValue()) retData.Put("actionName", ret);
-//                        continue;
-//                    }
-//                    //网络请求
-//                    if (option.HasValue() && (int)option.ChangeType(typeof(int)) == (int)SqlDataAction.Http)
-//                    {
-//                        var url = act.GetString("url,class,type,function,tablename", true);
-//                        var ps = act.GetString("params,bean").Mapping(r);
-//                        var type = act.GetString("method,type");
-//                        String ret = "";
-//                        ret = Regex.IsMatch(type, "post", RegexOptions.IgnoreCase) ? HttpHelper.Post(url, ps) : HttpHelper.Get(url, ps);
-//                        if (actionName.HasValue()) retData.Put("actionName", ret);
-//                        continue;
-//                    }
+                    }
+                    //执行反射
+                    if (Strings.hasValue(option) && Convert.toInt(option) == DbSqlDataType.Program.getIndex())
+                    {
+                        String className = act.getString("class,type,function,tablename", true);
+                        if (Strings.isBlank(className)) continue;
+                        String methodName = act.getString("method,function", true);
+                        if (Strings.isBlank(methodName))
+                        {
+
+                            methodName = Collections.last(className.split("."));
+                            className = Strings.rightLess(className,methodName.length() + 1);
+                        }
+                        Record methodRecord = Core.or(Record.parse(act.getString("params,bean")),new Record()).mapping(r);
+                        methodRecord.put("_bean", r);
+                        methodRecord.put("_tableName", dm.TableName);
+                        String path = act.getString("path", true);
+                        Class pclass = null;
+                        if (Strings.hasValue(path))
+                        {
+                            return new Receipt(false, "不支持从dll文件加载");
+                        }
+                        else
+                        {
+                            if (className.indexOf("|") > 0)
+                            {
+                                className = className.replace("|", ".");
+                            }
+                            pclass = Refs.getClazz(className);
+                        }
+
+                        if (pclass == null) throw Core.makeThrow("类[" + className + "]不存在");
+
+
+                        Method method = Refs.getMethod(pclass, methodName);
+                        if (method == null) continue;
+                        Receipt ret = Refs.invoke(method, methodRecord);
+                        if (ret == null) continue;
+                        if (ret.data instanceof Boolean && !(Boolean)ret.data) return new Receipt(false);
+                        if (ret.data instanceof AjaxResult && !((AjaxResult)ret.data).success) return new Receipt(false, ((AjaxResult)ret.data).message);
+                        if (Strings.hasValue(actionName)) retData.put(actionName, ret);
+                        continue;
+                    }
+                    //网络请求
+                    if (Strings.hasValue(option) && Convert.toInt(option)==DbSqlDataType.Http.getIndex())
+                    {
+                        String url = Strings.mapping( act.getString("url,class,type,function,tablename", true),"host",WebContext.getHost());
+                        String ps = Strings.mapping(act.getString("params,bean"),r);
+                        String type = act.getString("method,type");
+                        Receipt<String> ret = Regex.isMatch(type, "post") ? HttpHelper.request(url, ps, "POST", null) : HttpHelper.request(url, ps, "GET", null);
+                        if (Strings.hasValue(actionName)) retData.put(actionName, ret.getData());
+                        continue;
+                    }
                 //不含有sql语句的情况
                 String sqlstr = act.getString("sql");
                 if (Strings.isBlank(sqlstr))
@@ -1133,16 +1087,16 @@ public class SaveAction{
                     //当后续动作是前置检查时
                     if (check)
                     {
-                        if (option == "123")
+                        if ("123".equals(option))
                         {
                             IDataModel cdm = DaoSeesion.getDataModel(tableName, Json.toJson(act.getString("param", true)));
-                            if (cdm == null || cdm.isNull() || !cdm.Enable()) return new Receipt(false, "模版解析错误或者禁用");
-                            KeepDao keepdao = keepDaoPool.Get(cdm.Conn);
-                            String cSqlText = "select count(0) from (select 1 from " + cdm.TableName + cdm.GetWhere().cmd + cdm.GetGroup() + ")";
+                            if (cdm == null || cdm.isNull() || !cdm.enable()) return new Receipt(false, "模版解析错误或者禁用");
+                            KeepDao keepdao = keepDaoPool.Get(cdm.getConn());
+                            String cSqlText = "select count(0) from (select 1 from " + cdm.TableName + cdm.getWhere().cmd + cdm.getGroup() + ")";
                             if (keepdao == null)
                             {
-                                IDao dao = DaoSeesion.NewDao(cdm.Conn);
-                                int total = dao.getValue(new SqlText(cSqlText, cdm.Condition.getParameters()),Integer.class);
+                                IDao dao = DaoSeesion.NewDao(cdm.getConn());
+                                int total = dao.getValue(new SqlText(cSqlText, cdm.getCondition().getParameters()),Integer.class);
                                 dao.close();
                                 if (total > 0) return new Receipt(false);
                                 if (Strings.hasValue(actionName)) retData.put("actionName", total);
@@ -1151,7 +1105,7 @@ public class SaveAction{
                             }
                             else
                             {
-                                int total = keepdao.Dao.getValue(new SqlText(cSqlText, cdm.Condition.getParameters()),Integer.class);
+                                int total = keepdao.Dao.getValue(new SqlText(cSqlText, cdm.getCondition().getParameters()),Integer.class);
                                 if (total > 0) return new Receipt(false);
                                 if (Strings.hasValue(actionName)) retData.put("actionName", total);
                                 continue;
@@ -1171,7 +1125,7 @@ public class SaveAction{
                     beans = Strings.mapping(beans,context);
                     AjaxResult ajaxJson = saveBean(keepDaoPool, daoHelp, GenBeanTool.GenBean(daoHelp, beans, Integer.parseInt(option)), Integer.parseInt(option), condition, null);
                     if (ajaxJson.statusCode != 200) return new Receipt(false);
-                    else if (Strings.hasValue(actionName)) retData.put("actionName", ajaxJson.data);
+                    else if (Strings.hasValue(actionName)) retData.put(actionName, ajaxJson.data);
                 }
                 //含有sql语句的情况
                 else
@@ -1194,7 +1148,7 @@ public class SaveAction{
                         if (n < 0) return new Receipt(false);
                         else
                         {
-                            if (Strings.hasValue(actionName)) retData.put("actionName", n);
+                            if (Strings.hasValue(actionName)) retData.put(actionName, n);
                         }
                     }
                     else //操作检查的，进行记录查询工作
@@ -1206,14 +1160,14 @@ public class SaveAction{
                             int resultcount = rec.getInt(0);
                             if (newCreate) dao.close();
                             if (resultcount > 0) return new Receipt(false);
-                            else if (Strings.hasValue(actionName)) retData.put("actionName", resultcount);
+                            else if (Strings.hasValue(actionName)) retData.put(actionName, resultcount);
                         }
                         else
                         {
                             List<Record> rec = dao.query(new SqlText(sqlstr));
                             if (newCreate) dao.close();
                             if (rec.size() > 0) return new Receipt(false);
-                            else if (Strings.hasValue(actionName)) retData.put("actionName", rec);
+                            else if (Strings.hasValue(actionName)) retData.put(actionName, rec);
                         }
                     }
                 }
@@ -1236,7 +1190,7 @@ public class SaveAction{
         if (dao == null) return new AjaxResult(201);
         if (dataModel == null || dataModel.isNull()) return new AjaxResult(700);
         Record saveEntity = new Record();
-        if (action == DbSqlDataType.Insert || action == DbSqlDataType.Update)
+        if (DbSqlDataType.Insert.equals(action) || DbSqlDataType.Update.equals(action))
         {
             StringBuilder message = new StringBuilder();
             saveEntity = GenBeanTool.GenBean(dataModel, entityRecord, action,message);
@@ -1279,7 +1233,7 @@ public class SaveAction{
         if (daoHelp.Type != DataModelType.Table) return new AjaxResult(702);
         if (option == DbSqlDataType.Save.getIndex())
         {
-            int count = dao.count(daoHelp.GetTableName(), Cnd.parse(condition, daoHelp));
+            int count = dao.count(daoHelp.getTableName(), Cnd.parse(condition, daoHelp));
             if (count < 1) option = DbSqlDataType.Insert.getIndex();
             else option = (int)DbSqlDataType.Update.getIndex();
         }
@@ -1287,7 +1241,7 @@ public class SaveAction{
         if (option != (int)DbSqlDataType.Delete.getIndex())
         {
             StringBuilder message = new StringBuilder();
-            record = daoHelp.GenBean(bean, option, message);
+            record = daoHelp.genBean(bean, option, message);
             if (record == null) return new AjaxResult(500, message.toString());
         }
         boolean meCreateTran = false;
@@ -1337,7 +1291,7 @@ public class SaveAction{
         if (option == 1 || option == 2)
         {
             StringBuilder message = new StringBuilder();
-            saveEntity = dataModel.GenBean(bean, option, message);
+            saveEntity = dataModel.genBean(bean, option, message);
             if (saveEntity == null) return new AjaxResult(500, message.toString());
         }
         KeepDaoPool keepDaoPool = new KeepDaoPool(dao);
@@ -1347,7 +1301,7 @@ public class SaveAction{
     }
 
     /***
-     * 保存单个CURD对象（此方法和CURD操作还未形成独立的体系-->2016-01-01）
+     * 保存单个CURD对象（此方法和CURD操作还未形成独立的体系--＞2016-01-01）
      * @param dao
      * @param curd
      * @return

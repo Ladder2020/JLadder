@@ -14,7 +14,7 @@ public class Task {
         factory.submit(run);
     }
 
-    public static void start(Action0 fun){
+    public static void startNew(Action0 fun){
         factory.submit(new Runnable() {
             @Override
             public void run() {

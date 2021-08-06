@@ -7,8 +7,6 @@ import com.jladder.lang.Security;
 import com.jladder.lang.Strings;
 
 public class DbInfo {
-
-
     private String server="";
     private String username="";
     private String password="";
@@ -18,6 +16,7 @@ public class DbInfo {
     private String name="";
     private String connection="";
     private String driver;
+    private String parameters;
     public DbInfo(){
 
     }
@@ -31,10 +30,10 @@ public class DbInfo {
             try {
                 switch (dialect.toLowerCase()){
                     case "mysql":
-                        this.connection = "jdbc:mysql://" + server + (Strings.isBlank(port) ? "" : ":" + port) + "/" + database + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false";
+                        this.connection = "jdbc:mysql://" + server + (Strings.isBlank(port) ? "" : ":" + port) + "/" + database + (Strings.isBlank(parameters)?"":"?"+parameters);
                         break;
                     case "sqlite":
-                        this.connection = "jdbc:sqlite:"+server+database;
+                        this.connection = "jdbc:sqlite:"+server+database + (Strings.isBlank(parameters)?"":"?"+parameters);
                         break;
                 }
                 return this.connection;
@@ -111,6 +110,13 @@ public class DbInfo {
     public DbInfo setDatabase(String database) {
         this.database = database;
         return this;
+    }
+    public String getParameters() {
+        return parameters;
+    }
+
+    public void setParameters(String parameters) {
+        this.parameters = parameters;
     }
     public String getDatabase() {
         return this.database;

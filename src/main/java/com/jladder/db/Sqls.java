@@ -202,7 +202,7 @@ public class Sqls
             String[] fieldArray = Regex.split(col, "(@@)|(\\s+as\\s+)");
             String fieldname = fieldArray[0];
             String asname = fieldArray[fieldArray.length-1];
-            Tuple2<Boolean, FieldInfo> firstOrDefault = Collections.first(Columns, x -> x.fieldname == fieldname && x.as == asname);
+            Tuple2<Boolean, FieldInfo> firstOrDefault = Collections.first(Columns, x -> Core.is( x.fieldname,fieldname) && Core.is( x.as , asname));
             if (firstOrDefault.item1)
             {
                 Columns.add(new FieldInfo(fieldname,asname));

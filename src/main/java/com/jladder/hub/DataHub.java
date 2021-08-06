@@ -2,13 +2,18 @@ package com.jladder.hub;
 
 import com.jladder.actions.impl.LatchAction;
 import com.jladder.configs.Configs;
+import com.jladder.data.Record;
 import com.jladder.datamodel.DataModelForMap;
 import com.jladder.datamodel.DataModelInfo;
-import com.jladder.lang.Core;
-import com.jladder.lang.Regex;
-import com.jladder.lang.Strings;
+import com.jladder.lang.*;
+import com.jladder.lang.func.Tuple2;
 import com.jladder.logger.LogOption;
+import org.springframework.core.io.ClassPathResource;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,7 +127,7 @@ public class DataHub {
     /// </summary>
     public static void SetFromConfig()
     {
-        SqlDebug = Configs.GetString("sqldebug") == "True";
+        SqlDebug = Core.is(Configs.GetString("sqldebug"), "True") ;
         int time = Configs.GetInt("SqlWarnTime");
         if (time > 0) SqlWarnTime = time;
         if (Strings.hasValue(Configs.GetString("sqldebugitem"))) SqlDebugItem = Configs.GetString("sqldebugitem");
@@ -284,42 +289,35 @@ public class DataHub {
     /// <param name="path"></param>
     public static void LoadXmlFile(String path)
     {
-//        if (path.Contains("~")) path = path.Replace("~", Configs.BasicPath());
-//        path = Path.GetFullPath(path);
-//        if (!Files.IsExistFile(path)) return;
-//        FileInfo fi = new FileInfo(path);
-//        var lasttime = fi.LastWriteTime;
-//        XDocument xdoc = XDocument.Load(path);
-//        if (xdoc.Root != null && xdoc.Root.HasElements)
-//        {
-//            var elements = xdoc.Root.Elements("mapping");
-//            if (elements.Any())
-//            {
-//                foreach (var xElement in elements)
-//                {
-//                    var name = xElement.Attribute("name")?.Value;
-//                    if (name.IsBlank()) continue;
-//
-//                    DataModelInfo dminfo = new DataModelInfo()
-//                    {
-//                        Path = path,
-//                        LastWriteTime = lasttime,
-//                        Type = "xml",
-//                        Node = name,
-//                    };
-//                    var enable = xElement.Attribute("enable")?.Value;
-//                    if (enable != null && enable.ToLower() == "false") dminfo.Enable = false;
-//                    DataModelConfigs.Put(name, dminfo);
-//                    DataHub.WorkCache.RemoveDataModelCache(name);
-//                }
-//            }
-//            var includes = xdoc.Root.Elements("include");
-//            if (includes.Any())
-//            {
-//                includes.ForEach(x => LoadXmlFile(x.Value.ToString()));
-//            }
-//
-//        }
+        File file = Files.getFile(path);
+        if (!Files.exist(file)) return;
+        long lasttime = file.lastModified();
+        Document xdoc = Xmls.readXML(file);
+        if(xdoc==null)return;
+        if (xdoc.getDocumentElement() != null && xdoc.hasChildNodes())
+        {
+            List<Element> elements = Xmls.getElements(xdoc.getDocumentElement(), "mapping");
+            if (elements!=null && elements.size()>0)
+            {
+                for (Element element : elements)
+                {
+
+                    String name = element.getAttribute("name");
+                    if (Strings.isBlank(name)) continue;
+                    DataModelInfo dminfo = new DataModelInfo("xml",file.getAbsolutePath(),name,lasttime);
+                    String enable = element.getAttribute("enable");
+                    if (enable != null && "false".equals(enable.toLowerCase() )) dminfo.enable = false;
+                    DataModelConfigs.put(name, dminfo);
+                    DataHub.WorkCache.removeDataModelCache(name);
+                }
+            }
+            List<Element> includes = Xmls.getElements(xdoc.getDocumentElement(), "include");
+            if (includes != null && includes.size()>0)
+            {
+                includes.forEach(x -> LoadXmlFile(x.getTextContent()));
+            }
+
+        }
     }
 
     /// <summary>
@@ -329,33 +327,24 @@ public class DataHub {
 
     public static void LoadJsonFile(String path)
     {
-
-//        if (path.Contains("~")) path = path.Replace("~", Configs.BasicPath());
-//        path = Path.GetFullPath(path);
-//        if (!Files.IsExistFile(path)) return;
-//        FileInfo fi = new FileInfo(path);
-//        var lasttime = fi.LastWriteTime;
-//        var content = Json.FromFile(path);
-//        Record jMap = Json.ToObject<Record>(content);
-//        jMap.ForEach(x =>
-//                {
-//                        var name = x.Key;
-//        if (name.IsBlank()) return;
-//        DataModelInfo dminfo = new DataModelInfo()
-//        {
-//            Path = path,
-//            LastWriteTime = lasttime,
-//            Type = "json",
-//            Node = name,
-//        };
-//
-//        var enable = ((JObject)x.Value)["enable"]?.ToString();
-//        if (enable != null && enable.ToLower() == "false") dminfo.Enable = false;
-//        DataModelConfigs.Put(name, dminfo);
-//        DataHub.WorkCache.RemoveDataModelCache(name);
-//            });
-
-
+        File file = Files.getFile(path);
+        if (!Files.exist(file)) return;
+        long lasttime = file.lastModified();
+        String content = Json.FromFile(file);
+        Record jMap = Json.toObject(content, Record.class);
+        if(jMap==null)return;
+        String finalPath = file.getAbsolutePath();
+        jMap.forEach((k, v) -> {
+            String name = k;
+            if (Strings.isBlank(name)) return;
+            DataModelInfo dminfo = new DataModelInfo("json", finalPath, name, lasttime);
+            String enable  = Record.parse(v).getString("enable");
+            if(enable!=null && enable.toLowerCase().equals("false")){
+                dminfo.setEnable(false);
+            }
+            DataModelConfigs.put(name, dminfo);
+            DataHub.WorkCache.removeDataModelCache(name);
+        });
     }
     /// <summary>
     /// 通过配置信息加载
@@ -365,14 +354,14 @@ public class DataHub {
     public static void Load(DataModelInfo info)
     {
         if (info == null) return;
-        switch (info.Type)
+        switch (info.type)
         {
             case "xml":
-                LoadXmlFile(info.Path);
+                LoadXmlFile(info.path);
                 break;
             case "js":
             case "json":
-                LoadJsonFile(info.Path);
+                LoadJsonFile(info.path);
                 break;
         }
     }
@@ -381,11 +370,11 @@ public class DataHub {
     /// </summary>
     /// <param name="path">文件路径</param>
 
-    public static void AddXmlFile(String path)
+    public static void addXmlFile(String path)
     {
-//        if (path.IsBlank()) return;
-//        if (XmlFiles == null) XmlFiles = new List<string>();
-//        XmlFiles.Add(path);
+        if (Strings.isBlank(path)) return;
+        if (XmlFiles == null) XmlFiles = new ArrayList<String>();
+        XmlFiles.add(path);
     }
     /// <summary>
     /// 获取数据模型的信息
@@ -395,18 +384,18 @@ public class DataHub {
     /// <returns></returns>
 
     public static DataModelInfo Get(String key, boolean ignore) {
-        throw Core.makeThrow("未实现");
-//        if (ignore)
-//        {
-//            key = DataModelConfigs.HaveKey(key);
-//            if (key.IsBlank()) return null;
-//            else return DataModelConfigs[key];
-//        }
-//        else
-//        {
-//            if (DataModelConfigs.ContainsKey(key)) return DataModelConfigs[key];
-//            else return null;
-//        }
+        if (ignore)
+        {
+
+            key = Collections.haveKey(DataModelConfigs,key);
+            if (Strings.isBlank(key)) return null;
+            else return DataModelConfigs.get(key);
+        }
+        else
+        {
+            if (DataModelConfigs.containsKey(key)) return DataModelConfigs.get(key);
+            else return null;
+        }
     }
     /// <summary>
     /// 生成以Map为媒介的数据模型实例
@@ -415,31 +404,31 @@ public class DataHub {
     /// <param name="ignore"></param>
     /// <returns></returns>
 
-    public static DataModelForMap Gen(String key, boolean ignore)
+    public static DataModelForMap gen(String key, boolean ignore)
     {
-        throw Core.makeThrow("未实现");
-//        var info = Get(key, ignore);
-//        if (info == null) return null;
-//        string path;
-//        DataModelForMap ret = null;
-//        switch (info.Type)
-//        {
-//            case "xml":
-//                path = Path.GetFullPath(info.Path);
-//                if (!Files.IsExistFile(path)) return null;
-//                XDocument xdoc = XDocument.Load(path);
-//                //                var xElement=xdoc.Root.XPathSelectElements("./mapping[name=\"" + info.Node + "\"]")?.First();
-//                var xElement = xdoc?.Root?.Elements()?.FirstOrDefault(x => x.Attribute("name").Value == info.Node);
-//                if (xElement == null) return null;
-//                return new DataModelForMap(xElement);
-//            case "json":
-//                path = Path.GetFullPath(info.Path);
-//                if (!Files.IsExistFile(path)) return null;
-//                ret = new DataModelForMap();
-//                ret.FromJsonFile(path, info.Node);
-//                return ret;
-//        }
-//        return ret;
+        DataModelInfo info = Get(key, ignore);
+        if (info == null) return null;
+        String path = info.path;;
+        DataModelForMap ret = null;
+        switch (info.type)
+        {
+            case "xml":
+                if (!Files.exist(path)) return null;
+
+                Document doc = Xmls.readXML(new File(path));
+
+                List<Element> elements = Xmls.getElements(doc.getDocumentElement(), "mapping");
+                Tuple2<Boolean, Element> rett = Collections.first(elements, x -> info.node.equals(x.getAttribute("name")));
+
+                if (!rett.item1) return null;
+                return new DataModelForMap(rett.item2,null);
+            case "json":
+                if (!Files.exist(path)) return null;
+                ret = new DataModelForMap();
+                ret.fromJsonFile(path, info.node);
+                return ret;
+        }
+        return ret;
     }
     /// <summary>
     /// 检测模板文件是否已经改变

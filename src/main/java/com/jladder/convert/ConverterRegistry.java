@@ -43,7 +43,7 @@ public class ConverterRegistry {
         registry.put(int.class, new IConvert<Integer>() {
             @Override
             public Integer convert(Object value, Integer defaultValue) {
-                if(value==null)return defaultValue;
+                if(value==null)return defaultValue==null?0:defaultValue;
                 String ret = value.toString();
                 return Strings.toInt(ret);
             }
@@ -51,7 +51,7 @@ public class ConverterRegistry {
         registry.put(Integer.class, new IConvert<Integer>() {
             @Override
             public Integer convert(Object value, Integer defaultValue) {
-                if(value==null)return defaultValue;
+                if(value==null)return defaultValue==null?0:defaultValue;
                 String ret = value.toString();
                 return Strings.toInt(ret);
             }

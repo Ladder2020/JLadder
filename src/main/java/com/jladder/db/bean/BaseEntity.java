@@ -245,7 +245,7 @@ public class BaseEntity {
             }
             Column config = field.getAnnotation(Column.class);
             if (config == null) return;
-            if(DbGenType.NoGen != config.gen() && gen==null)_pk.gen = config.gen().getIndex();
+            if(!DbGenType.NoGen.equals(config.gen()) && gen==null)_pk.gen = config.gen().getIndex();
             if(Strings.isBlank(fieldName) && Strings.hasValue(config.fieldname())){
                 _pk.name = config.fieldname();
                 _pk.fieldname = _pk.name;
@@ -262,7 +262,7 @@ public class BaseEntity {
     public String getTableName()
     {
         Table attr = getClass().getAnnotation(Table.class);
-        return attr.value();
+        return attr==null?"":attr.value();
     }
     /// <summary>
     /// 生成填充bean对象
@@ -346,12 +346,12 @@ public class BaseEntity {
                     return reField;
                 }
             }
-            if (key.toLowerCase() == "id")
+            if ("id".equals(key.toLowerCase()))
             {
                 reField.oldname = key;
                 reField.name = dbname;
                 reField.fieldname = dbname;
-                reField.gen = field.getType()==int.class ? DbGenType.AutoNum.getIndex():DbGenType.UUID.getIndex();
+                reField.gen = int.class.equals( field.getType()) ? DbGenType.AutoNum.getIndex():DbGenType.UUID.getIndex();
                 try{
                     reField.value = field.get(this);
                 }catch (Exception e){

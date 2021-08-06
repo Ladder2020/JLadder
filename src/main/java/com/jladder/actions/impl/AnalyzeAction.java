@@ -13,7 +13,7 @@ import com.jladder.logger.LogForDataModelByCompare;
 import com.jladder.logger.LogForDataModelByKeep;
 import com.jladder.logger.LogForDataModelByRate;
 import com.jladder.logger.LogForDataModelByVisit;
-import com.jladder.net.HttpHelper;
+import com.jladder.net.http.HttpHelper;
 import com.jladder.lang.Core;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
@@ -84,28 +84,28 @@ public  class AnalyzeAction
     private void Init()
     {
         if (!DataHub.Analyz) return;
-        String items = "," + DataModel.Raw.AnalyzeItems + ",";
+        String items = "," + DataModel.getRaw().AnalyzeItems + ",";
         //访问统计
         if (items.indexOf(",visit,") > -1)
         {
             String userinfo = EnvAction.GetEnvValue("username")+"<"+ HttpHelper.getIp()+">";
             Subjects.add(AnalyzeOption.Visit);
-            logs.put(AnalyzeOption.Visit, new LogForDataModelByVisit(DataModel.Raw.Name,userinfo,"模版访问"));
+            logs.put(AnalyzeOption.Visit, new LogForDataModelByVisit(DataModel.getName(),userinfo,"模版访问"));
         }
         //记录比对
         if (items.indexOf(",compare,") > -1)
         {
-            logs.put(AnalyzeOption.Compare, new LogForDataModelByCompare(DataModel.Raw.Name,EnvAction.GetEnvValue("userinfo")));
+            logs.put(AnalyzeOption.Compare, new LogForDataModelByCompare(DataModel.getName(),EnvAction.GetEnvValue("userinfo")));
         }
         //数据持久化
         if (items.indexOf(",keep,") > -1)
         {
-            logs.put(AnalyzeOption.Keep, new LogForDataModelByKeep(DataModel.Raw.Name,EnvAction.GetEnvValue("userinfo")));
+            logs.put(AnalyzeOption.Keep, new LogForDataModelByKeep(DataModel.getName(),EnvAction.GetEnvValue("userinfo")));
         }
         //数据吞吐率
         if (items.indexOf(",rate,") > -1)
         {
-            logs.put(AnalyzeOption.Rate, new LogForDataModelByRate(DataModel.Raw.Name));
+            logs.put(AnalyzeOption.Rate, new LogForDataModelByRate(DataModel.getName()));
         }
         //检查数据过期
         if (items.indexOf(",outdate,") > -1)
@@ -167,7 +167,7 @@ public  class AnalyzeAction
         if (logs.containsKey(AnalyzeOption.Keep))
         {
             LogForDataModelByKeep keep = (LogForDataModelByKeep) logs.get(AnalyzeOption.Keep);
-            keep.IsAdd = (Action == DbSqlDataType.Insert);
+            keep.IsAdd = (DbSqlDataType.Insert.equals(Action));
         }
 
 
@@ -308,7 +308,7 @@ public  class AnalyzeAction
                         }
                         if (Strings.isBlank(key) || (oldvalue != newValue && Strings.hasValue((oldvalue + newValue))))
                         {
-                            Map<String, Object> config = DataModel.GetFieldConfig(k);
+                            Map<String, Object> config = DataModel.getFieldConfig(k);
                             if(config==null)config = new HashMap<String, Object>();
                             diff.put("fieldname", key).put("old", raw.get(key)).put("current", v).put("title", com.jladder.lang.Collections.getString(config,"title")).put("$rn", index);
                             ret.add(diff);
@@ -399,7 +399,7 @@ public  class AnalyzeAction
     {
         if (CheckDataOutDate)
         {
-            List<String> fieldnames = DataModel.GetFields("sign", "updatetime");
+            List<String> fieldnames = DataModel.getFields("sign", "updatetime");
 
             long easydate = Times.getTS();
             String easyfieldname = "";

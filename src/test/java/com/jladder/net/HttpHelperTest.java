@@ -1,6 +1,7 @@
 package com.jladder.net;
 
 import com.jladder.data.Record;
+import com.jladder.net.http.HttpHelper;
 import junit.framework.TestCase;
 
 public class HttpHelperTest extends TestCase {

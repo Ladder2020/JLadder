@@ -90,7 +90,7 @@ public class Configs
             if (settings == null) return false;
             for (Map.Entry<String,Object> keyValuePair : settings.entrySet())
             {
-                if (keyValuePair.getKey().toLowerCase() == "configserver")
+                if ("configserver".equals(keyValuePair.getKey().toLowerCase() ))
                 {
                     remote = keyValuePair.getValue().toString();
                     continue;
@@ -314,7 +314,7 @@ public class Configs
     public static Configs put(String prop, Object value, SourceDirection sd)
     {
         ConfigItem v = new ConfigItem(prop, value, sd);
-        Tuple3<Boolean, String, ConfigItem> find = Collections.first(_configs, (x, y) -> x.toLowerCase() == prop.toLowerCase());
+        Tuple3<Boolean, String, ConfigItem> find = Collections.first(_configs, (x, y) -> Core.is(x.toLowerCase(), prop.toLowerCase()) );
         if(!find.item1)_configs.put(prop, v);
         else {
             _configs.put(find.item2,v);

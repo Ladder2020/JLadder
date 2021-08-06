@@ -28,12 +28,13 @@ public class Json {
         return json;
     }
     public static Object toObject(String json){
+        if(Strings.isBlank(json))return null;
         Object jsonObject = JSONObject.parseObject(json,Object.class);
         return jsonObject;
     }
     public static <T> T toObject(String json,Class<T> clazz){
+        if(Strings.isBlank(json))return null;
         T jsonObject = JSONObject.parseObject(json,clazz);
-
         return jsonObject;
     }
     public static <T> T toObject(CharSequence json, TypeReference<T> type){

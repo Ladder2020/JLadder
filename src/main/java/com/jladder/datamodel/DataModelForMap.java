@@ -11,9 +11,11 @@ import com.jladder.db.jdbc.impl.Dao;
 import com.jladder.entity.DBMagic;
 import com.jladder.entity.DataModelTable;
 import com.jladder.hub.DataHub;
+import com.jladder.lang.Collections;
 import com.jladder.lang.func.Tuple2;
 import com.jladder.db.*;
 import com.jladder.lang.*;
+import org.w3c.dom.Element;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -74,31 +76,29 @@ public class DataModelForMap extends IDataModel{
      * 全场景字段
      */
     public List<Map<String, Object>> AllColumns;
-    /// <summary>
-    /// 模版类型
-    /// </summary>
-    public DataModelType Type  = DataModelType.Table;
+
     /// <summary>
     /// 数据库类型
     /// </summary>
-    public DbDialectType DbDialect ;
+
     /// <summary>
     /// 基本构造
     /// </summary>
     public DataModelForMap() { }
+
     /// <summary>
     /// 从JS文件构造
     /// </summary>
     /// <param name="jspath">js文件路径</param>
     /// <param name="nodeName">节点名称</param>
     /// <param name="result">结构</param>
-    public DataModelForMap(String jsPath, String nodeName,boolean result) { result = FromJsonFile(jsPath, nodeName); }
+    public DataModelForMap(String jsPath, String nodeName,boolean result) { result = fromJsonFile(jsPath, nodeName); }
     /// <summary>
     /// 从数据库sys_data表中获取模版
     /// </summary>
     public DataModelForMap(String tableName, String param)
     {
-        FromDataTable(Dao,tableName, param);
+        fromDataTable(Dao,tableName, param);
     }
     /// <summary>
     /// 构造方法
@@ -108,7 +108,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="ispass">是否通过</param>
     public DataModelForMap(String tableName, String param, int ret)
     {
-        ret = FromDataTable(Dao,tableName, param);
+        ret = fromDataTable(Dao,tableName, param);
     }
     /// <summary>
     /// 从数据库sys_data表中获取模版
@@ -117,7 +117,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="tableName">键表名</param>
     public DataModelForMap(IDao dao, String tableName)
     {
-        FromDataTable(dao, tableName, null);
+        fromDataTable(dao, tableName, null);
     }
     /// <summary>
     /// 从数据库sys_data表中获取模版
@@ -128,7 +128,7 @@ public class DataModelForMap extends IDataModel{
     public DataModelForMap(IDao dao, String tableName, String param)
     {
         if (Strings.isBlank(tableName)) return;
-        FromDataTable(dao, tableName, param);
+        fromDataTable(dao, tableName, param);
     }
     /// <summary>
     /// 从数据键名构造
@@ -136,18 +136,18 @@ public class DataModelForMap extends IDataModel{
     /// <param name="tableName"></param>
     public DataModelForMap(String tableName)
     {
-        FromDataTable(Dao, tableName, null);
+        fromDataTable(Dao, tableName, null);
     }
     /// <summary>
     /// 以DBdataTable构造
     /// </summary>
     /// <param name="dt"></param>
-    public DataModelForMap(DataModelTable dt) { FromDataTable(dt); }
+    public DataModelForMap(DataModelTable dt) { fromDataTable(dt); }
     /// <summary>
     /// 以动态表单构造
     /// </summary>
     /// <param name="magic"></param>
-    public DataModelForMap(DBMagic magic) { FromMagic(magic,null); }
+    public DataModelForMap(DBMagic magic) { fromMagic(magic,null); }
     /// <summary>
     /// 以原型数据构造
     /// </summary>
@@ -155,45 +155,118 @@ public class DataModelForMap extends IDataModel{
     /// <param name="param">参数</param>
     public DataModelForMap(DataModelForMapRaw raw,String param)
     {
-        FromRaw(raw,param);
+        fromRaw(raw,param);
     }
-//    /// <summary>
-//    /// 从xml节点构造
-//    /// </summary>
-//    /// <param name="xElement">xml节点</param>
-//    /// <param name="param">参数列表</param>
-//    public DataModelForMap(XElement xElement, String param = null)
-//    {
-//        FromXml(xElement,param);
-//    }
+    /// <summary>
+    /// 从xml节点构造
+    /// </summary>
+    /// <param name="xElement">xml节点</param>
+    /// <param name="param">参数列表</param>
+    public DataModelForMap(Element xElement, String param)
+    {
+        fromXml(xElement,param);
+    }
     /// <summary>
     /// 从JSON文件初始化
     /// </summary>
     /// <param name="path">文件路径</param>
     /// <param name="nodeName">节点名称</param>
-    public boolean FromJsonFile(String path, String nodeName){
-        throw Core.makeThrow("未实现");
-//        Raw.Scheme = "json";
-//        var content = Json.FromFile(path);
-//        try
-//        {
-//            var jMap = Json.ToObject<Dictionary<String, Dictionary<String, object>>>(content);
-//            if (jMap.ContainsKey(nodeName))
-//        {
-//        var dt = jMap[nodeName].ToClass<DataModelTable>();
-//        FromDataTable(dt);
-//        }
-//        }
-//        catch (Exception)
-//        {
-//        return false;
-//        }
-//        return true;
+    public boolean fromJsonFile(String path, String nodeName){
+        Raw.Scheme = "json";
+        String content = Json.FromFile(path);
+        try
+        {
+            Map<String, Map<String, Object>> jMap = Json.toObject(content, new TypeReference<Map<String, Map<String, Object>>>() {});
+
+            if (jMap.containsKey(nodeName)){
+                DataModelTable dt = Collections.toClass(jMap.get(nodeName), DataModelTable.class);
+                fromDataTable(dt);
+            }
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+        return true;
+    }
+    /// <summary>
+    /// 从xml元素解析
+    /// </summary>
+    /// <param name="element">元素节点</param>
+    /// <param name="param">参数列表</param>
+    /// <returns></returns>
+    public boolean fromXml(Element element,String param)
+    {
+        Raw.Scheme = "xml";
+        if (element == null) throw Core.makeThrow("片选节点为空");
+        Raw.Name = element.getAttribute("name");
+        Raw.Type = element.getAttribute("type");
+        Raw.Enable= element.getAttribute("enable");
+        if (Strings.isBlank(Raw.Name)) throw  Core.makeThrow("映射名称不能空");
+        try
+        {
+            Element node = Xmls.getElement(element,"tableName,table,tablename");
+            Raw.Table = (node==null?"":node.getTextContent());
+            node = Xmls.getElement(element,"conn");
+            Raw.Conn = (node==null?"":node.getTextContent());
+            node = Xmls.getElement(element,"data");
+            Raw.Data = (node==null?"":node.getTextContent());
+            node = Xmls.getElement(element, "columns");
+            if (node != null && node.hasChildNodes())
+            {
+                ColumnList = new ArrayList<Map<String,Object>>();
+                Xmls.getElements(node,"column").forEach(x -> ColumnList.add(Xmls.toMap(x)));
+            }
+            List<Element> ps = Xmls.getElements(element, "param");
+            if (ps!=null && ps.size()>0)
+            {
+                Raw.Params = new ArrayList<Map<String,Object>>();
+                ps.forEach(x -> Raw.Params.add(Xmls.toMap(x,(e,d) ->{
+                    if (Strings.hasValue(e.getTextContent())) d.put("dvalue", e.getTextContent());
+                })));
+            }
+            List<Element> events = Xmls.getElements(element, "events");
+            if (events != null && events.size()>0)
+            {
+
+                //Raw.Events =new Dictionary<string, List<Record>>();
+                HashMap<String, List<Record>> eventdic = new HashMap<String, List<Record>>();
+                events.forEach(x ->{
+                    List<Element> es = Xmls.getElements(x, null);
+                    if (es==null && es.size()>0)
+                    {
+                        List<Record> evs = new ArrayList<Record>();
+                        es.forEach(y -> evs.add(Record.parse(Xmls.toMap(y))));
+                        //Raw.Events.Put(x.Name.LocalName, evs);
+                        eventdic.put(x.getTagName(), evs);
+
+                    }
+                });
+                Raw.Events = Json.toJson(eventdic);
+                Events = eventdic;
+            }
+            List<Element> queryforms = Xmls.getElements(element,"queryforms");;
+            //先不解析
+            if (queryforms != null && queryforms.size()>0)
+            {
+//                    QueryForms = new List<ISqlQueryForm>();
+//                    queryforms.Elements().ForEach(x => QueryForms.Add(x.ToClass<SqlQueryForm>(b => b.Dvalue = x.Value)));
+            }
+            Raw.AllColumns = ColumnList;
+            AllColumns = ColumnList;
+            fromRaw(Raw,param);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            throw Core.makeThrow("解析过程发生异常");
+        }
+        return true;
     }
     /// <summary>
     /// 从魔法实体类中获取
     /// </summary>
-    public boolean FromMagic(DBMagic magic,String client){
+    public boolean fromMagic(DBMagic magic,String client){
         Raw.Scheme = "magic";
         if (magic == null) return false;
         Raw.Put("maigc", magic);
@@ -209,7 +282,7 @@ public class DataModelForMap extends IDataModel{
                 TableName = Raw.Table;
                 break;
             case "datamodel":
-                Raw.Table = GetTableName(magic.TableName,null);
+                Raw.Table = getTableName(magic.TableName,null);
                 TableName = Raw.Table;
                 break;
             case "self":
@@ -237,8 +310,8 @@ public class DataModelForMap extends IDataModel{
         Raw.AllColumns = ColumnList;
         AllColumns = ColumnList;
             //解析并填充原型中列模型
-        ParseColumsList(null);
-        FullColumns = FilterColumns(null);
+        parseColumsList(null);
+        FullColumns = filterColumns(null);
         return true;
     }
     /// <summary>
@@ -246,15 +319,15 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="name">键名表名</param>
     /// <returns></returns>
-    public int FromTemplate(String name){
-        return FromDataTable(Dao,name,null);
+    public int fromTemplate(String name){
+        return fromDataTable(Dao,name,null);
     }
     /// <summary>
     /// 从数据库实表解析
     /// </summary>
     /// <param name="table">表名或sql语句</param>
     /// <returns></returns>
-    public int FromDbTable(String table){
+    public int fromDbTable(String table){
         Raw.Scheme = "table";
         //2017-08-15修改
         IDao dao = Dao != null ? Dao : DaoSeesion.GetDao();
@@ -271,12 +344,12 @@ public class DataModelForMap extends IDataModel{
         dt.tablename = table;
         dt.type = "table";
         dt.enable = 1;
-        return FromDataTable(dt);
+        return fromDataTable(dt);
     }
 
-    public int FromDbTable(String table, String conn){
+    public int fromDbTable(String table, String conn){
 
-        if (Strings.isBlank(conn)) return FromDbTable(table);
+        if (Strings.isBlank(conn)) return fromDbTable(table);
         else
         {
             IDao dao = DaoSeesion.NewDao(conn);
@@ -291,7 +364,7 @@ public class DataModelForMap extends IDataModel{
                 dt.type = "table";
                 dt.enable = 1;
                 dt.conn=conn;
-                return FromDataTable(dt);
+                return fromDataTable(dt);
             }
             finally { dao.close();}
          }
@@ -304,36 +377,36 @@ public class DataModelForMap extends IDataModel{
     /// <param name="raw">原型数据</param>
     /// <param name="param">参数数据</param>
     @Override
-    public void FromRaw(DataModelForMapRaw raw,String param){
+    public void fromRaw(DataModelForMapRaw raw,String param){
 
         if (raw == null) return;
         Order = null;
         Group = null;
         Raw = raw;
-        ColumnList = Raw.AllColumns;
-        AllColumns = Raw.AllColumns;
+        ColumnList = raw.AllColumns;
+        AllColumns = raw.AllColumns;
 
         //处理一下事件
         if (Strings.hasValue(raw.Events))
         {
-            String eventstring = MatchParam(Strings.mapping(raw.Events), param, true);
+            String eventstring = matchParam(Strings.mapping(raw.Events), param, true);
             if (Strings.isJson(eventstring,1)) Events = Json.toObject(eventstring,new TypeReference<Map<String, List<Record>>>(){});
         }
 
-        TableName = Raw.Table;
+        TableName = raw.Table;
         Conn = raw.Conn;
-        if (Raw.Get("el_columns").equals(true) || Raw.Params != null || !Strings.isBlank(param))
+        if (((Object)true).equals(raw.Get("el_columns")) || raw.Params != null || !Strings.isBlank(param))
         {
-            String columnsString = Json.toJson(Raw.AllColumns);
-            columnsString = MatchParam(columnsString, param, true);
+            String columnsString = Json.toJson(raw.AllColumns);
+            columnsString = matchParam(columnsString, param, true);
             ColumnList = Json.toObject(columnsString,new TypeReference<List<Map<String, Object>>>(){});
             AllColumns = Json.toObject(columnsString,new TypeReference<List<Map<String, Object>>>(){});
         }
 
         Condition.clear();
-        Condition.dialect = (DbDialect==DbDialectType.Default?DaoSeesion.GetDialect(Conn): DbDialect);
+        Condition.dialect = (DbDialectType.Default.equals(DbDialect) || DbDialect==null ?DaoSeesion.GetDialect(Conn): DbDialect);
         //解析列模型到条件字段
-        Condition.initFieldMapping(ParseColumsList());
+        Condition.initFieldMapping(parseColumsList());
 
         if (Strings.isBlank(Raw.Type)) Raw.Type = "table";
         switch (Raw.Type.toLowerCase())
@@ -366,7 +439,7 @@ public class DataModelForMap extends IDataModel{
                 if (Strings.isBlank(Raw.Data) && Strings.isBlank(Raw.Table)) return;
                 if (Strings.isBlank(Raw.Table)) //不在tableName   在data区
                 {
-                    String data = Strings.mapping(MatchParam(Raw.Data, param));
+                    String data = Strings.mapping(matchParam(Raw.Data, param));
                     if (Strings.isBlank(data)) return;
                     Sqls sqls = Sqls.Decoder(data);
                     TableName = sqls.TableName;
@@ -379,7 +452,7 @@ public class DataModelForMap extends IDataModel{
                 }
                 else//在tableName区，只替换param，不进行sql解析
                 {
-                    TableName = Strings.mapping(MatchParam(Raw.Table, param));
+                    TableName = Strings.mapping(matchParam(Raw.Table, param));
                     if (Strings.isBlank(TableName)) return;
                 }
             }
@@ -388,8 +461,8 @@ public class DataModelForMap extends IDataModel{
             Type = DataModelType.Magic;
             break;
         }
-        FullColumns = FilterColumns();
-        if (Strings.hasValue(raw.Permission)) CheckPermission(raw.Permission);
+        FullColumns = filterColumns();
+        if (Strings.hasValue(raw.Permission)) checkPermission(raw.Permission);
     }
 
     /// <summary>
@@ -399,7 +472,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="tableName">键表名</param>
     /// <param name="param">参数列表</param>
     /// <returns></returns>
-    public int FromDataTable(IDao dao, String tableName, String param){
+    public int fromDataTable(IDao dao, String tableName, String param){
         boolean isuseTemplateConn = false;
         if (dao == null) dao = Dao;
         if (dao == null){
@@ -425,7 +498,7 @@ public class DataModelForMap extends IDataModel{
                             if (dao != null){
                                 DBMagic magic = dao.fetch(DataHub.MagicTableName, cnd).toClass(DBMagic.class);
                                 if (magic == null) return -1;
-                                result = FromMagic(magic,dic.getString("client")) ? 1 : -1;
+                                result = fromMagic(magic,dic.getString("client")) ? 1 : -1;
                             }
                         }
                         break;
@@ -433,11 +506,11 @@ public class DataModelForMap extends IDataModel{
                         String v = dic.getString("tableName,table,name", true);
                         if (Strings.isBlank(v)) return -1;
                         if (Strings.isBlank(conn)){
-                            result = FromDbTable(v);
+                            result = fromDbTable(v);
                         }
                         else{
                             Conn = conn;
-                            result = FromDbTable(v, Conn);
+                            result = fromDbTable(v, Conn);
                         }
                          break;
                 }
@@ -462,7 +535,7 @@ public class DataModelForMap extends IDataModel{
                             try{
                                 DBMagic magic = newDao.fetch(DataHub.MagicTableName, new Cnd("name", tableName.substring(1))).toClass(DBMagic.class);
                                 if (magic == null) return -1;
-                                return FromMagic(magic,"1") ? 1 : -1;
+                                return fromMagic(magic,"1") ? 1 : -1;
                             }
                             finally
                             {
@@ -472,7 +545,7 @@ public class DataModelForMap extends IDataModel{
                         }
                         //return 0;
                     case "*":
-                        return FromDbTable(tableName.substring(1), thatconn);
+                        return fromDbTable(tableName.substring(1), thatconn);
                 }
 
             }
@@ -484,15 +557,15 @@ public class DataModelForMap extends IDataModel{
             if (re == null) return 0;
             Raw.Scheme = "template";
             DataModelTable dt = re.toClass(DataModelTable.class);
-            return FromDataTable(dt, param);
+            return fromDataTable(dt, param);
         }
      }
     /// <summary>
     /// 从模版实体类中获取
     /// </summary>
-    public int FromDataTable(DataModelTable dt)
+    public int fromDataTable(DataModelTable dt)
     {
-        return FromDataTable(dt, null);
+        return fromDataTable(dt, null);
     }
     /// <summary>
     /// 从模版实体类中获取
@@ -500,7 +573,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="dt">数据库模版类</param>
     /// <param name="param">参数列表</param>
     /// <returns></returns>
-    public int FromDataTable(DataModelTable dt, String param) {
+    public int fromDataTable(DataModelTable dt, String param) {
         Order = null;
         Group = null;
         if (dt == null) return 0;
@@ -515,13 +588,13 @@ public class DataModelForMap extends IDataModel{
         Raw.Type = dt.type;
         Raw.Script = dt.script;
         Raw.CacheItems = dt.cacheitems;
-        dt.columns = MatchParam(dt.columns, param, true);
+        dt.columns = matchParam(dt.columns, param, true);
 //        Raw.Events = Json.toObject(dt.events,new TypeReference<Map<String, List<Record>>>());
         Raw.Events = dt.events;
         //处理一下事件
         if (Strings.hasValue(dt.events))
         {
-            String eventstring = MatchParam(Strings.mapping(dt.events), param, true);
+            String eventstring = matchParam(Strings.mapping(dt.events), param, true);
             if (Strings.isJson(eventstring,1)) Events = Json.toObject(eventstring,new TypeReference<Map<String, List<Record>>>(){});
         }
         Raw.Conn = dt.conn;
@@ -534,9 +607,9 @@ public class DataModelForMap extends IDataModel{
         ColumnList = Json.toObject(dt.columns,new TypeReference<List<Map<String, Object>>>(){});
         AllColumns = ColumnList;
         Condition.clear();
-        Condition.dialect = (DbDialect == DbDialectType.Default ? DaoSeesion.GetDialect(Conn) : DbDialect);
+        Condition.dialect = ( DbDialectType.Default.equals(DbDialect) || DbDialect == null ? DaoSeesion.GetDialect(Conn) : DbDialect);
         //解析列模型到条件字段
-        Condition.initFieldMapping(ParseColumsList());
+        Condition.initFieldMapping(parseColumsList());
         if (Strings.isBlank(dt.type) || dt.type.equals("table"))
         {
             Type = DataModelType.Table;
@@ -572,7 +645,7 @@ public class DataModelForMap extends IDataModel{
 
                     if (Strings.isBlank(dt.tablename)){ //不在tableName   在data区
 
-                        String data = MatchParam(Strings.mapping(Raw.Data), param,false);
+                        String data = matchParam(Strings.mapping(Raw.Data), param,false);
                         if (Strings.isBlank(data)) return -1;
                         Sqls sqls = Sqls.Decoder(data);
                         TableName = sqls.TableName;
@@ -585,7 +658,7 @@ public class DataModelForMap extends IDataModel{
                     }
                     else//在tableName区，只替换param，不进行sql解析
                     {
-                        TableName = MatchParam(Strings.mapping(Raw.Table), param);
+                        TableName = matchParam(Strings.mapping(Raw.Table), param);
                         if (Strings.isBlank(TableName)) return -1;
                     }
                 }
@@ -594,8 +667,8 @@ public class DataModelForMap extends IDataModel{
                 TableName = Raw.Table;
                 break;
         }
-        FullColumns = FilterColumns();
-        if (Strings.hasValue(Raw.Permission)) CheckPermission(Raw.Permission);
+        FullColumns = filterColumns();
+        if (Strings.hasValue(Raw.Permission)) checkPermission(Raw.Permission);
         return 1;
     }
     /***
@@ -615,6 +688,7 @@ public class DataModelForMap extends IDataModel{
         if(AllColumns==null)AllColumns = new ArrayList<Map<String,Object>>();
         ColumnList.add(column);
         AllColumns.add(column);
+        FullColumns = filterColumns();
     }
     /***
      * 添加列模型
@@ -627,6 +701,7 @@ public class DataModelForMap extends IDataModel{
         if(AllColumns==null)AllColumns = new ArrayList<Map<String,Object>>();
         ColumnList.add(column);
         AllColumns.add(column);
+        FullColumns = filterColumns();
     }
     /***
      * 添加列模型
@@ -656,6 +731,7 @@ public class DataModelForMap extends IDataModel{
         }else{
             addColumn(json,null,null);
         }
+        FullColumns = filterColumns();
     }
     /// <summary>
     /// 获取原始数据模板
@@ -669,7 +745,7 @@ public class DataModelForMap extends IDataModel{
      * @return
      */
 
-    public List<Map<String, Object>> GetRawColumnList(String ordername){
+    public List<Map<String, Object>> getRawColumnList(String ordername){
         List<Map<String, Object>> ret = new ArrayList<Map<String, Object>>();
         if (AllColumns == null) return ret;
         for (Map<String, Object> map : AllColumns){
@@ -694,7 +770,7 @@ public class DataModelForMap extends IDataModel{
     }
 
     @Override
-    public List<Map<String, Object>> GetColumnList(String propname) {
+    public List<Map<String, Object>> getColumnList(String propname) {
         List<Map<String, Object>> re_list = new ArrayList<Map<String, Object>>();
         for (Map<String, Object> map : ColumnList)
         {
@@ -718,15 +794,15 @@ public class DataModelForMap extends IDataModel{
             return re_list;
         }
     }
-    public List<Map<String, Object>> FilterColumns(){
-        return FilterColumns(null);
+    public List<Map<String, Object>> filterColumns(){
+        return filterColumns(null);
     }
     /// <summary>
     /// 过滤字段
     /// </summary>
     /// <param name="filterCName">过滤字段</param>
     /// <returns></returns>
-    public List<Map<String, Object>> FilterColumns(String filterCName){
+    public List<Map<String, Object>> filterColumns(String filterCName){
         if (ColumnList == null || ColumnList.size() < 1) return null;
         if (Strings.hasValue(filterCName)) filterCName = ","+ filterCName+",";
         //清空一些计算型的数组
@@ -768,13 +844,13 @@ public class DataModelForMap extends IDataModel{
                         switch (expresstoevent.getInt("option")){
                             case 0:
                             case 16:
-                                AddEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.OneToMany.getIndex()));
+                                addEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.OneToMany.getIndex()));
                                 break;
                             case 15:
-                                AddEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.OneToOne.getIndex()));
+                                addEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.OneToOne.getIndex()));
                                 break;
                             case 11:
-                                AddEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.GetData.getIndex()));
+                                addEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.GetData.getIndex()));
                                 break;
 
                         }
@@ -782,7 +858,7 @@ public class DataModelForMap extends IDataModel{
                     }
                 }
             }
-            if (com.jladder.lang.Collections.getString(cmap,"sign")=="isdelete" && Strings.hasValue(strFn)){
+            if ("isdelete".equals(com.jladder.lang.Collections.getString(cmap,"sign")) && Strings.hasValue(strFn)){
                 expressList.add(strFn + "=0");
             }
             if (!Strings.isBlank(strFn)){
@@ -795,7 +871,7 @@ public class DataModelForMap extends IDataModel{
                     //是否是额外字段
                     String isext = com.jladder.lang.Collections.getString(cmap, "isext", true);
                     if(!Strings.isBlank(isext))isext =  "" + isext.toLowerCase().trim();
-                    if (Strings.isBlank(isext) || (isext != "true" && isext == "0"))
+                    if (Strings.isBlank(isext) || ( !"true".equals(isext) && "0".equals(isext)))
                     {
                         newList.add(Core.clone(config));
                         columns.put(strFn, Strings.isBlank(strAs) ? strFn : strAs);
@@ -818,14 +894,14 @@ public class DataModelForMap extends IDataModel{
     /// <summary>
     /// 字段匹配，默认以fieldname,支持排序，自序，反向,变名
     /// </summary>
-    public List<Map<String, Object>> MatchColumns(String columnString)
+    public List<Map<String, Object>> matchColumns(String columnString)
     {
-        return MatchColumns(columnString, null);
+        return matchColumns(columnString, null);
     }
     /// <summary>
     /// 具体执行字段匹配，默认以fieldname,支持排序，自序，反向,变名
     /// </summary>
-    public List<Map<String, Object>> MatchColumns(String columnString, String propName){
+    public List<Map<String, Object>> matchColumns(String columnString, String propName){
 
         //if (!allowMatch) return list_column;
         if (ColumnList == null) return null;
@@ -850,7 +926,7 @@ public class DataModelForMap extends IDataModel{
                 else matchstr += str + ",";
             }
             if (matchstr.endsWith(",")) matchstr=matchstr.substring(0, matchstr.length() - 1);
-            if (Strings.isBlank(matchstr)) return FilterColumns(filterstr);
+            if (Strings.isBlank(matchstr)) return filterColumns(filterstr);
             else{
                 cstrs = new ArrayList<String>();
                 cstrs.addAll(Strings.splitByComma(matchstr));
@@ -961,15 +1037,15 @@ public class DataModelForMap extends IDataModel{
     }
 
     @Override
-    public List<Map<String, Object>> ParseColumsList() {
-        return ParseColumsList(null);
+    public List<Map<String, Object>> parseColumsList() {
+        return parseColumsList(null);
     }
 
     /// <summary>
     /// 从模版中取出Columns段
     /// <para>注意：这是字段原型数据</para>
     ///  </summary>
-    public List<Map<String, Object>> ParseColumsList(Object rawData){
+    public List<Map<String, Object>> parseColumsList(Object rawData){
         if (AllColumns == null && rawData == null) return null;
         if (AllColumns != null && rawData == null){
             return AllColumns;
@@ -1012,7 +1088,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="option">选项</param>
     /// <param name="message">回馈信息</param>
     /// <returns></returns>
-    public Record GenBean(String bean, int option, StringBuilder message)
+    public Record genBean(String bean, int option, StringBuilder message)
     {
        return GenBeanTool.GenBean(this, Record.parse(bean), DbSqlDataType.get(option), message);
     }
@@ -1021,11 +1097,11 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="bean"></param>
     /// <returns></returns>
-    public List<String> HasUniqueFields(Record bean){
+    public List<String> hasUniqueFields(Record bean){
         List<String> rList = new ArrayList<String>();
         if (columns == null) return rList;
         //linq太长啦
-        for (Map<String,Object> field : ParseColumsList()){
+        for (Map<String,Object> field : parseColumsList()){
 
             String key = com.jladder.lang.Collections.haveKey(field,"unique");
             if (Strings.isBlank(key)) continue;
@@ -1041,10 +1117,10 @@ public class DataModelForMap extends IDataModel{
     /// 获取重复检查的字段
     /// </summary>
     /// <returns></returns>
-    public List<String> HasUniqueFields(){
+    public List<String> hasUniqueFields(){
         List<String> rList = new ArrayList<String>();
         if (columns == null) return rList;
-        for (Map<String,Object> field : ParseColumsList())
+        for (Map<String,Object> field : parseColumsList())
         {
             String key = com.jladder.lang.Collections.haveKey(field,"unique");
             if(Strings.isBlank(key))continue;
@@ -1060,7 +1136,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="propName">属性名</param>
     /// <param name="val">值,如果为null，所有含有此属性的</param>
     /// <returns></returns>
-    public List<String> GetFields(String propName, Object ... val){
+    public List<String> getFields(String propName, Object ... val){
         List<String> rList = new ArrayList<String>();
         if (columns == null) return rList;
         for (Map<String, Object> field : ColumnList){
@@ -1081,9 +1157,9 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="fieldname">字段名称,可以是别名</param>
     /// <returns></returns>
-    public Map<String,Object> GetFieldConfig(String fieldname)
+    public Map<String,Object> getFieldConfig(String fieldname)
     {
-        List<Map<String, Object>> list = ParseColumsList();
+        List<Map<String, Object>> list = parseColumsList();
         if(list==null)return null;
         return com.jladder.lang.Collections.first(list, x-> fieldname.equals(com.jladder.lang.Collections.getString(x,"fieldname,name,as",true))).item2;
     }
@@ -1093,7 +1169,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="propName">欲修改属性名</param>
     /// <param name="value">属性值</param>
     /// <param name="fields">字段名称集合</param>
-    public void UpdateFieldConfig(String propName, Object value, List<String> fields){
+    public void updateFieldConfig(String propName, Object value, List<String> fields){
         if (fields == null || fields.size()<1 || ColumnList==null || ColumnList.size()<1) return;
         ColumnList.forEach(c ->
         {
@@ -1112,7 +1188,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="propName">欲修改属性名</param>
     /// <param name="value">属性值</param>
     /// <param name="fields">字段名数组</param>
-    public void UpdateFieldConfig(String propName, Object value, String ... fields){
+    public void updateFieldConfig(String propName, Object value, String ... fields){
         if (fields == null || fields.length<1 || ColumnList==null || ColumnList.size()<1) return;
         ColumnList.forEach(c ->
         {
@@ -1133,7 +1209,7 @@ public class DataModelForMap extends IDataModel{
     /// <example>id,name</example>
     /// </param>
     /// <returns></returns>
-    public String MatchFieldName(String matchStr){
+    public String matchFieldName(String matchStr){
         throw Core.makeThrow("未实现");
 //        if (matchStr.IsBlank()) return null;
 //        List<Map<string, object>> fulList = ParseColumsList();
@@ -1144,15 +1220,15 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="name">事件名称</param>
     /// <param name="action">事件配置</param>
-    public void AddEvent(String name, Curd action){
-        AddEvent(name, Record.parse(action));
+    public void addEvent(String name, Curd action){
+        addEvent(name, Record.parse(action));
     }
     /// <summary>
     /// 添加事件
     /// </summary>
     /// <param name="name">事件名称</param>
     /// <param name="action">事件配置</param>
-    public void AddEvent(String name, Record action){
+    public void addEvent(String name, Record action){
         if(Strings.isBlank(name)||action==null)return;
         if(Events==null)Events=new HashMap<String, List<Record>>();
         String key = com.jladder.lang.Collections.haveKey(Events,name);
@@ -1178,7 +1254,7 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="key">键名</param>
     /// <returns></returns>
-    public List<Record> GetRelationAction(String key){
+    public List<Record> getRelationAction(String key){
         if (Strings.isBlank(key)) return null;
         if (Events == null) return null;
         //if (key != "query" && Type != DataModelType.Table) return null;
@@ -1192,11 +1268,11 @@ public class DataModelForMap extends IDataModel{
     /// <para>2,{}对象文本</para>
     /// <para>3,name='ddd' 键值文本</para>
     /// </summary>
-    public void SetCondition(String conditionText){
+    public void setCondition(String conditionText){
         if (Strings.isBlank(conditionText)) return;
         if (Condition == null)
         {
-            Condition = new Cnd(ParseColumsList(), (DbDialect == DbDialectType.Default ? DaoSeesion.GetDialect(Conn) : DbDialect));
+            Condition = new Cnd(parseColumsList(), (DbDialectType.Default.equals(DbDialect) || DbDialect == null ? DaoSeesion.GetDialect(Conn) : DbDialect));
         }
         Condition.put(conditionText);
     }
@@ -1205,16 +1281,16 @@ public class DataModelForMap extends IDataModel{
      * 设置条件
      * @param sqldic 键值条件
      */
-    public void SetCondition(Map<String, Object> sqldic){
+    public void setCondition(Map<String, Object> sqldic){
         if (sqldic == null) return;
-        if (Condition == null) Condition = new Cnd(ParseColumsList(), (DbDialect == DbDialectType.Default ? DaoSeesion.GetDialect(Conn) : DbDialect));
+        if (Condition == null) Condition = new Cnd(parseColumsList(), (DbDialectType.Default.equals(DbDialect) || DbDialect == null ? DaoSeesion.GetDialect(Conn) : DbDialect));
         Condition.put(sqldic);
     }
     /// <summary>
     /// 插入条件
     /// </summary>
     /// <param name="cnd">条件对象</param>
-    public void SetCondition(Cnd cnd)
+    public void setCondition(Cnd cnd)
     {
         if (cnd == null) return;
         if (Condition == null) Condition = cnd;
@@ -1225,13 +1301,13 @@ public class DataModelForMap extends IDataModel{
     /// 获取文本化sql语句
     /// </summary>
     /// <returns></returns>
-    public SqlText SqlText(){
-        SqlText where = GetWhere();
-        return new SqlText("select " + GetColumn() + " from "
-                + GetTableName()
+    public SqlText getSqlText(){
+        SqlText where =getWhere();
+        return new SqlText("select " + getColumn() + " from "
+                + getTableName()
                 + where.getCmd()
-                + GetGroup()
-                + GetOrder(),
+                + getGroup()
+                + getOrder(),
                 where.getParameters());
     }
     /// <summary>
@@ -1240,62 +1316,62 @@ public class DataModelForMap extends IDataModel{
     /// <param name="dialect">数据库方言</param>
     /// <param name="pager">分页对象</param>
     /// <returns></returns>
-    public SqlText PagingSqlText(DbDialectType dialect, Pager pager){
+    public SqlText pagingSqlText(DbDialectType dialect, Pager pager){
         switch (dialect){
         case ORACLE:
             String last =") T WHERE ROWNUM <= "+pager.getOffset() + pager.getPageSize()+") WHERE RN > "+pager.getOffset();
-            return new SqlText("SELECT * FROM (SELECT T.*, ROWNUM RN FROM (" + SqlText() + last,Condition.parameters);
+            return new SqlText("SELECT * FROM (SELECT T.*, ROWNUM RN FROM (" + getSqlText() + last,Condition.parameters);
         case Mssql2000:
         case SQLSERVER:
         //兼容2000数据库，效率不高
             if (pager.getOffset() <= 0){
-                return new SqlText("select top "+pager.getPageSize()+" " + GetColumn() + " from " + GetTableName() + GetWhere().cmd +
-                    GetGroup() + GetOrder(),Condition.parameters);
+                return new SqlText("select top "+pager.getPageSize()+" " + getColumn() + " from " + getTableName() + getWhere().cmd +
+                    getGroup() + getOrder(),Condition.parameters);
             }
             else{
-                List<String> genfield = GetFields("gen", "id", "uuid", "autonum");
+                List<String> genfield = getFields("gen", "id", "uuid", "autonum");
                 String gen = genfield.size() > 0 ? genfield.get(0) : "id";
-                SqlText where = GetWhere();
-                String noinclude= gen+" not in (select top "+ pager.getOffset()+" " + gen+" from "+ GetTableName()+ where.cmd + GetGroup() + GetOrder()+")";
-                return new SqlText("select top "+pager.getPageSize() +" "+ GetColumn() + " from " + GetTableName()
+                SqlText where = getWhere();
+                String noinclude= gen+" not in (select top "+ pager.getOffset()+" " + gen+" from "+ getTableName()+ where.cmd + getGroup() + getOrder()+")";
+                return new SqlText("select top "+pager.getPageSize() +" "+ getColumn() + " from " + getTableName()
                     + (Strings.hasValue(where.cmd)?(where.cmd + " and "+noinclude):(" where "+ noinclude))
-                    + GetGroup() + GetOrder(), Condition.parameters);
+                    + getGroup() + getOrder(), Condition.parameters);
             }
         case Mssql2005:
         case Mssql2008:
         case Mssql2012:
              return new SqlText("select * from (select row_number() over (order by __tc__)__rn__,* from (select top "+pager.getOffset() + pager.getPageSize()+" 0 __tc__, " +
-                 SqlText().cmd.substring(6) + ") t) tt where __rn__ > "+pager.getOffset(),Condition.parameters);
+                 getSqlText().cmd.substring(6) + ") t) tt where __rn__ > "+pager.getOffset(),Condition.parameters);
         case MYSQL:
-            return new SqlText(SqlText().cmd + " limit " + (pager.getPageNumber() - 1) * pager.getPageSize() + "," + pager.getPageSize(),Condition.parameters);
+            return new SqlText(getSqlText().cmd + " limit " + (pager.getPageNumber() - 1) * pager.getPageSize() + "," + pager.getPageSize(),Condition.parameters);
         case SQLITE:
-             return new SqlText(SqlText().cmd + " limit " + (pager.getPageNumber() - 1) * pager.getPageSize() + "," + pager.getPageSize(),Condition.parameters);
+             return new SqlText(getSqlText().cmd + " limit " + (pager.getPageNumber() - 1) * pager.getPageSize() + "," + pager.getPageSize(),Condition.parameters);
         }
-        return SqlText();
+        return getSqlText();
     }
     /// <summary>
     /// 清空条件语句
     /// </summary>
-    public void ClearCondition()
+    public void clearCondition()
     {
         Condition.clear();
     }
     /// <summary>
     /// 返回模版的列模型
     /// </summary>
-    public List<Map<String, Object>> GetColumnList(){
-        return GetColumnList("");
+    public List<Map<String, Object>> getColumnList(){
+        return getColumnList("");
     }
     /// <summary>
     /// 获取当前的条件文本
     /// </summary>
     /// <returns></returns>
-    public SqlText GetWhere(){
+    public SqlText getWhere(){
         Cnd where = Condition;
         //检查表达式
         String expressSqlText = "";
         if (expressList.size() > 0){
-            Cnd cnd = new Cnd(ParseColumsList(), DbDialect);
+            Cnd cnd = new Cnd(parseColumsList(), DbDialect);
             for (String expressStr : expressList){
                 cnd.clear();
                 String  condtiontext = cnd.put(expressStr).getWhere(false,false);
@@ -1326,12 +1402,14 @@ public class DataModelForMap extends IDataModel{
     /// 获取表名
     /// </summary>
     /// <returns></returns>
-    public String GetTableName() { return TableName; }
+    public String getTableName() {
+        return TableName;
+    }
     /// <summary>
     /// 获取节选的字段和别名
     /// </summary>
     /// <returns></returns>
-    public Map<String, String> GetSelect()
+    public Map<String, String> getSelect()
     {
         return columns;
     }
@@ -1340,18 +1418,18 @@ public class DataModelForMap extends IDataModel{
     /// 获取字段文本串
     /// </summary>
     /// <returns></returns>
-    public String GetColumn() { return GetColumn("", ","); }
+    public String getColumn() { return getColumn("", ","); }
     /// <summary>
     /// 获取字段文本串
     /// </summary>
     /// <param name="prefix">前缀文本</param>
     /// <param name="splitStr">分隔符</param>
     /// <returns></returns>
-    public String GetColumn(String prefix, String splitStr) {
+    public String getColumn(String prefix, String splitStr) {
         final String[] reT = {""};
         if (columns == null || columns.size() == 0) return reT[0];
         String wraptext = "";
-        if (Type == DataModelType.Table && DbDialect==DbDialectType.MYSQL){
+        if (DataModelType.Table.equals(Type) && DbDialectType.MYSQL.equals(DbDialect)){
             wraptext = "`";
         }
 
@@ -1365,13 +1443,13 @@ public class DataModelForMap extends IDataModel{
     /// 获取分组文本串
     /// </summary>
     /// <returns></returns>
-    public String GetGroup() {
+    public String getGroup() {
         return Group != null?Group.toString() : "";
     }
     /// <summary>
     /// 获取排序的串
     /// </summary>
-    public String GetOrder(){
+    public String getOrder(){
         return Order!= null?Order.toString() : "";
     }
 
@@ -1386,14 +1464,14 @@ public class DataModelForMap extends IDataModel{
     /// <summary>
     /// 从模版中取出queryform段
     /// </summary>
-    public Object GetQueryForm(){
+    public Object getQueryForm(){
         return Raw.QueryForm;
     }
     /// <summary>
     /// 获取可用于过滤查询的列
     /// <para>1,和FullColumn之处：顺序，负值隐藏</para>
     /// </summary>
-    public List<Map<String, Object>> GetAllQueryColumns(){
+    public List<Map<String, Object>> getAllQueryColumns(){
         java.util.Collections.sort(FullColumns, Comparator.comparingInt(x -> com.jladder.lang.Collections.getInt(x,"isshow",true)));
         return com.jladder.lang.Collections.where(FullColumns, x->!Regex.isMatch(com.jladder.lang.Collections.getString(x,"ishow"),"^-"));
     }
@@ -1401,7 +1479,7 @@ public class DataModelForMap extends IDataModel{
     /// 获取全字段
     /// </summary>
     /// <returns></returns>
-    public List<Map<String, Object>> GetFullColumns(){
+    public List<Map<String, Object>> getFullColumns(){
         return FullColumns;
     }
 
@@ -1412,13 +1490,13 @@ public class DataModelForMap extends IDataModel{
     /// <param name="dao">数据库连接对象</param>
     /// <returns></returns>
     /// <remarks>过期</remarks>
-    public static String GetTableName(String name, IDao dao){
+    public static String getTableName(String name, IDao dao){
         //throw Core.makeThrow("未实现");
         IDataModel dm = DaoSeesion.getDataModel(dao, name, null);
         return dm.TableName;
     }
-    public String MatchParam(String source, String paramDataDic){
-        return MatchParam(source,paramDataDic,false);
+    public String matchParam(String source, String paramDataDic){
+        return matchParam(source,paramDataDic,false);
     }
     /// <summary>
     /// 匹配参数数据
@@ -1427,7 +1505,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="paramDataDic">匹配的数据字典</param>
     /// <param name="ignore">忽略严格匹配，3个参数，3个param数据</param>
     /// <returns></returns>
-    public String MatchParam(String source, String paramDataDic, boolean ignore){
+    public String matchParam(String source, String paramDataDic, boolean ignore){
 
         if (Strings.isBlank(source)) return null;
         if (Strings.isBlank(paramDataDic) && Raw.Params == null) return Strings.mapping(source);
@@ -1468,14 +1546,14 @@ public class DataModelForMap extends IDataModel{
     /// 重置模版
     /// </summary>
     /// <param name="param"></param>
-    public void Reset(String param){
-        FromRaw(Raw, param);
+    public void reset(String param){
+        fromRaw(Raw, param);
     }
     /// <summary>
     /// 获取模版连接器对应的数据库连接操作对象
     /// </summary>
     /// <returns></returns>
-    public IDao FetchConnDao(){
+    public IDao fetchConnDao(){
         if (Strings.isBlank(Raw.Conn)) return Dao !=null ? Dao : DaoSeesion.GetDao(DataHub.TemplateConn);
         else return DaoSeesion.NewDao(Raw.Conn);
     }
@@ -1483,7 +1561,7 @@ public class DataModelForMap extends IDataModel{
     /// 验证权限密钥
     /// </summary>
     /// <param name="permission">权限配置文本</param>
-    private void CheckPermission(String permission){
+    private void checkPermission(String permission){
 
         if (permission.indexOf(".") > 0){
             String[] hander = permission.split(".");
@@ -1509,21 +1587,21 @@ public class DataModelForMap extends IDataModel{
     /// 获取原型数据
     /// </summary>
     /// <returns></returns>
-    public Object GetRaw(){
+    public DataModelForMapRaw getRaw(){
         return Raw;
     }
     /// <summary>
     /// 获取脚本代码
     /// </summary>
     /// <returns></returns>
-    public String GetScript(){
+    public String getScript(){
         return Raw.Script;
     }
     /// <summary>
     /// 是否可用
     /// </summary>
     /// <returns></returns>
-    public boolean Enable(){
+    public boolean enable(){
         if (Strings.hasValue(Raw.Enable) && Regex.isMatch(Raw.Enable.trim().toLowerCase(), "^(false)|0")) return false;
         else return true;
     }
@@ -1534,7 +1612,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="fileName"></param>
     /// <param name="node"></param>
     /// <returns></returns>
-    public static List<IDataModel> GenDataModels(String fileName,String node){
+    public static List<IDataModel> genDataModels(String fileName,String node){
         throw Core.makeThrow("未实现");
 //        if (node.HasValue()) node = "," + node + ",";
 //        var ret=new List<IDataModel>();

@@ -136,9 +136,9 @@ public class Stopwatch {
     }
 
     /**
-     * 返回格式为 <code>Total: [计时时间][计时时间单位] : [计时开始时间]=>[计时结束时间]</code> 的字符串
+     * 返回格式为 <code>Total: [计时时间][计时时间单位] : [计时开始时间]=＞[计时结束时间]</code> 的字符串
      * 
-     * @return 格式为 <code>Total: [计时时间][计时时间单位] : [计时开始时间]=>[计时结束时间]</code> 的字符串
+     * @return 格式为 <code>Total: [计时时间][计时时间单位] : [计时开始时间]=＞[计时结束时间]</code> 的字符串
      */
     @Override
     public String toString() {

@@ -1,6 +1,10 @@
 package com.jladder.db;
 
 import com.jladder.db.enums.DbParameterDataType;
+import com.jladder.lang.Core;
+import com.jladder.lang.Json;
+
+import java.util.Date;
 
 public class DbParameter {
 
@@ -39,7 +43,14 @@ public class DbParameter {
     public DbParameter(String name,Object value){
         type=DbParameterDataType.Default;
         this.name = name;
-        this.value=value;
+        if(value==null || Core.isBaseType(value.getClass(),true))this.value=value;
+        else{
+            if(value instanceof Date){
+                this.value = value;
+                return;
+            }
+            this.value = Json.toJson(value);
+        }
     }
     public DbParameter(String name,Object value,boolean out){
         type=DbParameterDataType.Default;

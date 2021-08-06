@@ -157,7 +157,7 @@ public enum  DbSqlDataType
 
     public static int getIndex(DbSqlDataType type) {
         for (DbSqlDataType c : DbSqlDataType.values()) {
-            if (c == type) {
+            if (type.equals(c)) {
                 return c.index;
             }
         }

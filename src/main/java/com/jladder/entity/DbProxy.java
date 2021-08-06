@@ -20,7 +20,7 @@ public class DbProxy implements Serializable {
     /// <summary>返回处理</summary>
     public String returns ;
     /// <summary>请求方式</summary>
-    public String Method ;
+    public String method ;
     /// <summary>类型</summary>
     public String type ;
     /// <summary>调用者</summary>

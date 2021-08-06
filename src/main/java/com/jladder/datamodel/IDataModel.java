@@ -1,6 +1,7 @@
 package com.jladder.datamodel;
 
 
+import com.alibaba.fastjson.annotation.JSONField;
 import com.jladder.actions.Curd;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
@@ -21,84 +22,113 @@ import java.util.Map;
 /// </summary>
 public abstract class  IDataModel
 {
-    /// <summary>
-    /// 列模型,模型根据条件会变短
-    /// </summary>
-    List<Map<String, Object>> ColumnList;
+//    /// <summary>
+//    /// 列模型,模型根据条件会变短
+//    /// </summary>
+    protected List<Map<String, Object>> ColumnList;
+//
+//    /// <summary>
+//    /// 整体模型，原型集合
+//    /// </summary>
+    protected DataModelForMapRaw Raw = new DataModelForMapRaw();
 
-    /// <summary>
-    /// 整体模型，原型集合
-    /// </summary>
-    public DataModelForMapRaw Raw = new DataModelForMapRaw();
 
-    /// <summary>
-    /// 数据库连接文本，用于跨域操作，数据库连接键名或者数据库连接的json文本
-    /// </summary>
-    public String Conn;
 
-    /// <summary>
-    /// 条件对象
-    /// </summary>
-    public Cnd Condition = new Cnd();
+    //
+//    /// <summary>
+//    /// 数据库连接文本，用于跨域操作，数据库连接键名或者数据库连接的json文本
+//    /// </summary>
+    protected String Conn;
+//
+//    /// <summary>
+//    /// 条件对象
+//    /// </summary>
+    protected  Cnd Condition = new Cnd();
+//
+//    /// <summary>
+//    /// 排序对象
+//    /// </summary>
+    protected OrderBy Order;
+//
+//    /// <summary>
+//    /// 数据库操作对象
+//    /// </summary>
+      protected IDao Dao;
+//
+//    /// <summary>
+//    /// 分组对象
+//    /// </summary>
+    protected GroupBy Group;
+//
 
-    /// <summary>
-    /// 排序对象
-    /// </summary>
-    OrderBy Order;
+    /***
+     * 真实的数据
+     */
+     public String TableName;
+//    /// <summary>
+//    /// 全字段
+//    /// </summary>
+//    public List<Map<String, Object>> FullColumns;
+//    /// <summary>
+//    /// 类型
+//    /// </summary>
+    public DataModelType Type = DataModelType.Table;;
+//
+//    /// <summary>
+//    /// 数据库类型
+//    /// </summary>
+    protected DbDialectType DbDialect ;
 
-    /// <summary>
-    /// 数据库操作对象
-    /// </summary>
-    public IDao Dao;
+    public String getName(){
+        if(Raw==null)return "";
+        return Raw.Name;
+    }
+    public DataModelType getType() {
+        return Type;
+    }
+    public IDao getDao(){
+        return Dao;
+    }
+    public String getConn() {
+        return Conn;
+    }
 
-    /// <summary>
-    /// 分组对象
-    /// </summary>
-    GroupBy Group;
+    public void setConn(String conn) {
+        Conn = conn;
+    }
 
-    /// <summary>
-    /// 真实的数据
-    /// </summary>
-    public String TableName;
-    /// <summary>
-    /// 全字段
-    /// </summary>
-    public List<Map<String, Object>> FullColumns;
-    /// <summary>
-    /// 类型
-    /// </summary>
-    public DataModelType Type;
-
-    /// <summary>
-    /// 数据库类型
-    /// </summary>
-    public DbDialectType DbDialect;
+    public DbDialectType getDialect(){
+        return DbDialect;
+    }
+    public Cnd getCondition(){
+        return Condition;
+    }
 
     /// <summary>
     /// 从JSON文件初始化
     /// </summary>
     /// <param name="path">文件路径</param>
     /// <param name="nodeName">节点名称</param>
-    public abstract boolean FromJsonFile(String path, String nodeName);
+    public abstract boolean fromJsonFile(String path, String nodeName);
 
     /// <summary>
     /// 从魔法实体类中获取
     /// </summary>
-    public abstract boolean FromMagic(DBMagic magic, String client);
+    public abstract boolean fromMagic(DBMagic magic, String client);
 
     /// <summary>
     /// 从数据库键名解析
     /// </summary>
     /// <param name="name">键名表名</param>
     /// <returns></returns>
-    public abstract  int FromTemplate(String name);
+    public abstract  int fromTemplate(String name);
 
     /// <summary>
     /// 从数据库实表解析
     /// </summary>
     /// <param name="table">表名或sql语句</param>
     /// <returns></returns>
-    public abstract int FromDbTable(String table);
+    public abstract int fromDbTable(String table);
 
 //    /// <summary>
 //    /// 从xml元素解析
@@ -113,7 +143,7 @@ public abstract class  IDataModel
     /// </summary>
     /// <param name="raw">原型数据</param>
     /// <param name="param">参数数据</param>
-    public abstract void FromRaw(DataModelForMapRaw raw, String param);
+    public abstract void fromRaw(DataModelForMapRaw raw, String param);
 
     /// <summary>
     /// 从模版实体类中获取
@@ -122,12 +152,12 @@ public abstract class  IDataModel
     /// <param name="tableName">键表名</param>
     /// <param name="param">参数列表</param>
     /// <returns></returns>
-    public abstract int FromDataTable(IDao dao, String tableName, String param);
+    public abstract int fromDataTable(IDao dao, String tableName, String param);
 
     /// <summary>
     /// 从模版实体类中获取
     /// </summary>
-    public abstract int FromDataTable(DataModelTable dt);
+    public abstract int fromDataTable(DataModelTable dt);
 
     /// <summary>
     /// 从模版实体类中获取
@@ -135,7 +165,7 @@ public abstract class  IDataModel
     /// <param name="dt">数据库模版类</param>
     /// <param name="param">参数列表</param>
     /// <returns></returns>
-    public abstract int FromDataTable(DataModelTable dt, String param);
+    public abstract int fromDataTable(DataModelTable dt, String param);
 
     /***
      * 添加列模型
@@ -161,7 +191,7 @@ public abstract class  IDataModel
     /// </summary>
     /// <param name="filterCName">字段名</param>
     /// <returns></returns>
-    public abstract List<Map<String, Object>> FilterColumns(String filterCName);
+    public abstract List<Map<String, Object>> filterColumns(String filterCName);
 
     /// <summary>
     ///  过滤列模型数据，此方法在初始化过程首次执行一次，以此过滤isshow=false的字段
@@ -171,19 +201,19 @@ public abstract class  IDataModel
     /// <summary>
     /// 字段匹配，默认以fieldname,支持排序，自序，反向,变名
     /// </summary>
-    public abstract List<Map<String, Object>> MatchColumns(String columnString);
+    public abstract List<Map<String, Object>> matchColumns(String columnString);
 
     /// <summary>
     /// 具体执行字段匹配，默认以fieldname,支持排序，自序，反向,变名
     /// </summary>
-    public abstract List<Map<String, Object>> MatchColumns(String columnString, String propName);
+    public abstract List<Map<String, Object>> matchColumns(String columnString, String propName);
 
-    public abstract List<Map<String, Object>> ParseColumsList();
+    public abstract List<Map<String, Object>> parseColumsList();
     /// <summary>
     /// 从模版中取出Columns段
     /// <para>注意：这是字段原型数据</para>
     ///  </summary>
-    public abstract List<Map<String, Object>> ParseColumsList(Object rawData);
+    public abstract List<Map<String, Object>> parseColumsList(Object rawData);
 
     /// <summary>
     /// 生成Bean实体对象
@@ -192,27 +222,27 @@ public abstract class  IDataModel
     /// <param name="option">选项</param>
     /// <param name="message">回馈信息</param>
     /// <returns></returns>
-    public abstract Record GenBean(String bean, int option, StringBuilder message);
+    public abstract Record genBean(String bean, int option, StringBuilder message);
 
     /// <summary>
     /// 获取重复检查的字段(bean中字段)
     /// </summary>
     /// <param name="bean"></param>
     /// <returns></returns>
-    public abstract List<String> HasUniqueFields(Record bean);
+    public abstract List<String> hasUniqueFields(Record bean);
 
     /// <summary>
     /// 获取重复检查的字段
     /// </summary>
     /// <returns></returns>
-    public abstract List<String> HasUniqueFields();
+    public abstract List<String> hasUniqueFields();
 
     /// <summary>
     /// 获取字段配置
     /// </summary>
     /// <param name="fieldname">字段名称,可以是别名</param>
     /// <returns></returns>
-    public abstract Map<String, Object> GetFieldConfig(String fieldname);
+    public abstract Map<String, Object> getFieldConfig(String fieldname);
 
     /// <summary>
     /// 根据属性以及属性数值获取字段组，可变参数为或的关系
@@ -220,7 +250,7 @@ public abstract class  IDataModel
     /// <param name="propName">属性名</param>
     /// <param name="val">值,如果为null，所有含有此属性的</param>
     /// <returns></returns>
-    public abstract List<String> GetFields(String propName, Object ... val);
+    public abstract List<String> getFields(String propName, Object ... val);
     /// <summary>
     /// 更新字段配置,注意最后是字段数组
     /// </summary>
@@ -228,14 +258,14 @@ public abstract class  IDataModel
     /// <param name="value">属性值</param>
     /// <param name="fields">字段名数组</param>
 
-    public abstract void UpdateFieldConfig(String propName, Object value, String ... fields);
+    public abstract void updateFieldConfig(String propName, Object value, String ... fields);
     /// <summary>
     /// 更新字段配置,注意最后是字段名集合
     /// </summary>
     /// <param name="propName">欲修改属性名</param>
     /// <param name="value">属性值</param>
     /// <param name="fields">字段名称集合</param>
-    public abstract void UpdateFieldConfig(String propName, Object value, List<String> fields);
+    public abstract void updateFieldConfig(String propName, Object value, List<String> fields);
 
 
     /// <summary>
@@ -246,52 +276,52 @@ public abstract class  IDataModel
     /// <example>id,name</example>
     /// </param>
     /// <returns></returns>
-    public abstract String MatchFieldName(String matchStr);
+    public abstract String matchFieldName(String matchStr);
 
     /// <summary>
     /// 添加事件
     /// </summary>
     /// <param name="name">事件名称</param>
     /// <param name="action">事件配置</param>
-    public abstract void AddEvent(String name, Record action);
+    public abstract void addEvent(String name, Record action);
 
     /// <summary>
     /// 添加事件
     /// </summary>
     /// <param name="name">事件名称</param>
     /// <param name="action">事件配置</param>
-    public abstract void AddEvent(String name, Curd action);
+    public abstract void addEvent(String name, Curd action);
     /// <summary>
     /// 获得关联动作
     /// </summary>
     /// <param name="key">动作事件名称</param>
-    public abstract  List<Record> GetRelationAction(String key);
+    public abstract  List<Record> getRelationAction(String key);
 
     /// <summary>组装sql字符串，conditionText可为
     /// <para>1,[]数组文本,</para>
     /// <para>2,{}对象文本</para>
     /// <para>3,name='ddd' 键值文本</para>
     /// </summary>
-    public abstract void SetCondition(String conditionText);
+    public abstract void setCondition(String conditionText);
 
     /// <summary>
     ///
     /// </summary>
     /// <param name="sqldic"></param>
     /// <returns></returns>
-    public abstract void SetCondition(Map<String, Object> sqldic);
+    public abstract void setCondition(Map<String, Object> sqldic);
 
     /// <summary>
     /// 插入条件
     /// </summary>
     /// <param name="cnd">条件对象</param>
-    public abstract void SetCondition(Cnd cnd);
+    public abstract void setCondition(Cnd cnd);
 
     /// <summary>
     /// 获取文本化sql语句
     /// </summary>
     /// <returns></returns>
-    public abstract SqlText SqlText();
+    public abstract SqlText getSqlText();
 
     /// <summary>
     /// 获取模版的分页语句(为什么需要一个数据库方言呢)
@@ -299,12 +329,12 @@ public abstract class  IDataModel
     /// <param name="dialect">数据库方言</param>
     /// <param name="pager">分页对象</param>
     /// <returns></returns>
-    public abstract SqlText PagingSqlText(DbDialectType dialect, Pager pager);
+    public abstract SqlText pagingSqlText(DbDialectType dialect, Pager pager);
 
     /// <summary>
     /// 清空条件语句
     /// </summary>
-    public abstract void ClearCondition();
+    public abstract void clearCondition();
 
 
     /// <summary>
@@ -312,36 +342,36 @@ public abstract class  IDataModel
     /// </summary>
     /// <param name="pname">排序属性</param>
     /// <returns></returns>
-    public abstract List<Map<String, Object>> GetRawColumnList(String pname);
-    public abstract List<Map<String, Object>> GetColumnList();
+    public abstract List<Map<String, Object>> getRawColumnList(String pname);
+    public abstract List<Map<String, Object>> getColumnList();
     /// <summary>
     /// 返回模版的列模型
     /// </summary>
-    public abstract List<Map<String, Object>> GetColumnList(String propName);
+    public abstract List<Map<String, Object>> getColumnList(String propName);
 
     /// <summary>
     /// 获取当前的条件文本
     /// </summary>
     /// <returns></returns>
-    public abstract SqlText GetWhere();
+    public abstract SqlText getWhere();
 
     /// <summary>
     /// 获取表名
     /// </summary>
     /// <returns></returns>
-    public abstract String GetTableName();
+    public abstract String getTableName();
 
     /// <summary>
     /// 获取节选的字段和别名
     /// </summary>
     /// <returns></returns>
 
-    public abstract Map<String, String> GetSelect();
+    public abstract Map<String, String> getSelect();
     /// <summary>
     /// 获取字段文本串
     /// </summary>
     /// <returns></returns>
-    public abstract String GetColumn();
+    public abstract String getColumn();
 
 
 
@@ -352,18 +382,18 @@ public abstract class  IDataModel
     /// <param name="prefix">前缀文本</param>
     /// <param name="splitStr">分隔符</param>
     /// <returns></returns>
-    public abstract String GetColumn(String prefix, String splitStr);
+    public abstract String getColumn(String prefix, String splitStr);
 
     /// <summary>
     /// 获取分组文本串
     /// </summary>
     /// <returns></returns>
-    public abstract String GetGroup();
+    public abstract String getGroup();
 
     /// <summary>
     /// 获取排序的串
     /// </summary>
-    public abstract String GetOrder();
+    public abstract String getOrder();
 
     /// <summary>
     /// 判断是否为空模版
@@ -374,19 +404,19 @@ public abstract class  IDataModel
     /// <summary>
     /// 从模版中取出queryform段
     /// </summary>
-    public abstract Object GetQueryForm();
+    public abstract Object getQueryForm();
 
     /// <summary>
     /// 获取可用于过滤查询的列
     /// <para>1,和FullColumn之处：顺序，负值隐藏</para>
     /// </summary>
-    public abstract List<Map<String, Object>> GetAllQueryColumns();
+    public abstract List<Map<String, Object>> getAllQueryColumns();
 
     /// <summary>
     /// 获取全字段
     /// </summary>
     /// <returns></returns>
-    public abstract List<Map<String, Object>> GetFullColumns();
+    public abstract List<Map<String, Object>> getFullColumns();
 
     /// <summary>
     /// 匹配参数数据
@@ -395,36 +425,41 @@ public abstract class  IDataModel
     /// <param name="paramDataDic">匹配的数据字典</param>
     /// <param name="ignore">忽略严格匹配，3个参数，3个param数据</param>
     /// <returns></returns>
-    public abstract String MatchParam(String source, String paramDataDic, boolean ignore);
+    public abstract String matchParam(String source, String paramDataDic, boolean ignore);
 
     /// <summary>
     /// 重置扩展参数
     /// </summary>
     /// <param name="param"></param>
-    public abstract void Reset(String param);
+    public abstract void reset(String param);
 
     /// <summary>
     /// 获取模版连接器对应的数据库连接操作对象
     /// </summary>
     /// <returns></returns>
-    public abstract IDao FetchConnDao();
+    public abstract IDao fetchConnDao();
 
     /// <summary>
     /// 获取原型数据
     /// </summary>
     /// <returns></returns>
-    public abstract Object GetRaw();
+    public abstract DataModelForMapRaw getRaw();
 
     /// <summary>
     /// 获取脚本代码
     /// </summary>
     /// <returns></returns>
-    public abstract String GetScript();
+    public abstract String getScript();
     /// <summary>
     /// 是否可用
     /// </summary>
     /// <returns></returns>
-    public abstract boolean Enable();
+    public abstract boolean enable();
+
+    public void setDialect(DbDialectType dialect) {
+        this.DbDialect=dialect;
+    }
+
 
 }
 

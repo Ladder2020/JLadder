@@ -28,6 +28,19 @@ public class Security {
         return md5code;
     }
 
+    public static String md5(byte[] data){
+        byte[] secretBytes = null;
+        try {
+            secretBytes = MessageDigest.getInstance("md5").digest(data);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("没有这个md5算法！");
+        }
+        String md5code = new BigInteger(1, secretBytes).toString(16);
+        for (int i = 0; i < 32 - md5code.length(); i++) {
+            md5code = "0" + md5code;
+        }
+        return md5code;
+    }
 
     public static  Receipt<Record> encryptByHead(String tag,Record data,String sign, String key){
         return encryptByHead(tag,data,sign,key,"",0,new Record());
@@ -101,4 +114,31 @@ public class Security {
         return (new BASE64Encoder()).encode(data.getBytes(StandardCharsets.UTF_8));
     }
 
+    public static String encryptByBase64(byte[] data){
+        return (new BASE64Encoder()).encode(data);
+    }
+
+    public static String EncryptByBase2(String source)
+    {
+        if (Strings.isBlank(source)) return "";
+        String base64Str = encryptByBase64(source);
+        int position = R.random(0, source.length()>9 ? 9 : source.length());
+        int len = R.random(0, 5);
+        String md5 = md5(base64Str + position + len) + "qwerrttyuioplkjhgfgddasszxxccvvbnnm963257411";
+        return len == 0 ? position +""+ len + base64Str : position+ "" + len + base64Str.substring(0, position) + md5.substring(0, len) +base64Str.substring(position);
+    }
+    public static String DecryptByBase2(String source)
+    {
+        if (Strings.isBlank(source) || !Regex.isMatch(source, "^\\d{2}")) return null;
+        try {
+            int position = Convert.toInt(source.substring(0, 1));
+            int len = Convert.toInt(source.substring(1, 2));
+            String data = source.substring(2);
+            if (len == 0) return decryptByBase64(data);
+            String raw = data.substring(0, position) + data.substring(position + len);
+            return decryptByBase64(raw);
+        }catch (Exception e){
+            return null;
+        }
+    }
 }

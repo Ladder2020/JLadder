@@ -1,7 +1,11 @@
 package com.jladder.lang;
+import com.jladder.lang.func.Tuple3;
+import com.jladder.lang.func.Tuple4;
+
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,6 +16,8 @@ import java.util.regex.Pattern;
  * @author zozoh(zozohtnt@gmail.com)
  */
 public abstract class Times {
+
+    public static Date MinValue=new Date(0);
 
     private static final Pattern _p_tm = Pattern.compile("^([0-9]{1,2}):([0-9]{1,2})(:([0-9]{1,2})([.,]([0-9]{1,3}))?)?$");
 
@@ -155,6 +161,17 @@ public abstract class Times {
         return sD(new Date());
     }
 
+    public static Date max() {
+       return new Date( Long.MAX_VALUE );
+    }
+
+    public static long getTime() {
+        return new Date().getTime();
+    }
+    public static long getTime(Date time) {
+        if(time==null)return -1;
+        return time.getTime();
+    }
     /**
      * 描述了一个时间（一天内）的结构信息
      */
@@ -1016,9 +1033,9 @@ public abstract class Times {
      * 
      * 比如:
      * 
-     * 100s -> 100000 <br>
-     * 2m -> 120000 <br>
-     * 3h -> 10800000 <br>
+     * 100s -＞ 100000 <br>
+     * 2m -＞ 120000 <br>
+     * 3h -＞ 10800000 <br>
      * 
      * @param tstr
      *            时间字符串
@@ -1060,7 +1077,7 @@ public abstract class Times {
     /**
      * 一段时间长度的毫秒数转换为一个时间长度的字符串
      * 
-     * 1000 -> 1S
+     * 1000 -＞ 1S
      * 
      * 120000 - 2M
      * 
@@ -1075,7 +1092,7 @@ public abstract class Times {
     /**
      * fromMillis的中文版本
      * 
-     * 1000 -> 1秒
+     * 1000 -＞ 1秒
      * 
      * 120000 - 2分
      * 
@@ -1307,7 +1324,56 @@ public abstract class Times {
     }
 
     /**
-     * 计算两个日期相差的天数，如果date2 > date1 返回正数，否则返回负数
+     * Date转换成本地时间
+     * @param date 日期时间
+     * @return
+     */
+    public static LocalDate toLocalDate(Date date){
+        Instant instant = date.toInstant();
+        ZoneId zoneId = ZoneId.systemDefault();
+        // atZone()方法返回在指定时区从此Instant生成的ZonedDateTime。
+        LocalDate localDate = instant.atZone(zoneId).toLocalDate();
+        return localDate;
+    }
+
+    /**
+     * 本地时间转换成Date
+     * @param localDate 本地时间
+     * @return
+     */
+    public static Date toDate(LocalDate localDate){
+        ZoneId zoneId = ZoneId.systemDefault();
+        ZonedDateTime zdt = localDate.atStartOfDay(zoneId);
+        Date date = Date.from(zdt.toInstant());
+        return date;
+    }
+
+    public static Period getDiff(Date start, Date end){
+        return Period.between(toLocalDate(start),toLocalDate(end));
+    }
+
+    public static Tuple4<Integer,Integer,Integer,Integer> getDuration(Date start, Date end){
+        if (start == null || start.equals(new Date(0))) return new Tuple4<Integer,Integer,Integer,Integer>(0,0,0,0);
+        if (Times.MinValue.equals(end)) end = new Date();
+        // 获得两个时间的毫秒时间差异
+        long diff = end.getTime() - start.getTime();
+        long nd = 1000 * 24 * 60 * 60;
+        long nh = 1000 * 60 * 60;
+        long nm = 1000 * 60;
+        long ns = 1000;
+        // 计算差多少天
+        long day = diff / nd;
+        // 计算差多少小时
+        long hour = diff % nd / nh;
+        // 计算差多少分钟
+        long min = diff % nd % nh / nm;
+        // 计算差多少秒//输出结果
+        long sec = diff % nd % nh % nm / ns;
+        return new Tuple4<Integer,Integer,Integer,Integer>((int)day,(int)hour,(int)min,(int)sec);
+    }
+
+    /**
+     * 计算两个日期相差的天数，如果date2 ＞ date1 返回正数，否则返回负数
      *
      * @param date1
      *            Date
@@ -1598,7 +1664,9 @@ public abstract class Times {
         cal.add(Calendar.MINUTE, minute);
         return cal.getTime();
     }
-
+    public static Date addSecond(int second){
+        return addSecond(new Date(),second);
+    }
     /**
      * 取得指定日期过 second 秒后的日期 (当 second 为负数表示指定秒之前)
      *

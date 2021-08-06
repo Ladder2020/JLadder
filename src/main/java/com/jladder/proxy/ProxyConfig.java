@@ -239,14 +239,14 @@ public class ProxyConfig {
         if(Rs.isBlank(rules))return null;
         if (userinfo == null)
         {
-            return Collections.select(Collections.where(rules,x -> x.eventcode == eventcode && (x.mappingtype == 1111)),x->x.value);
+            return Collections.select(Collections.where(rules,x -> eventcode.equals(x.eventcode) && (x.mappingtype == 1111)),x->x.value);
         }
         else
         {
-            return Collections.select(Collections.where(rules,x -> x.eventcode == eventcode && (
-                    (x.mappingtype == 1 && x.mappingvalue == userinfo.username) ||
+            return Collections.select(Collections.where(rules,x -> eventcode.equals(x.eventcode ) && (
+                    (x.mappingtype == 1 && Core.is(userinfo.username,x.mappingvalue) ) ||
                             (x.mappingtype == 2 && userinfo.groups.contains(x.mappingvalue)) ||
-                            (x.mappingtype == 3 && x.mappingvalue == userinfo.secret) ||
+                            (x.mappingtype == 3 &&  Core.is(userinfo.secret,x.mappingvalue) ) ||
                             (x.mappingtype == 1111))),x -> x.value);
         }
     }
@@ -271,14 +271,14 @@ public class ProxyConfig {
         if (Rs.isBlank(rules)) return null;
         if (userinfo == null)
         {
-            return Collections.where(rules,x->x.eventcode == eventcode && (x.mappingtype == 1111));
+            return Collections.where(rules,x->Core.is(x.eventcode,eventcode)  && (x.mappingtype == 1111));
         }
         else
         {
-            return Collections.where(rules,x -> x.eventcode == eventcode && (
-                (x.mappingtype == 1 && x.mappingvalue == userinfo.username) ||
+            return Collections.where(rules,x ->Core.is( x.eventcode , eventcode) && (
+                (x.mappingtype == 1 && Core.is(x.mappingvalue,userinfo.username)) ||
                         (x.mappingtype == 2 && userinfo.groups.contains(x.mappingvalue)) ||
-                        (x.mappingtype == 3 && x.mappingvalue == userinfo.secret) ||
+                        (x.mappingtype == 3 && Core.is(x.mappingvalue, userinfo.secret)) ||
                         (x.mappingtype == 1111)));
         }
     }

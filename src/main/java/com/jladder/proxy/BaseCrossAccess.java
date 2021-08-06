@@ -8,7 +8,7 @@ import com.jladder.hub.WebHub;
 import com.jladder.lang.Core;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
-import com.jladder.net.HttpHelper;
+import com.jladder.net.http.HttpHelper;
 import com.jladder.web.WebContext;
 import com.jladder.web.WebReply;
 
@@ -124,7 +124,7 @@ public class BaseCrossAccess implements ICrossAccess {
         //回复数据对象
         Object rett = null;
         //判断请求方式
-        if (Strings.hasValue(config.raw.Method) && !"all".equals(config.raw.Method.toLowerCase())  && !config.raw.Method.equals(mothed)) {
+        if (Strings.hasValue(config.raw.method) && !"all".equals(config.raw.method.toLowerCase())  && !config.raw.method.equals(mothed)) {
             rett = WebHub.CrossAccess.AssertResult(new AjaxResult(456, "请求方式被拒绝[0124]"), config, null);
             if (reply) WebReply.reply(rett);
             return rett;
@@ -165,7 +165,7 @@ public class BaseCrossAccess implements ICrossAccess {
             CrossAccessAuthInfo finalAuthinfo = authinfo;
             pool.execute(()->{
                 try {
-                    AjaxResult result = ProxyService.Execute(config, finalRequestData, env, header, finalAuthinfo, null);
+                    AjaxResult result = ProxyService.execute(config, finalRequestData, env, header, finalAuthinfo, null);
                     Object ret = WebHub.CrossAccess.AssertResult(result, config, finalAuthinfo);
                     if (Strings.isJson(callback,1)) {
                         Record cb = Record.parse(callback);
@@ -202,7 +202,7 @@ public class BaseCrossAccess implements ICrossAccess {
             if (reply) WebReply.reply(rett);
             return rett;
         } else {
-            AjaxResult result = ProxyService.Execute(config, requestData, env, header, authinfo, follow);
+            AjaxResult result = ProxyService.execute(config, requestData, env, header, authinfo, follow);
             rett = WebHub.CrossAccess.AssertResult(result, config, authinfo);
             //执行回调的断言处理
             if (reply) WebReply.reply(rett);
