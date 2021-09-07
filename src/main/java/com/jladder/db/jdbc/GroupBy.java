@@ -28,7 +28,7 @@ public class GroupBy
     public GroupBy(String groupText)
     {
         if (Strings.isBlank(groupText)) return;
-        AddGroup(groupText);
+        addGroup(groupText);
     }
     /// <summary>
     /// 初始化
@@ -55,7 +55,7 @@ public class GroupBy
     /// 修改条件文本
     /// </summary>
     /// <param name="havingText">条件文本</param>
-    public void Having(String havingText)
+    public void having(String havingText)
     {
         if (Strings.isBlank(havingText)) this._having = "";
         this._having = havingText;
@@ -65,7 +65,7 @@ public class GroupBy
     /// </summary>
     /// <param name="cnd">条件对象</param>
     /// <returns></returns>
-    public GroupBy PushHaving(Cnd cnd)
+    public GroupBy pushHaving(Cnd cnd)
     {
         this._having += " and " + cnd.getWhere(false,true);
         return this;
@@ -75,7 +75,7 @@ public class GroupBy
     /// </summary>
     /// <param name="cndStr">条件文本</param>
     /// <returns></returns>
-    public GroupBy PushHaving(String cndStr)
+    public GroupBy pushHaving(String cndStr)
     {
         this._having += " and " + cndStr;
         return this;
@@ -85,17 +85,17 @@ public class GroupBy
     /// </summary>
     /// <param name="cstr">字段文本</param>
     /// <returns></returns>
-    public GroupBy PushGroup(String groupText)
+    public GroupBy pushGroup(String groupText)
     {
         if (Strings.isBlank(groupText)) return this;
-        AddGroup(groupText);
+        addGroup(groupText);
         return this;
     }
     /// <summary>
     /// 添加一个分组项[内部方法]
     /// </summary>
     /// <param name="text">分组项文本</param>
-    private void AddGroup(String text)
+    public void addGroup(String text)
     {
         if (Strings.isBlank(text)) return;
         List<String> gs = Strings.splitByComma(text);
@@ -107,7 +107,7 @@ public class GroupBy
     /// <summary>
     /// 清空分组
     /// </summary>
-    public void Clear()
+    public void clear()
     {
         this._cs.clear();
         this._having = "";

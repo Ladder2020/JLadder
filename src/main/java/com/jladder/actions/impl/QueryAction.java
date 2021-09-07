@@ -184,28 +184,31 @@ public class QueryAction
         return getData(dm,null,true);
     }
 
-    /***
-     * 获取实体列表
-     * @param tableName 模版名称
-     * @param condition 条件
-     * @param clazz 类泛型
-     * @param <T>
-     * @return
-     */
+
+    /// <summary>
+    /// 获取实体列表
+    /// </summary>
+    /// <param name="tableName">模版名称</param>
+    /// <param name="condition">条件</param>
+    /// <param name="clazz">类泛型</param>
+    /// <param name="<T>"></param>
+    /// <returns></returns>
     public static <T> List<T> getData(String tableName, Cnd condition, Class<T> clazz) {
         return getData(tableName,condition,null,null,clazz);
     }
 
-    /***
-     * 获取实体列表
-     * @param tableName 模版名称
-     * @param condition 条件
-     * @param columns 列节选
-     * @param param 扩展参数
-     * @param clazz 类泛型
-     * @param <T>
-     * @return
-     */
+
+    /// <summary>
+    /// 获取实体列表
+    /// </summary>
+    /// <param name="tableName">模版名称</param>
+    /// <param name="condition">条件</param>
+    /// <param name="columns">列节选</param>
+    /// <param name="param">扩展参数</param>
+    /// <param name="clazz">类泛型</param>
+    /// <param name="<T>"></param>
+    /// <returns></returns>
+
     public static <T> List<T> getData(String tableName, Cnd condition, String columns, String param,Class<T> clazz)
     {
         if (Strings.isBlank(tableName)) return null;
@@ -253,11 +256,13 @@ public class QueryAction
         return new AjaxResult().setData(recordes);
     }
 
-    /***
-     * 获取数据(对外访问)
-     * @param tableName 模型名称
-     * @return
-     */
+
+    /// <summary>
+    /// 获取数据(对外访问)
+    /// </summary>
+    /// <param name="tableName">模型名称</param>
+    /// <returns></returns>
+
     public static AjaxResult getData(String tableName){
         return getData(tableName,"","","","");
     }
@@ -317,14 +322,15 @@ public class QueryAction
         dm.setCondition(condition);
         return getData(dm,null,true);
     }
-    /***
-     * 获取数据(对内服务)
-     * @param tableName 模版名称
-     * @param condition 条件对象
-     * @param columns 列节选
-     * @param param 扩展参数
-     * @return
-     */
+
+    /// <summary>
+    /// 获取数据(对内服务)
+    /// </summary>
+    /// <param name="tableName">模版名称</param>
+    /// <param name="condition">条件对象</param>
+    /// <param name="columns">列节选</param>
+    /// <param name="param">扩展参数</param>
+    /// <returns></returns>
     public static List<Record> getData(String tableName, String condition, String columns, String param)
     {
         if (Strings.isBlank(tableName)) return null;
@@ -430,6 +436,7 @@ public class QueryAction
             }
             else
             {
+                dm.setDialect(dao.getDialect());
                 dao.setTag(dm.getName());
                 List<Record> rs = dao.query(dm.getSqlText());
                 if (rs == null) return null;
@@ -444,6 +451,7 @@ public class QueryAction
         }
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
         KeepDao keepDao = keepDaoPool.CreateKeepDao(dm.getConn());
+        dm.setDialect(keepDao.Dao.getDialect());
         SqlText sql = dm.getSqlText();
         keepDao.Dao.setTag(dm.getName());
         if (subQueryAction == null)
@@ -990,6 +998,7 @@ public class QueryAction
      * @param condition 条件文本
      * @return
      */
+
     public static AjaxResult getValue(String tableName, String columns, String condition){
         return getValue(tableName,columns,condition,"","");
     }
@@ -1008,7 +1017,9 @@ public class QueryAction
         String v = getValue(tableName, columns, new Cnd(Strings.mapping(condition)), param, String.class);
         return v == null ? new AjaxResult(false).setRel(rel).setDuration(startTime) : new AjaxResult().setData(v).setRel(rel).setDuration(startTime);
     }
-
+    public static String getValue(String tableName, String columns, Cnd cnd){
+        return getValue(tableName,columns,cnd,null,String.class);
+    }
     /// <summary>
     /// 取值查询
     /// </summary>

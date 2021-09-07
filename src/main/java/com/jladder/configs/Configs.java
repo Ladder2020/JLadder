@@ -2,20 +2,22 @@ package com.jladder.configs;
 import com.alibaba.fastjson.JSONObject;
 import com.jladder.hub.DataHub;
 import com.jladder.data.Record;
+import com.jladder.lang.func.Func2;
 import com.jladder.lang.func.Tuple3;
 import com.jladder.lang.*;
 import org.springframework.core.io.ClassPathResource;
-
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/// <summary>
-/// 内部库的配置类
-/// </summary>
+/**
+ * 内部库的配置类
+ */
 public class Configs
 {
     /// <summary> 内部配置字典 </summary>
@@ -67,13 +69,12 @@ public class Configs
     /// </summary>
     /// <param name="path"></param>
     /// <returns></returns>
-    public static boolean LoadSettingsFromFile(String path)
-    {
+    public static boolean loadSettingsFromFile(String path){
         if (Strings.isBlank(path)) return false;
         Location = path;
         if (path.startsWith("http"))
         {
-            return LoadSettingRemote(path);
+            return loadSettingRemote(path);
         }
         File file = null;
         try {
@@ -104,7 +105,7 @@ public class Configs
                 Task.start(new Runnable() {
                     @Override
                     public void run() {
-                        LoadSettingRemote(finalRemote);
+                        loadSettingRemote(finalRemote);
                     }
                 });
             }
@@ -113,11 +114,17 @@ public class Configs
         return false;
     }
     /// <summary>
-    /// 加载远程配置文件c
+    ///
     /// </summary>
     /// <param name="url"></param>
     /// <returns></returns>
-    public static boolean LoadSettingRemote(String url)
+
+    /**
+     * 加载远程配置文件c
+     * @param url 路径
+     * @return
+     */
+    public static boolean loadSettingRemote(String url)
     {
         throw Core.makeThrow("未实现");
 //        var ret = HttpHelper.GetData(url);
@@ -166,21 +173,22 @@ public class Configs
 //        DataHub.SetFromConfig();
 //        return true;
     }
-    /// <summary>
-    /// 重新加载配置项
-    /// </summary>
-    /// <returns></returns>
-    public static boolean Reload()
+
+    /**
+     * 重新加载配置项
+     * @return
+     */
+    public static boolean reload()
     {
         if (Strings.isBlank(Location)) return false;
-        return LoadSettingsFromFile(Location);
+        return loadSettingsFromFile(Location);
     }
     /// <summary>
     /// 从web配置项加载配置(过期)
     /// </summary>
     /// <param name="configNode">节点名</param>
     /// <returns></returns>
-    public static boolean LoadSettingsFromWebConfig(String configNode)
+    public static boolean loadSettingsFromWebConfig(String configNode)
     {
 //            if (String.IsNullOrEmpty(configNode)) configNode = "Settings";
 //            var itemname = ConfigurationManager.AppSettings[configNode];
@@ -201,16 +209,22 @@ public class Configs
 //            }
         return false;
     }
+    public static void clearCache(){
+        List<String> deletes = new ArrayList<String>();
+        _configs.forEach((k,v)->{
+            if(SourceDirection.CaChe.equals(v.direct))deletes.add(k);
+        });
+        deletes.forEach(x->_configs.remove(x));
+    }
     /// <summary>
     /// 获取配置值
     /// </summary>
     /// <typeparam name="T">泛型</typeparam>
     /// <param name="key">键名</param>
     /// <returns>配置值</returns>
-    public static <T> T GetValue(String key,Class<T> clazz)
+    public static <T> T getValue(String key,Class<T> clazz)
     {
         Tuple3<Boolean, String, ConfigItem> find = Collections.first(_configs, (k, v) -> k.toLowerCase().equals(key.toLowerCase()));
-
         if (!find.item1) return null;
         else{
             if (clazz.isAssignableFrom(String.class)){
@@ -223,7 +237,7 @@ public class Configs
             }
             if(find.item3.Value instanceof JSONObject){
                 T v =  ((JSONObject) find.item3.Value).toJavaObject(clazz);
-                put(key,v);
+                put(key,v,find.item3.direct);
                 return v;
             }
             return (T)find.item3.Value;
@@ -245,8 +259,7 @@ public class Configs
     /// <param name="key">键名</param>
     /// <param name="ignoreCase">是否忽略大小写</param>
     /// <returns></returns>
-    public static Object Get(String key,boolean ignoreCase)
-    {
+    public static Object get(String key,boolean ignoreCase){
         if (ignoreCase == false)
         {
             return _configs.containsKey(key) ? _configs.get(key).Value : null;
@@ -258,13 +271,30 @@ public class Configs
             return Strings.isBlank(key) ? null : _configs.get(key).Value;
         }
     }
+    public static <T> T get(String key,Class<T> clazz, Func2<Object,T> fun)
+    {
+        if(Strings.isBlank(key))return null;
+        Object raw = get(key,false);
+        if (raw == null) return null;
+        if (raw.getClass().equals(clazz)) {
+            return (T)raw;
+        }
+        T ret = null;
+        try {
+            if(fun!=null)ret = fun.invoke(raw);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (ret != null) put(key, ret,SourceDirection.Memory);
+        return ret;
+    }
+
     /// <summary>
     /// 获取配置值(文本组)
     /// </summary>
     /// <param name="key">键名</param>
     /// <returns></returns>
-    public static String[] GetStringList(String key)
-    {
+    public static String[] getStringList(String key){
 
         if (_configs.containsKey(key))
         {
@@ -279,18 +309,18 @@ public class Configs
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public static String GetString(String key)
+    public static String getString(String key)
     {
-        return Configs.GetValue(key,String.class);
+        return Configs.getValue(key,String.class);
     }
     /// <summary>
     /// 获取整数配置
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public static int GetInt(String key)
+    public static int getInt(String key)
     {
-        Integer val = Configs.GetValue(key, Integer.class);
+        Integer val = Configs.getValue(key, Integer.class);
         if(val==null)return 0;
         return val;
     }
@@ -328,7 +358,7 @@ public class Configs
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public static boolean Exist(String key)
+    public static boolean exist(String key)
     {
         return _configs.containsKey(key);
     }
@@ -336,11 +366,11 @@ public class Configs
     /// 获取项目的基本目录
     /// </summary>
     /// <returns></returns>
-    public static String BasicPath()
+    public static String getBasicPath()
     {
-        String path = GetString("ServicePath");
+        String path = getString("ServicePath");
         if(Strings.hasValue(path))return path;
-        path = GetString("BasicPath");
+        path = getString("BasicPath");
         return Strings.hasValue(path) ? path : new ClassPathResource("./").getPath();
     }
 //    /// <summary>
@@ -359,22 +389,22 @@ public class Configs
     /// </summary>
     /// <param name="tableName"></param>
     /// <param name="dbName"></param>
-    public static void SetDataModelInfo(String tableName, String dbName)
+    public static void setDataModelInfo(String tableName, String dbName)
     {
-        put("_TemplateTableName", tableName);
-        put("_TemplateDbName", dbName);
+        put("_TemplateTableName", tableName,SourceDirection.Application);
+        put("_TemplateDbName", dbName,SourceDirection.Application);
     }
 
 
-    public static String NameSpace()
+    public static String getNameSpace()
     {
-        return GetString("webnamespace");
+        return getString("webnamespace");
     }
     /// <summary>
     /// 设置自动重载配置文件
     /// </summary>
     /// <param name="minutes"></param>
-    public static void SetAutoReload(int minutes)
+    public static void setAutoReload(int minutes)
     {
         if (minutes <= 0)
         {
@@ -390,7 +420,7 @@ public class Configs
     /// <summary>
     /// 自动纠正配置文件
     /// </summary>
-    public static void JudgeReload()
+    public static void judgeReload()
     {
 //        if (Location.IsBlank() || !Instance.AutoReload) return;
 //        //网络文件

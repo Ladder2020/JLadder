@@ -335,7 +335,7 @@ public  class AnalyzeAction
     /// </summary>
     public String GetDifferentReport(String template)
     {
-        if (Strings.isBlank(template)) template = Configs.GetString("differentreport") ;
+        if (Strings.isBlank(template)) template = Configs.getString("differentreport") ;
         if (Strings.isBlank(template)) template = "${title}[${fieldname}]:${old}=>${current}";
 
         List<Record> list = DifferentChange(null, null);

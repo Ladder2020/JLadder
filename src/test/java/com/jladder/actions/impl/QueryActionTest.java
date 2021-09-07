@@ -1,5 +1,6 @@
 package com.jladder.actions.impl;
 import com.jladder.configs.Configs;
+import com.jladder.configs.SourceDirection;
 import com.jladder.data.AjaxResult;
 import com.jladder.data.PageResult;
 import com.jladder.data.Record;
@@ -23,7 +24,7 @@ public class QueryActionTest extends TestCase {
 
 
 
-        Configs.put("defaultSchema","ladder");
+        Configs.put("defaultSchema","ladder", SourceDirection.Memory);
         Object ret = QueryAction.getValue("sys_user","fullname", new Record("username","xiaoxiao").toString());
 
 //        Jedis jedis = new Jedis("localhost");

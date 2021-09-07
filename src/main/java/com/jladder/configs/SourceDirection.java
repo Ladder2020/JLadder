@@ -20,8 +20,11 @@ public enum SourceDirection
     /// <summary>
     /// 网站或者软件的配置文件
     /// </summary>
-    WebApp(100);
-
+    WebApp(100),
+    /**
+     * 缓存数据
+     */
+    CaChe(1000);
     SourceDirection(int i) {
 
     }

@@ -93,7 +93,12 @@ public class Logs {
         getLogger("comm").info(log);
     }
     public static void writeLog(String log, String moudle) {
-        getLogger(moudle).info(log);
+        StringBuffer outtext =  new StringBuffer();
+        outtext.append(System.lineSeparator());
+        outtext.append(log);
+        outtext.append(System.lineSeparator()).append("操作时间:").append(Times.getNow()).append(System.lineSeparator());
+        outtext.append("--------------------------------------------------------------------------------------").append(System.lineSeparator());
+        getLogger(moudle).info(outtext);
     }
 
     private void createRollingFileAppender(String loggerName){

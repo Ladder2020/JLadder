@@ -19,6 +19,7 @@ import javax.servlet.http.Cookie;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 public class UpmsAction {
 
@@ -79,8 +80,8 @@ public class UpmsAction {
         else
         {
             T info = Json.toObject(userinfo,clazz);
-            if (info == null || Strings.isBlank(info.username)) return new AjaxResult(-401);
-            Record record = QueryAction.getRecord("sys_user", new Cnd("username", info.username),null,null);
+            if (info == null || Strings.isBlank(info.getUsername())) return new AjaxResult(-401);
+            Record record = QueryAction.getRecord("sys_user", new Cnd("username", info.getUsername()),null,null);
 
             if (record.getString("logininfo") != info.uuid && !Regex.isMatch(HttpHelper.getIp(), "(127.0.0.1)|(localhost)"))
             {
@@ -101,7 +102,7 @@ public class UpmsAction {
             if (WebContext.getSession()!= null)
             {
                 BaseUserInfo userinfo = getUserInfo(BaseUserInfo.class);
-                return userinfo==null?"":userinfo.username;
+                return userinfo==null?"":userinfo.getUsername();
             }
         }
         catch (Exception e)
@@ -183,13 +184,13 @@ public class UpmsAction {
     {
         if(userinfo==null)return;
         userinfo.uuid= getUuid();
-        userinfo.sessionid = WebContext.getSession().getId();
+        userinfo.setSessionid(WebContext.getSession().getId());
         if (firstLogin)
         {
             WebContext.getSession().removeAttribute("AgainLogin");
 //            PluginHub.Redis.AddCache(userinfo.uuid, userinfo,TimeSpan.FromSeconds(20));
             //Logs.WriteLog($"写入->Uuid:{userinfo.Uuid}  UserName:{userinfo.UserName}  Sesssion:{WebContext.Current.Session.Id}\nRequest:{ArgumentMapping.GetRequestParams()}\nStack:{RunTime.GetStackTraces()}", "UpmsService");
-            String old = QueryAction.getValue("sys_user", "logininfo", new Cnd("username", userinfo.username), null, String.class);
+            String old = QueryAction.getValue("sys_user", "logininfo", new Cnd("username", userinfo.getUsername()), null, String.class);
             if (old != userinfo.uuid)
             {
                 //PluginHub.Redis.Delete(old);
@@ -206,7 +207,7 @@ public class UpmsAction {
     /// <returns></returns>
     public static <T extends BaseUserInfo> T getUserInfo(Cnd cnd,Class<T> glass)
     {
-        return QueryAction.getObject(DataModelForUser, cnd,null,null,glass);
+        return repair(QueryAction.getObject(DataModelForUser, cnd,null,null,glass));
     }
 
     /// <summary>
@@ -218,22 +219,27 @@ public class UpmsAction {
     public static <T extends BaseUserInfo> T getUserInfo(String username,String propname,Class<T> clazz)
     {
         if (Strings.isBlank(propname)) propname = Key_UserName;
-        T userinfo = QueryAction.getObject(DataModelForUser, new Cnd(propname, username), null, null, clazz);
-        if (userinfo == null) return null;
-
-        if (Strings.hasValue(userinfo.groupId))
+        return repair(QueryAction.getObject(DataModelForUser, new Cnd(propname, username), null, null, clazz));
+    }
+    private static <T extends BaseUserInfo> T repair(T userinfo){
+        if(userinfo==null)return null;
+        if (Strings.hasValue(userinfo.getGroupid()))
         {
             TreeModel tm = new TreeModel();
             IDataModel dm = DaoSeesion.getDataModel(DataModelForGroup);
             String tableName = dm.getTableName();
-            tm.RecurFromTable(userinfo.groupId, tableName);
+            tm.RecurFromTable(userinfo.getGroupid(), tableName);
             List<String> cids = tm.GetIds();
-            cids.add(userinfo.groupId);
-            userinfo.groups = cids;
+            cids.add(userinfo.getGroupid());
+            userinfo.setGroups(cids);
+        }else{
+            userinfo.setGroupid("_default_");
+            List<String> groups = new ArrayList<String>();
+            groups.add("_default_");
+            userinfo.setGroups(groups);
         }
         return userinfo;
     }
-
     public static void loginout(){
         loginout(null);
     }
@@ -299,8 +305,8 @@ public class UpmsAction {
     /// <returns></returns>
     public static ReStruct<String, String> genUserToken(String username)
     {
-        String ssoserver = Configs.GetString("sso");
-        String site = Configs.GetString("app") ;
+        String ssoserver = Configs.getString("sso");
+        String site = Configs.getString("app") ;
         if(site==null)site = WebHub.SiteName;
         String resultInfo = HttpHelper.request(ssoserver + "/LoginBySub.aspx?systemcode=" + site + "&username=" + username, null, "GET",null).data;
         if (!Strings.isBlank(resultInfo))

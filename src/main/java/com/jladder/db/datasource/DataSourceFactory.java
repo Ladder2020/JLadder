@@ -128,7 +128,7 @@ public abstract class DataSourceFactory  implements Closeable, Serializable {
     }
 
     public static DataSourceFactory create() {
-        DbInfo config = Configs.GetValue(DataSourceFactory.DefaultDatabase,DbInfo.class);
+        DbInfo config = Configs.getValue(DataSourceFactory.DefaultDatabase,DbInfo.class);
         if(config!=null){
             config.setName(DataSourceFactory.DefaultDatabase);
             final DataSourceFactory dsFactory = doCreate(config);

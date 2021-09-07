@@ -1,4 +1,8 @@
 package com.jladder.lang;
+import com.jladder.data.Receipt;
+import com.jladder.lang.func.Func1;
+import com.jladder.lang.func.Tuple2;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -8,6 +12,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+
 public class Core {
 
     public static String genUuid(){
@@ -165,5 +171,44 @@ public class Core {
     public static String toString(Object obj) {
         if(obj==null)return null;
         return obj.toString();
+    }
+    public static Receipt watch(Func1<Tuple2<Boolean,Object>> func, int span){
+        return watch(func,span,100);
+    }
+    /// <summary>
+    /// 监控变化
+    /// </summary>
+    /// <param name="func">监控函数</param>
+    /// <param name="span">超时时间</param>
+    /// <param name="interval">间隔轮训时间</param>
+    /// <returns></returns>
+    public static Receipt watch(Func1<Tuple2<Boolean,Object>> func, int span, int interval)
+    {
+        if (func == null) return new Receipt(false, "无运行表达式");
+        try{
+            AtomicReference<Tuple2<Boolean, Object>> ret = new AtomicReference<>(func.invoke());
+            if (ret.get().item1) return new Receipt().setData(ret.get().item2);
+            long now = Times.getTime();
+            long end = Times.addSecond(span).getTime();
+            AutoResetEvent auto = new AutoResetEvent(false);
+            Task.startNew(() ->{
+                while (end > now)
+                {
+                    ret.set(func.invoke());
+                    if (ret.get().item1)
+                    {
+                        auto.set();
+                        break;
+                    }
+                    Thread.sleep(interval);
+                }
+            });
+            auto.waitOne(span*1000);
+            return ret.get().item1 ? new Receipt().setData(ret.get().item2) : new Receipt(false,"超时无结果");
+        }
+        catch (Exception e){
+
+        }
+        return new Receipt(false,"超时无结果");
     }
 }

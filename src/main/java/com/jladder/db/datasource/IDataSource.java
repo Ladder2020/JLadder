@@ -25,7 +25,7 @@ public abstract class IDataSource extends DataSourceFactory{
     public Database getDataBase(String name){
         Database database = dsMap.get(name);
         if(database!=null)return database;
-        DbInfo info = Configs.GetValue(name,DbInfo.class);
+        DbInfo info = Configs.getValue(name,DbInfo.class);
         if(info != null){
             database = new Database(createDataSource(info),info);
             dsMap.put(info.getName(),database);

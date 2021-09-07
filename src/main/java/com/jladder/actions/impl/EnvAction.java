@@ -1,6 +1,7 @@
 package com.jladder.actions.impl;
 
 import com.jladder.configs.Configs;
+import com.jladder.configs.SourceDirection;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
 import com.jladder.lang.Collections;
@@ -53,7 +54,7 @@ public class EnvAction
         {
             return new Receipt(false, "权限不足");
         }
-        Configs.put(name, value);
+        Configs.put(name, value, SourceDirection.Memory);
         return new Receipt();
     }
     /// <summary>

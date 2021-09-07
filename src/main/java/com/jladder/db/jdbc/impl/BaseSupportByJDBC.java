@@ -23,6 +23,7 @@ import java.sql.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 
@@ -151,7 +152,15 @@ public class BaseSupportByJDBC extends IBaseSupport {
                     if(Strings.isBlank(fieldname))continue;
                     Field field = clazz.getDeclaredField(fieldname);
                     if(field!=null){
-                        Object fieldValue = rs.getObject(fieldname,field.getType());
+                        Object fieldValue = null;
+                        switch (field.getType().getName()){
+                            case "java.util.Date":
+                                fieldValue = new Date(rs.getTimestamp(fieldname).getTime());
+                                break;
+                            default:
+                                fieldValue = rs.getObject(fieldname,field.getType());
+                                break;
+                        }
                         field.setAccessible(true);
                         if(fieldValue == null && Core.isBaseType(field.getType(),false)){
                             field.set(bean, 0);
@@ -322,6 +331,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
         if(transaction!=null)return true;
         try {
             transaction = db.getConnection();
+            if(transaction==null)return false;
             transaction.setAutoCommit(false);
         } catch (SQLException throwables) {
             throwables.printStackTrace();

@@ -2,6 +2,7 @@ package com.jladder.hub;
 
 import com.jladder.actions.impl.LatchAction;
 import com.jladder.configs.Configs;
+import com.jladder.configs.SourceDirection;
 import com.jladder.data.Record;
 import com.jladder.datamodel.DataModelForMap;
 import com.jladder.datamodel.DataModelInfo;
@@ -127,12 +128,12 @@ public class DataHub {
     /// </summary>
     public static void SetFromConfig()
     {
-        SqlDebug = Core.is(Configs.GetString("sqldebug"), "True") ;
-        int time = Configs.GetInt("SqlWarnTime");
+        SqlDebug = Core.is(Configs.getString("sqldebug"), "True") ;
+        int time = Configs.getInt("SqlWarnTime");
         if (time > 0) SqlWarnTime = time;
-        if (Strings.hasValue(Configs.GetString("sqldebugitem"))) SqlDebugItem = Configs.GetString("sqldebugitem");
-        LogServer = Configs.GetString("logserver");
-        OutLogPath = Strings.hasValue(Configs.GetString("log")) ? Configs.GetString("log") : "~/log/{yyyy-MM-dd}";
+        if (Strings.hasValue(Configs.getString("sqldebugitem"))) SqlDebugItem = Configs.getString("sqldebugitem");
+        LogServer = Configs.getString("logserver");
+        OutLogPath = Strings.hasValue(Configs.getString("log")) ? Configs.getString("log") : "~/log/{yyyy-MM-dd}";
 
     }
 
@@ -144,10 +145,10 @@ public class DataHub {
 
     public static void Init(String ... paths)
     {
-        TemplateConn = Core.or(Configs.GetString("_TemplateDbName"),"defaultDatabase");
-        TemplateTableName = Core.or(Configs.GetString("_TemplateTableName") , "sys_data");
-        Configs.put("_TemplateDbName", TemplateConn);
-        Configs.put("_TemplateTableName", TemplateTableName);
+        TemplateConn = Core.or(Configs.getString("_TemplateDbName"),"defaultDatabase");
+        TemplateTableName = Core.or(Configs.getString("_TemplateTableName") , "sys_data");
+        Configs.put("_TemplateDbName", TemplateConn, SourceDirection.Application);
+        Configs.put("_TemplateTableName", TemplateTableName, SourceDirection.Application);
         DataModelConfigs.clear();
         if (paths != null && paths.length > 0)
         {
@@ -166,7 +167,7 @@ public class DataHub {
                 }
             }
         }
-        XmlFiles = Core.or(XmlFiles ,Configs.GetValue("xmltemplates",List.class)) ;
+        XmlFiles = Core.or(XmlFiles ,Configs.getValue("xmltemplates",List.class)) ;
         if (XmlFiles != null && XmlFiles.size() > 0)
         {
             for (String xmlFile : XmlFiles)

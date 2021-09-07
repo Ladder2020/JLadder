@@ -471,7 +471,7 @@ public class Strings {
         match = Regex.match(oldStr,"\\$\\{\\$config\\.(\\w+)\\}");
         while (match.find()){
             String keyword = match.group(1);
-            String value =  Configs.GetString(keyword);
+            String value =  Configs.getString(keyword);
             if(isBlank(value))value = "";
             if (ispadding || Strings.hasValue(value))oldStr = oldStr.replace("${$config." + keyword + "}", value);
         }

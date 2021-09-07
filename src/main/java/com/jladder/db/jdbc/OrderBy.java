@@ -100,7 +100,9 @@ public class OrderBy
         else _orders.put(old.item2.toString(),orderitem);
         return this;
     }
-
+    public OrderBy put(String fieldname, String od){
+        return put(fieldname,od,0);
+    }
     /// <summary>
     /// 追加排序条件(单个项目)
     /// </summary>
@@ -111,17 +113,19 @@ public class OrderBy
     /// <example>
     ///     orders.Push("id","asc",0);
     /// </example>
-    public OrderBy Put(String fieldName, String od, int index)
+    public OrderBy put(String fieldname, String od, int index)
     {
         if (Strings.isBlank(od)) od = "asc";
-        Tuple3 old = Collections.first(_orders, (x, y) -> Core.is(x.toLowerCase() , fieldName.toLowerCase()) );
+        Tuple3<Boolean,String,OrderStruct> old = Collections.first(_orders, (x, y) -> Core.is(x.toLowerCase() , fieldname.toLowerCase()) );
 
-        OrderStruct orderitem=new OrderStruct();
-        orderitem.key = fieldName;
-        orderitem.od = od;
-        orderitem.index = index;
-        if (Strings.isBlank(old.item2.toString())) _orders.put(fieldName, orderitem);
-        else _orders.put(old.item2.toString(),orderitem);
+        OrderStruct order=new OrderStruct();
+        order.key = fieldname;
+        order.od = od;
+        order.index = index;
+        if(!old.item1){
+            _orders.put(fieldname, order);
+        }
+        else _orders.put(old.item2,order);
         return this;
     }
 

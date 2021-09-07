@@ -47,7 +47,7 @@ public class DbTest {
 	@Test
 	public void BeanTest() {
 		//从配置文件加载
-		Configs.LoadSettingsFromFile("config.json");
+		Configs.loadSettingsFromFile("config.json");
 		//defaultDatabase节点是默认数据库连接，可以直接使用
 		IDao dao = new Dao();
 		//创建数据库表

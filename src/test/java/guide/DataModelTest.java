@@ -15,7 +15,7 @@ public class DataModelTest {
 
     @Test
     public void initTest(){
-        Configs.LoadSettingsFromFile("config.json");
+        Configs.loadSettingsFromFile("config.json");
         //创建一个模型
         IDataModel dm = new DataModelForMap();
         dm.TableName="sys_user";
@@ -41,7 +41,7 @@ public class DataModelTest {
 
     @Test
     public void JsonTest(){
-        Configs.LoadSettingsFromFile("config.json");
+        Configs.loadSettingsFromFile("config.json");
         //第一种：可在启动时加载,
         DataHub.LoadJsonFile("dm1.json");
         //或者
@@ -55,7 +55,7 @@ public class DataModelTest {
     }
     @Test
     public void xmlTest(){
-        Configs.LoadSettingsFromFile("config.json");
+        Configs.loadSettingsFromFile("config.json");
         //加载xml模型文件
         DataHub.LoadXmlFile("dm1.xml");
 

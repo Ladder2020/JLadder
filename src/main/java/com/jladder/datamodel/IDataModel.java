@@ -456,6 +456,14 @@ public abstract class  IDataModel
     /// <returns></returns>
     public abstract boolean enable();
 
+    public GroupBy groupby(){
+       if(this.Group==null)this.Group=new GroupBy();
+       return this.Group;
+    }
+    public OrderBy orderby(){
+        if(this.Order==null)this.Order=new OrderBy();
+        return this.Order;
+    }
     public void setDialect(DbDialectType dialect) {
         this.DbDialect=dialect;
     }

@@ -65,7 +65,10 @@ public class Database implements DataSource, Closeable, Cloneable{
             ret = ds.getConnection();
         }catch (SQLException e){
             error++;
-            if(error>5)Global.get().destroy();
+            if(error>5){
+                Global.get().destroy();
+                error=0;
+            }
             return null;
         }
         return ret;

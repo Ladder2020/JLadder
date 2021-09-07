@@ -987,6 +987,7 @@ public class DataModelForMap extends IDataModel{
             }
             //如果是函数字段或者逃逸字段
             if (Regex.isMatch(findstr, "^[\\$@\\*]")){
+                if(DataModelType.Table.equals(Type))Type=DataModelType.Sql;
                 Record fieldMap =new Record();
                 String fieldname = findstr.substring(1);
                 if(Strings.hasValue(asStr)) fieldMap.put("as", asStr);
@@ -1435,7 +1436,7 @@ public class DataModelForMap extends IDataModel{
 
         String finalWraptext = wraptext;
         columns.forEach((x, y)->{
-            reT[0] = reT[0] + (finalWraptext + prefix + x + finalWraptext + (Strings.isBlank(y) ? "" : " as " + y) + splitStr);
+            reT[0] = reT[0] + (finalWraptext + prefix + x + finalWraptext + (Strings.isBlank(y) ? "" : " as " +finalWraptext+ y+finalWraptext) + splitStr);
         });
         return reT[0].length() > splitStr.length() ? reT[0].substring(0, reT[0].length() - splitStr.length()) : reT[0];
      }

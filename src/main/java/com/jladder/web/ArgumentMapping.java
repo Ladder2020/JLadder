@@ -3,6 +3,7 @@ package com.jladder.web;
 import com.jladder.data.Record;
 import com.jladder.data.UploadFile;
 import com.jladder.lang.Strings;
+import com.jladder.lang.Xmls;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -39,20 +40,32 @@ public class ArgumentMapping {
                 return ret;
             }
             String contentType = request.getContentType();
-            if(Strings.hasValue(contentType) && contentType.contains("application/json")){
-                String postStr = getRequestPostStr(request);
-                ret = Record.parse(postStr);
-                request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
-            }else{
-                ret = new Record();
-                Record finalRet = ret;
-                request.getParameterMap().forEach((k, v)->{
-                    if(v instanceof String[]){
-                        finalRet.put(k.toString(),((String[])v)[0]);
-                        return;
-                    }
-                    finalRet.put(k.toString(),v);
-                });
+            if(contentType!=null && contentType.indexOf("application/json")>-1){
+                contentType="application/json";
+            }
+            String postStr="";
+            switch (contentType){
+                case "text/xml":
+                    postStr = getRequestPostStr(request);
+                    System.out.println("xml:"+postStr);
+                    ret = Record.parse(Xmls.toMap(Xmls.parseXml(postStr).getDocumentElement()));
+                    break;
+                case "application/json":
+                    postStr = getRequestPostStr(request);
+                    ret = Record.parse(postStr);
+                    request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
+                    break;
+                default:
+                    ret = new Record();
+                    Record finalRet = ret;
+                    request.getParameterMap().forEach((k, v)->{
+                        if(v instanceof String[]){
+                            finalRet.put(k.toString(),((String[])v)[0]);
+                            return;
+                        }
+                        finalRet.put(k.toString(),v);
+                    });
+                    break;
             }
             request.setAttribute("___ArgumentMapping_GetRequestParams____",ret);
 
@@ -88,8 +101,7 @@ public class ArgumentMapping {
         }
         return buffer;
     }
-    public static String getRequestPostStr(HttpServletRequest request)
-            throws IOException {
+    public static String getRequestPostStr(HttpServletRequest request) throws IOException {
         byte buffer[] = getRequestPostBytes(request);
         String charEncoding = request.getCharacterEncoding();
         if (charEncoding == null) {

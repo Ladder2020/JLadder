@@ -87,7 +87,7 @@ public class Cnd {
     }
     public Cnd(String conditionText)
     {
-        dialect = Configs.Exist("_DialectType") ? (DbDialectType)Configs.Get("_DialectType",false) : DbDialectType.Default; ;
+        dialect = Configs.exist("_DialectType") ? (DbDialectType)Configs.get("_DialectType",false) : DbDialectType.Default; ;
         this.put(conditionText);
     }
     public Cnd(List<Map<String, Object>> fullcolumn,DbDialectType dialect){
@@ -306,7 +306,10 @@ public class Cnd {
             return this;
         }
         if (Strings.isBlank(op)) op = "=";
-        if (val == null && !Regex.isMatch(op, "is")) return this;
+        if (val == null && !Regex.isMatch(op, "is")){
+            throw Core.makeThrow("查询数据条件不能为null");
+            //return this;
+        }
         if(val!=null&&Regex.isMatch(val.toString(), "^undefined$")&& !Regex.isMatch(op, "is")) return this;
         if (Regex.isMatch(op, "is") && val == null) val = "null";
         List<String> nameArray = null;
@@ -977,11 +980,13 @@ public class Cnd {
         this.whereText = wstr[0];
         if (Most.size() < 1)
         {
-            Most.add(cnds[0].Most.get(0));
-            for(int i=1;i<cnds.length;i++){
-                for (List<CndStruct> cndStructs : cnds[i].Most)
-                {
-                    Most.get(0).addAll(cndStructs);
+            if(Most.size()>0){
+                Most.add(cnds[0].Most.get(0));
+                for(int i=1;i<cnds.length;i++){
+                    for (List<CndStruct> cndStructs : cnds[i].Most)
+                    {
+                        Most.get(0).addAll(cndStructs);
+                    }
                 }
             }
         }

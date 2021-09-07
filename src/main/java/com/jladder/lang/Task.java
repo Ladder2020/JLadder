@@ -11,19 +11,26 @@ public class Task {
 
 
     public static void start(Runnable run){
-        factory.submit(run);
+        Executors.newSingleThreadScheduledExecutor().submit(run);
     }
 
     public static void startNew(Action0 fun){
-        factory.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    fun.invoke();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        new Thread(() -> {
+            try {
+                fun.invoke();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        });
+        },"线程3").run();
+//        factory.execute(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    fun.invoke();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        });
     }
 }

@@ -32,8 +32,7 @@ public class DingTalk {
             return new Receipt(false);
         }
     }
-    public static Receipt SendMessageByRobot(String token, String secret,String message)
-    {
+    public static Receipt SendMessageByRobot(String token, String secret,String message){
         try{
             Long timestamp = System.currentTimeMillis();
             String stringToSign = timestamp + "\n" + secret;
