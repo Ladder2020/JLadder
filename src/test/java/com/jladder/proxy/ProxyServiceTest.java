@@ -1,10 +1,7 @@
 package com.jladder.proxy;
 
-import com.jladder.configs.Configs;
-import com.jladder.configs.SourceDirection;
 import com.jladder.data.AjaxResult;
 import com.jladder.data.Record;
-import com.jladder.hub.DataHub;
 import com.jladder.lang.Json;
 import junit.framework.TestCase;
 
@@ -16,9 +13,6 @@ public class ProxyServiceTest extends TestCase {
     }
 
     public void testGetProxyConfig() {
-
-        DataHub.TemplateTableName="ladder.sys_data";
-        Configs.put("defaultSchema","ladder", SourceDirection.Memory);
         //AjaxResult ret0 = QueryAction.getData("sys_settings");
         ProxyConfig config = ProxyService.getProxyConfig("LeNiao.Breaker.Close", "1.0");
         AjaxResult ret = ProxyService.execute(config, new Record("dss", 11), 0, new Record(), null, null);

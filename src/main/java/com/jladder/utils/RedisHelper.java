@@ -1,11 +1,15 @@
 package com.jladder.utils;
 import com.jladder.data.Receipt;
 import com.jladder.lang.Core;
+import com.jladder.lang.Strings;
 import com.jladder.lang.func.Func1;
+import org.redisson.Redisson;
 import org.redisson.api.RBucket;
 import org.redisson.api.RCountDownLatch;
 import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.redisson.config.SingleServerConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import java.util.HashMap;
@@ -21,9 +25,10 @@ public class RedisHelper {
 
     private Map<Integer,RedissonClient>  Client = new HashMap<Integer, RedissonClient>();
 
-    private String server;
-    private String password;
-    private int database;
+    private String host;
+    private String password="";
+    private int database=1;
+    private int port=6379;
 
     @Autowired
     public void setRedissonClient(RedissonClient client){
@@ -33,12 +38,29 @@ public class RedisHelper {
     public void setConn(String conn){
         throw Core.makeThrow("未实现");
     }
-    public void setConn(String server,String password,int database){
-        this.server=server;
+    public void setConn(String host,int port,String password,int database){
+        this.host=host;
         this.password=password;
         this.database=database;
+        this.port=port;
     }
-
+    public void setConn(String host,int port,String password){
+        this.host=host;
+        this.password=password;
+        this.port=port;
+    }
+    public void setConn(String host,String password,int database){
+        this.host=host;
+        this.password=password;
+        this.database=database;
+        this.port=6379;
+    }
+    public void setConn(String host,String password){
+        this.host=host;
+        this.password=password;
+        this.database=1;
+        this.port=6379;
+    }
     /***
      *
      * @return
@@ -54,8 +76,15 @@ public class RedisHelper {
      */
     public RedissonClient getClient(int index){
         RedissonClient client = Client.get(index);
-        if(client==null){
-
+        if(client==null && Strings.hasValue(host)){
+            synchronized (this){
+                Config config = new Config();
+                //config.useClusterServers().addNodeAddress("127.0.0.1:6379");
+                SingleServerConfig server = config.useSingleServer().setAddress("redis://" + host + ":" +port).setDatabase(index<0?database:index);
+                if(Strings.hasValue(password))server.setPassword(password);
+                client = Redisson.create(config);
+                Client.put(index,client);
+            }
         }
         return client;
     }
@@ -107,19 +136,21 @@ public class RedisHelper {
             result.set(data,minute,TimeUnit.MINUTES);
             return new Receipt();
         }catch (Exception e){
+            e.printStackTrace();
             return new Receipt(false,e.getMessage());
         }
     }
-    public Receipt<String> GetCache(String key){
+    public Receipt<String> getString(String key){
         return getCache(key,-1);
     }
-    /// <summary>
-    /// 获取缓存
-    /// </summary>
-    /// <param name="key">键名</param>
-    /// <param name="index">数据库索引</param>
-    /// <returns></returns>
-    public Receipt<String> getCache(String key, int index){
+
+    /**
+     * 获取缓存
+     * @param key 键名
+     * @param index 数据库索引
+     * @return
+     */
+    public Receipt<String> getString(String key, int index){
         RedissonClient client = getClient(index);
         if(null == client)return new Receipt(false,"Redis连接对象不存在[059]");
         try{
@@ -129,14 +160,16 @@ public class RedisHelper {
             return new Receipt(false,e.getMessage());
         }
     }
-    /// <summary>
-    /// 获取缓存
-    /// </summary>
-    /// <param name="key">键名</param>
-    /// <param name="index">数据库索引</param>
-    /// <returns></returns>
+
+    /**
+     * 获取缓存
+     * @param key 键名
+     * @param clazz 类型泛型
+     * @param <T>
+     * @return
+     */
     public <T> Receipt<T> getCache(String key,Class<T> clazz){
-        return getCache(key,clazz,-1);
+        return getCache(key,-1);
     }
     /// <summary>
     /// 获取缓存
@@ -144,14 +177,14 @@ public class RedisHelper {
     /// <param name="key">键名</param>
     /// <param name="index">数据库索引</param>
     /// <returns></returns>
-    public <T> Receipt<T> getCache(String key,Class<T> clazz, int index){
+    public <T> Receipt<T> getCache(String key,int index){
         RedissonClient client = getClient(index);
         if(null == client)return new Receipt(false,"Redis连接对象不存在[059]");
         try{
             RBucket<T> result = client.getBucket(key);
-            return new Receipt().setData(result.get());
+            return new Receipt<T>().setData(result.get());
         }catch (Exception e){
-            return new Receipt(false,e.getMessage());
+            return new Receipt<T>(false,e.getMessage());
         }
     }
     public <T> Receipt<T> popCache(String key,Class<T> clazz){
@@ -187,8 +220,7 @@ public class RedisHelper {
     public Receipt delete(String key){
         return delete(key,-1);
     }
-    public Receipt delete(String key, int index)
-    {
+    public Receipt delete(String key, int index){
         RedissonClient client = getClient(index);
         if(null == client)return new Receipt(false,"Redis连接对象不存在[059]");
         try
@@ -215,9 +247,6 @@ public class RedisHelper {
         }
     }
 
-
-
-
     public String getString1(String key) {
         RBucket<Object> result = getClient(-1).getBucket(key);
         return result.get().toString();
@@ -233,8 +262,6 @@ public class RedisHelper {
         RBucket<Object> result = getClient().getBucket(key);
         if (!result.isExists()) result.set(value, min, TimeUnit.MINUTES);
     }
-
-
 
     public boolean hasKey(String key) {
         RedissonClient client = getClient();

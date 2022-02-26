@@ -193,19 +193,19 @@ public abstract class  IDataModel
     /// <returns></returns>
     public abstract List<Map<String, Object>> filterColumns(String filterCName);
 
-    /// <summary>
-    ///  过滤列模型数据，此方法在初始化过程首次执行一次，以此过滤isshow=false的字段
-    /// </summary>
-    /// <param name="columnString">文本型以,分割</param>
-    /// <returns></returns>
-    /// <summary>
-    /// 字段匹配，默认以fieldname,支持排序，自序，反向,变名
-    /// </summary>
+    /**
+     * 字段匹配，默认以fieldname,支持排序，自序，反向,变名
+     * @param columnString 文本型以,分割
+     * @return
+     */
     public abstract List<Map<String, Object>> matchColumns(String columnString);
 
-    /// <summary>
-    /// 具体执行字段匹配，默认以fieldname,支持排序，自序，反向,变名
-    /// </summary>
+    /**
+     * 具体执行字段匹配，默认以fieldname,支持排序，自序，反向,变名
+     * @param columnString 文本型以,分割
+     * @param propName 属性名
+     * @return
+     */
     public abstract List<Map<String, Object>> matchColumns(String columnString, String propName);
 
     public abstract List<Map<String, Object>> parseColumsList();
@@ -412,19 +412,18 @@ public abstract class  IDataModel
     /// </summary>
     public abstract List<Map<String, Object>> getAllQueryColumns();
 
-    /// <summary>
-    /// 获取全字段
-    /// </summary>
-    /// <returns></returns>
+    /**
+     * 获取全字段
+     * @return
+     */
     public abstract List<Map<String, Object>> getFullColumns();
-
-    /// <summary>
-    /// 匹配参数数据
-    /// </summary>
-    /// <param name="source">待匹配的数据</param>
-    /// <param name="paramDataDic">匹配的数据字典</param>
-    /// <param name="ignore">忽略严格匹配，3个参数，3个param数据</param>
-    /// <returns></returns>
+    /**
+     * 匹配参数数据
+     * @param source 待匹配的数据
+     * @param paramDataDic 匹配的数据字典
+     * @param ignore 忽略严格匹配，3个参数，3个param数据
+     * @return
+     */
     public abstract String matchParam(String source, String paramDataDic, boolean ignore);
 
     /// <summary>
@@ -433,27 +432,28 @@ public abstract class  IDataModel
     /// <param name="param"></param>
     public abstract void reset(String param);
 
-    /// <summary>
-    /// 获取模版连接器对应的数据库连接操作对象
-    /// </summary>
-    /// <returns></returns>
+    /**
+     * 获取模版连接器对应的数据库连接操作对象
+     * @return
+     */
     public abstract IDao fetchConnDao();
 
-    /// <summary>
-    /// 获取原型数据
-    /// </summary>
-    /// <returns></returns>
+    /**
+     * 获取原型数据
+     * @return
+     */
     public abstract DataModelForMapRaw getRaw();
 
-    /// <summary>
-    /// 获取脚本代码
-    /// </summary>
-    /// <returns></returns>
+    /**
+     * 获取脚本代码
+     * @return
+     */
     public abstract String getScript();
-    /// <summary>
-    /// 是否可用
-    /// </summary>
-    /// <returns></returns>
+
+    /**
+     * 是否可用
+     * @return
+     */
     public abstract boolean enable();
 
     public GroupBy groupby(){

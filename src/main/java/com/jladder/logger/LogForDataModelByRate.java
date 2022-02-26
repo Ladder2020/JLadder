@@ -9,38 +9,38 @@ public class LogForDataModelByRate
     /// <summary>
     /// 模版名称
     /// </summary>
-    public String TableName;
+    public String tablename;
     /// <summary>
     /// 记录总数
     /// </summary>
-    public long RecordCount;
+    public long recordcount;
     /// <summary>
     /// 开始时间
     /// </summary>
-    public Date StartTime = Times.now();
+    public Date starttime = Times.now();
     /// <summary>
     /// 结束时间
     /// </summary>
-    public Date EndTime;
+    public Date endtime;
     /// <summary>
     /// 持续时长
     /// </summary>
-    public String Duration = "0ms";
+    public int duration = 0;
     /// <summary>
     /// 单条比例
     /// </summary>
-    public String Rate = "0us";
+    public String rate = "0us";
     /// <summary>
     /// 是否应用的缓存
     /// </summary>
     public boolean IsCache;
 
     public LogForDataModelByRate(String tablename){
-        this.TableName = tablename;
+        this.tablename = tablename;
     }
-    public LogForDataModelByRate SetEnd()
+    public LogForDataModelByRate setEnd()
     {
-        EndTime = Times.now();
+        endtime = Times.now();
 //        TimeSpan ts = EndTime.Subtract(StartTime);
 //        var diff = ts.TotalMilliseconds;
 //        Duration = Math.Round(diff, 0) + "ms";

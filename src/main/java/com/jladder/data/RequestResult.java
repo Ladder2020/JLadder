@@ -1,4 +1,5 @@
 package com.jladder.data;
+import com.jladder.Ladder;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.Json;
 import com.jladder.lang.Regex;
@@ -52,7 +53,7 @@ public class RequestResult{
         /// 节点标识
         /// </summary>
 
-        public String watchPoint = WebHub.SiteName;
+        public String watchPoint = Ladder.Settings().getSite();
         /// <summary>
         /// 未定义
         /// </summary>

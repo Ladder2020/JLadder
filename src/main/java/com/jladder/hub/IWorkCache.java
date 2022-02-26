@@ -2,35 +2,67 @@ package com.jladder.hub;
 
 import com.jladder.datamodel.DataModelForMapRaw;
 import com.jladder.lang.func.Func1;
+import com.jladder.lang.script.Script;
 import com.jladder.proxy.ProxyConfig;
 
+import java.util.Date;
 import java.util.List;
 
 public interface IWorkCache {
 
-    /// <summary>
-    /// 添加数据模版的缓存
-    /// </summary>
-    /// <param name="key">模版键名</param>
-    /// <param name="raw">模版的原型数据</param>
+    //region 数据模型
+    /**
+     * 添加数据模版的缓存
+     * @param key 模版键名
+     * @param raw 模版的原型数据
+     */
     void addDataModelCache(String key, DataModelForMapRaw raw);
 
-    /// <summary>
-    /// 获取数据模版的缓存
-    /// </summary>
-    /// <param name="key">模版键名</param>
+    /**
+     * 获取数据模版的缓存
+     * @param key 模版键名
+     * @return
+     */
     DataModelForMapRaw getDataModelCache(String key);
-
-    /// <summary>
-    /// 获取数据模版的缓存
-    /// </summary>
-    /// <param name="key">模版键名</param>
+    /**
+     * 清除指定数据模版缓存
+     * @param key
+     */
     void removeDataModelCache(String key);
 
-    /// <summary>
-    /// 清除全部数据模版缓存
-    /// </summary>
+    /**
+     * 清除全部数据模版缓存
+     */
     void removeAllDataModelCache();
+    //endregion
+    //region 函数库
+    /**
+     * 添加函数库缓存
+     * @param lib
+     * @param raw
+     */
+    void addScriptCache(String lib, Script script);
+
+    /**
+     * 获取指定函数库缓存
+     * @param lib
+     * @return
+     */
+    Script getScriptCache(String lib);
+
+    /**
+     * 清除指定函数库缓存
+     * @param lib 库名
+     */
+    void removeScriptCache(String lib);
+
+
+    /**
+     * 清除全部函数库缓存
+     */
+    void removeAllScriptCache();
+
+    // endregion
 
     /// <summary>
     /// 添加路由代理的缓存
@@ -108,7 +140,28 @@ public interface IWorkCache {
     /// <param name="key">键名</param>
     /// <param name="data">数据</param>
     /// <param name="module">模块</param>
+
+    /**
+     * 添加模块缓存
+     * @param key 键名
+     * @param data 数据对象
+     * @param module 模型名称
+     * @param second 划过时间间隔
+     * @param <T>
+     */
     <T> void  addModuleCache(String key, T data, String module,int second);
+
+
+    /**
+     * 添加模块缓存
+     * @param key 键名
+     * @param data 数据对象
+     * @param module 模型名称
+     * @param invalid 失效日期
+     * @param <T>
+     */
+    <T> void  addModuleCache(String key, T data, String module, Date invalid);
+
     /// <summary>
     /// 获取功能模块缓存
     /// </summary>

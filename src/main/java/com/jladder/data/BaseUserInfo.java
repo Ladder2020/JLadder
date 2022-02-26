@@ -13,26 +13,18 @@ public class BaseUserInfo implements Serializable {
     /// 唯一用户
     /// </summary>
     public String uuid;
-
-
     /// <summary>
     /// 用户全名
     /// </summary>
     private String fullname;
-
-
     /// <summary>
     /// SessionID
     /// </summary>
     private String sessionid;
-
-
     /// <summary>
     /// 账户中心token码
     /// </summary>
     private String usertoken;
-
-
     /// <summary>
     /// 分组ID
     /// </summary>

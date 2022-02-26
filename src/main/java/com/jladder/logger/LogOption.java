@@ -1,7 +1,8 @@
 package com.jladder.logger;
 
-public enum LogOption
-{
+import com.jladder.db.enums.DbSqlDataType;
+
+public enum LogOption{
 
     /// <summary>
     /// sql日志
@@ -41,8 +42,26 @@ public enum LogOption
     /// <summary>
     /// Http请求
     /// </summary>
-    Request(110);
+    Request(110),
+    Proxy(200);
 
-    LogOption(int i) {
+    private int index;
+    private LogOption(int index) {
+        this.index=index;
+    }
+    public int getIndex() {
+        return index;
+    }
+    public void setIndex(int index) {
+        this.index=index;
+    }
+
+    public static LogOption get(int index){
+        for (LogOption c : LogOption.values()) {
+            if (c.getIndex() == index) {
+                return c;
+            }
+        }
+        return null;
     }
 }

@@ -1,12 +1,14 @@
 package com.jladder.db.datasource;
 
 
-import com.jladder.configs.Configs;
+
+import com.jladder.Ladder;
 import com.jladder.db.DbInfo;
 import com.jladder.lang.Strings;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.sql.Connection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,9 +27,9 @@ public abstract class IDataSource extends DataSourceFactory{
     public Database getDataBase(String name){
         Database database = dsMap.get(name);
         if(database!=null)return database;
-        DbInfo info = Configs.getValue(name,DbInfo.class);
+        DbInfo info = Ladder.Settings().getDatabase().get(name);
         if(info != null){
-            database = new Database(createDataSource(info),info);
+            database = new Database(createDataSource(info),info,"");
             dsMap.put(info.getName(),database);
         }
         return database;
@@ -36,6 +38,8 @@ public abstract class IDataSource extends DataSourceFactory{
     public DataSource getDataSource(String group) {
         return getDataBase(Strings.isBlank(group)? DefaultDatabase :group).getRaw();
     }
+
+
 
     @Override
     public void close(String group) {
@@ -66,5 +70,7 @@ public abstract class IDataSource extends DataSourceFactory{
     }
 
     protected abstract DataSource createDataSource(DbInfo info);
+
+
 
 }

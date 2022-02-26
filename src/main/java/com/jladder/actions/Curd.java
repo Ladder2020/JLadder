@@ -1,15 +1,12 @@
 package com.jladder.actions;
-
-/// <summary>
-/// 增删改查管理类
-/// </summary>
-
 import com.jladder.data.Record;
 import com.jladder.db.Cnd;
 import com.jladder.db.enums.DbSqlDataType;
 
-public class Curd
-{
+/**
+ * 增删改查管理类
+ */
+public class Curd{
     /// <summary>
     /// 表名
     /// </summary>

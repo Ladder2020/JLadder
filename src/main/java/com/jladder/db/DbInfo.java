@@ -7,7 +7,13 @@ import com.jladder.lang.Security;
 import com.jladder.lang.Strings;
 
 public class DbInfo {
+    /**
+     * 服务器
+     */
     private String server="";
+    /**
+     * 用户名
+     */
     private String username="";
     private String password="";
     private String dialect="";

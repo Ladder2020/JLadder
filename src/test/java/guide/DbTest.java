@@ -1,20 +1,22 @@
 package guide;
 
 import bean.MySite;
-import com.jladder.configs.Configs;
+import com.jladder.configs.Configure;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
-import com.jladder.db.*;
+import com.jladder.db.Cnd;
+import com.jladder.db.DbInfo;
+import com.jladder.db.IDao;
+import com.jladder.db.SqlText;
 import com.jladder.db.enums.DbDialectType;
-import com.jladder.db.enums.DbGenType;
-import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.db.jdbc.impl.Dao;
 import com.jladder.lang.Core;
-import com.jladder.lang.Times;
-import org.junit.Assert;
 import org.junit.Test;
+
 import java.sql.SQLException;
 import java.util.List;
+
+
 
 public class DbTest {
 
@@ -47,7 +49,7 @@ public class DbTest {
 	@Test
 	public void BeanTest() {
 		//从配置文件加载
-		Configs.loadSettingsFromFile("config.json");
+		Configure.loadSettingsFromFile("config.json");
 		//defaultDatabase节点是默认数据库连接，可以直接使用
 		IDao dao = new Dao();
 		//创建数据库表

@@ -1,6 +1,6 @@
 ![logo](http://c.ladder2020.com/logo-small-java.jpg)
 
-### **关于JLadder**
+### **关于JLadder** 
 
 JLadder 是 Ladder家族成员，是Ladder for java，其初版系.Net技术平台移植转化而来，目前功能转化大约60%左右，其命名规则还全部纠正，代码注释也在逐步完善中，如果关注JLadder，可在3.0版本后，用于生产环境，目前本项目处于beta阶段。~~
 

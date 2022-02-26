@@ -5,14 +5,14 @@ import com.jladder.lang.Json;
 import com.jladder.lang.Stopwatch;
 import com.jladder.lang.Times;
 
+import java.io.Serializable;
 import java.util.*;
 /***
  * 返回指定结构体
  * @param <T>
  * @param <TXt>
  */
-public class AjaxResult<T,TXt>
-{
+public class AjaxResult<T,TXt> implements Serializable {
     /***
      * 状态码 200:成功返回;500+服务程序码，400+结果代码 ：404不存在 403,密码错误，401：输入无有效数据，402:数据存在或重复
      */
@@ -40,6 +40,8 @@ public class AjaxResult<T,TXt>
      */
     public String datatype = "undefined";
 
+
+
     /**
      *  时长
      */
@@ -61,8 +63,8 @@ public class AjaxResult<T,TXt>
     public boolean success;
 
     /***
-     *
-     * @param result
+     * 自动识别
+     * @param result 结果
      */
     public AjaxResult(Object result)
     {
@@ -70,6 +72,7 @@ public class AjaxResult<T,TXt>
         {
             statusCode = 400;
             message = "未有处理结果";
+            success=false;
             return;
         }
         if (result instanceof Integer)
@@ -152,13 +155,13 @@ public class AjaxResult<T,TXt>
     /***
      * 基本构造，通过状态码和消息文本
      * @param status 状态码 200:成功返回;500+服务程序码，400+结果代码 ：404不存在 403,密码错误，401：输入无有效数据，402:数据存在或重复
-     * @param meString
+     * @param msg
      */
-    public AjaxResult(int status, String meString)
+    public AjaxResult(int status, String msg)
     {
-        this.message = meString;
+        this.message = msg;
         statusCode = status;
-        success = statusCode==200;
+        success = (statusCode == 200);
     }
 
     /***
@@ -304,8 +307,7 @@ public class AjaxResult<T,TXt>
      * 设置成功
      * @return
      */
-    public AjaxResult<T, TXt> Ok()
-    {
+    public AjaxResult<T, TXt> Ok(){
         statusCode = 200;
         message = "操作成功";
         return this;
@@ -316,15 +318,15 @@ public class AjaxResult<T,TXt>
      * @return
      */
     public  String ToString() {
-    if (cut) return Json.toJson(this.data);
-    if (config == null) return Json.toJson(this);
-    else
-    {
+        if (cut) return Json.toJson(this.data);
+        if (config == null) return Json.toJson(this);
+        else
+        {
 
-        Record record = Record.parse(this);
-        config.forEach((k,v) -> record.re(k, v));
-        return Json.toJson(record);
-    }
+            Record record = Record.parse(this);
+            config.forEach((k,v) -> record.re(k, v));
+            return Json.toJson(record);
+        }
     }
 
     /***
@@ -332,8 +334,7 @@ public class AjaxResult<T,TXt>
      * @param isCut 是否切除
      * @return
      */
-    public AjaxResult<T, TXt> setCut(boolean isCut)
-    {
+    public AjaxResult<T, TXt> cut(boolean isCut){
         cut = isCut;
         return this;
     }
@@ -342,8 +343,7 @@ public class AjaxResult<T,TXt>
      * 获取是否切除本身结构
      * @return
      */
-    public boolean GetCut()
-    {
+    public boolean cut(){
         return cut;
     }
 
@@ -436,5 +436,11 @@ public class AjaxResult<T,TXt>
         data = (T)li;
         return this;
     }
+    public String getDuration() {
+        return duration;
+    }
 
+    public void setDuration(String duration) {
+        this.duration = duration;
+    }
 }

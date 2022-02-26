@@ -111,4 +111,6 @@ public abstract class IBaseSupport {
 
     public abstract boolean isTraning();
 
+    public abstract void close();
+
 }

@@ -36,7 +36,8 @@ public class ConverterRegistry {
             public String convert(Object value, String defaultValue) {
                 if(value==null)return defaultValue;
                 String ret = value.toString();
-                if(Strings.isBlank(ret))return defaultValue;
+                if("".equals(ret))return "";
+                if(ret==null)return defaultValue;
                 return ret;
             }
         });

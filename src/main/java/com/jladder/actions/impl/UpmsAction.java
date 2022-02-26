@@ -1,7 +1,7 @@
 package com.jladder.actions.impl;
 
 
-import com.jladder.configs.Configs;
+import com.jladder.Ladder;
 import com.jladder.data.*;
 import com.jladder.datamodel.IDataModel;
 import com.jladder.db.Cnd;
@@ -21,6 +21,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+/**
+ * 用户权限类
+ */
 public class UpmsAction {
 
     public static String DataModelForUser = "sys_user";
@@ -28,6 +32,7 @@ public class UpmsAction {
     public static String Key_UserName= "username";
     public static String Key_UUID= "logininfo";
 
+    private static Record Cache=new Record();
 
     public static ReStruct<String,String> getCheckCode(){
         VCodeGenerator vcode = new VCodeGenerator();
@@ -52,33 +57,27 @@ public class UpmsAction {
      * @return
      */
 
-    public static <T extends BaseUserInfo> AjaxResult active(String userinfo, String token, Class<T> clazz)
-    {
-        if (WebHub.IsDebug)
-        {
+    public static <T extends BaseUserInfo> AjaxResult active(String userinfo, String token, Class<T> clazz){
+        if (WebHub.IsDebug){
             if (Strings.hasValue(userinfo) && userinfo != "{}"){
                 return new AjaxResult(Json.toObject(userinfo,clazz)).setStatusCode(111);
             }
             BaseUserInfo info = UpmsAction.getUserInfo(clazz);
-            if (info == null)
-            {
+            if (info == null){
                 //var cookies = WebContext.Current.Request.Cookies;
             }
             return new AjaxResult(UpmsAction.getUserInfo(clazz)).setStatusCode(111);
         }
-        if (Strings.isBlank(userinfo) || Regex.isMatch(userinfo, "\\s*\\{\\s*\\}\\s*"))
-        {
+        if (Strings.isBlank(userinfo) || Regex.isMatch(userinfo, "\\s*\\{\\s*\\}\\s*")){
             T info = Strings.isBlank(token)?getUserInfo(clazz):getUserInfo(token,clazz);
-            if (info == null)
-            {
+            if (info == null){
                 //Logs.WriteLog($"uuid:{GetUuid()};UserSessionUUID:{WebContext.Current.Session.GetString("UserSessionUUID")};GetCookies:{HttpHelper.GetCookies("UserSessionUUID")};SessionID{WebContext.Current.Session.Id}", "UpmsService");
             }
             if (Regex.isMatch(HttpHelper.getIp(), "(127.0.0.1)|(localhost)")) return new AjaxResult(200).setData(info);
             //if (Strings.isBlank(info.uuid)) info.uuid = GetUuid();
             return new AjaxResult(info == null ? -401 : 200).setData(info);
         }
-        else
-        {
+        else{
             T info = Json.toObject(userinfo,clazz);
             if (info == null || Strings.isBlank(info.getUsername())) return new AjaxResult(-401);
             Record record = QueryAction.getRecord("sys_user", new Cnd("username", info.getUsername()),null,null);
@@ -91,22 +90,19 @@ public class UpmsAction {
             return new AjaxResult().setData(info);
         }
     }
-    /// <summary>
-    /// 获取登录的用户名
-    /// </summary>
-    /// <returns></returns>
-    public static String getUserName()
-    {
-        try
-        {
-            if (WebContext.getSession()!= null)
-            {
+
+    /**
+     * 获取登录的用户名
+     * @return
+     */
+    public static String getUserName(){
+        try{
+            if (WebContext.getSession()!= null){
                 BaseUserInfo userinfo = getUserInfo(BaseUserInfo.class);
                 return userinfo==null?"":userinfo.getUsername();
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             //Logs.Write(new LogForError(e.Message,"用户测试"),LogOption.Error);
             return "";
         }
@@ -114,117 +110,132 @@ public class UpmsAction {
     }
 
     /**
-     *
-     * @param uuid
+     * 是否存在客户端
+     * @param uuid 客户端编码
      * @return
      */
     public static boolean exist(String uuid){
+        if(Strings.isBlank(uuid))return false;
+        BaseUserInfo user = (BaseUserInfo) WebContext.getSession().getAttribute("_userinfo_");
+        if(user!=null&&uuid.equals(user.uuid))return true;
         boolean has = DataHub.WorkCache.hasModuleCache(uuid,"_user_");
         if(has)return true;
-        has = RedisHelper.Instance.hasKey(uuid);
-        if(has){
-            Receipt<BaseUserInfo> user = RedisHelper.Instance.getCache(uuid, BaseUserInfo.class);
-            if(user.isSuccess())DataHub.WorkCache.addModuleCache(uuid, user.data,  "_user_",20*60);
-            return true;
-        }
         return false;
     }
 
     public static <T extends BaseUserInfo> T  getUserInfo(Class<T> clazz){
         return getUserInfo(getUuid(),clazz);
     }
-    /// <summary>
-    /// 获取登录的用户名
-    /// </summary>
-    /// <returns></returns>
-    public static <T extends BaseUserInfo> T  getUserInfo(String uuid,Class<T> clazz){
-        try
-        {
-            if (WebContext.getSession() != null)
-            {
-                T userInfo = DataHub.WorkCache.getModuleCache(uuid, "_user_");
-                // if (userInfo == null && HttpContext.Current.Session["AgainLogin"] != null) return null;
-                if (userInfo == null)
-                {
 
-                    userInfo = RedisHelper.Instance.getCache(uuid,clazz).data;
+    /**
+     * 获取登录的用户信息
+     * @param uuid
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T extends BaseUserInfo> T  getUserInfo(String uuid,Class<T> clazz){
+        try{
+            if (WebContext.getSession() != null){
+                T userInfo = (T)Cache.get(uuid);
+                if(userInfo!=null)return userInfo;
+                userInfo = DataHub.WorkCache.getModuleCache(uuid, "_user_");
+                // if (userInfo == null && HttpContext.Current.Session["AgainLogin"] != null) return null;
+                if (userInfo == null){
+                    //userInfo = RedisHelper.Instance.getCache(uuid,clazz).data;
                     if (userInfo == null && WebContext.getSession().getAttribute("AgainLogin") != null) return null;
-                    if (userInfo == null && WebContext.getSession().getAttribute("AgainLogin") == null)
-                    {
+                    if (userInfo == null && WebContext.getSession().getAttribute("AgainLogin") == null){
                         WebContext.getSession().setAttribute("AgainLogin","1");
-                        String username = QueryAction.getValue("sys_user", "username", new Cnd("logininfo",uuid),null,String.class);
+                        String username="";
+                        //String username = QueryAction.getValue("sys_user", "username", new Cnd("logininfo",uuid),null,String.class);
                         if(Strings.hasValue(username))userInfo = getUserInfo(username,"username",clazz);
                     }
-                    if (userInfo != null)
-                    {
-                        RedisHelper.Instance.addCache(uuid,userInfo,20);
+                    if (userInfo != null){
                         DataHub.WorkCache.addModuleCache(uuid, userInfo,  "_user_",20);
+                        Cache.put(uuid,userInfo);
                         WebContext.getSession().removeAttribute("AgainLogin");
                     }
                 }
-                else
-                {
+                else{
                     WebContext.getSession().removeAttribute("AgainLogin");
                 }
                 return userInfo;
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return null;
         }
         return null;
     }
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="userinfo">用户名</param>
-    /// <param name="firstLogin">是否登录</param>
-    public static <T extends BaseUserInfo> void setUserInfo(T userinfo,boolean firstLogin)
-    {
+
+    /**
+     * 设置登录用户信息
+     * @param userinfo 用户信息
+     * @param firstLogin 首次登录
+     * @param <T>
+     */
+    public static <T extends BaseUserInfo> void setUserInfo(T userinfo,boolean firstLogin){
         if(userinfo==null)return;
         userinfo.uuid= getUuid();
         userinfo.setSessionid(WebContext.getSession().getId());
-        if (firstLogin)
-        {
+        if (firstLogin){
             WebContext.getSession().removeAttribute("AgainLogin");
-//            PluginHub.Redis.AddCache(userinfo.uuid, userinfo,TimeSpan.FromSeconds(20));
             //Logs.WriteLog($"写入->Uuid:{userinfo.Uuid}  UserName:{userinfo.UserName}  Sesssion:{WebContext.Current.Session.Id}\nRequest:{ArgumentMapping.GetRequestParams()}\nStack:{RunTime.GetStackTraces()}", "UpmsService");
             String old = QueryAction.getValue("sys_user", "logininfo", new Cnd("username", userinfo.getUsername()), null, String.class);
-            if (old != userinfo.uuid)
-            {
-                //PluginHub.Redis.Delete(old);
+            if (!userinfo.uuid.equals(old)){
+                DataHub.WorkCache.removeModuleCache(userinfo.uuid,"_user_");
+                SaveAction.update(DataModelForUser,new Record("userinfo",userinfo.uuid), new Cnd("username", userinfo.getUsername()));
             }
+            try{
+                List<String> keys=new ArrayList<>();
+                Cache.forEach((k,v)->{
+                    if(userinfo.getUsername().equals(((BaseUserInfo)v).getUsername())){
+                        keys.add(k);
+                    }
+                });
+                if(keys.size()>0){
+                    keys.forEach(x->Cache.remove(x));
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            Cache.put(userinfo.uuid,userinfo);
         }
-        RedisHelper.Instance.addCache(userinfo.uuid,userinfo);
         DataHub.WorkCache.addModuleCache(userinfo.uuid, userinfo,  "_user_",20*60);
     }
-
-    /// <summary>
-    /// 获取用户信息
-    /// </summary>
-    /// <param name="cnd">用户条件</param>
-    /// <returns></returns>
-    public static <T extends BaseUserInfo> T getUserInfo(Cnd cnd,Class<T> glass)
-    {
+    /**
+     * 获取用户信息
+     * @param cnd 用户条件
+     * @param glass 泛型类型
+     * @param <T> 泛型
+     * @return
+     */
+    public static <T extends BaseUserInfo> T getUserInfo(Cnd cnd,Class<T> glass){
         return repair(QueryAction.getObject(DataModelForUser, cnd,null,null,glass));
     }
 
-    /// <summary>
-    /// 获取用户信息
-    /// </summary>
-    /// <param name="username">用户名</param>
-    /// <param name="propname">属性名称</param>
-    /// <returns></returns>
-    public static <T extends BaseUserInfo> T getUserInfo(String username,String propname,Class<T> clazz)
-    {
+    /**
+     * 获取用户信息
+     * @param username 用户名
+     * @param propname 属性名称
+     * @param clazz 类型
+     * @param <T> 泛型
+     * @return
+     */
+    public static <T extends BaseUserInfo> T getUserInfo(String username,String propname,Class<T> clazz){
         if (Strings.isBlank(propname)) propname = Key_UserName;
         return repair(QueryAction.getObject(DataModelForUser, new Cnd(propname, username), null, null, clazz));
     }
+
+    /**
+     * 修复用户信息
+     * @param userinfo 用户信息
+     * @param <T> 泛型
+     * @return
+     */
     private static <T extends BaseUserInfo> T repair(T userinfo){
         if(userinfo==null)return null;
-        if (Strings.hasValue(userinfo.getGroupid()))
-        {
+        if (Strings.hasValue(userinfo.getGroupid())){
             TreeModel tm = new TreeModel();
             IDataModel dm = DaoSeesion.getDataModel(DataModelForGroup);
             String tableName = dm.getTableName();
@@ -240,6 +251,10 @@ public class UpmsAction {
         }
         return userinfo;
     }
+
+    /**
+     * 退出
+     */
     public static void loginout(){
         loginout(null);
     }
@@ -297,17 +312,16 @@ public class UpmsAction {
         }
         return "";
     }
-
-    /// <summary>
-    /// 获取账户中心token
-    /// </summary>
-    /// <param name="username">用户名</param>
-    /// <returns></returns>
+    /**
+     * 获取账户中心token
+     * @param username 用户名
+     * @return
+     */
     public static ReStruct<String, String> genUserToken(String username)
     {
-        String ssoserver = Configs.getString("sso");
-        String site = Configs.getString("app") ;
-        if(site==null)site = WebHub.SiteName;
+        String ssoserver = Ladder.Settings().getBusiness().getSso();
+        String site = Ladder.Settings().getSite();
+        if(site==null)site = Ladder.Settings().getSite();
         String resultInfo = HttpHelper.request(ssoserver + "/LoginBySub.aspx?systemcode=" + site + "&username=" + username, null, "GET",null).data;
         if (!Strings.isBlank(resultInfo))
         {
@@ -320,49 +334,51 @@ public class UpmsAction {
         }
         return new ReStruct<String, String>(false);
     }
-
-    /// <summary>
-    /// 获取客户端的UUID
-    /// </summary>
-    /// <returns></returns>
-    public static String getUuid()
-    {
+    public static void setUuid(String uuid){
+        try {
+            WebContext.setAttribute("_user_uuid_",uuid);
+            WebContext.getSession().setAttribute("UserSessionUUID", uuid.toString());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    /**
+     * 获取客户端的UUID
+     * @return
+     */
+    public static String getUuid(){
         int step = 0;
-        String uuid = Core.toString(WebContext.getSession().getAttribute("UserSessionUUID"));
-        if (Strings.isBlank(uuid))
-        {
+        String uuid=WebContext.getAttributeString("_user_uuid_");
+        if(Strings.hasValue(uuid)){
+            return uuid;
+        }
+        uuid = Core.toString(WebContext.getSession().getAttribute("UserSessionUUID"));
+        if (Strings.isBlank(uuid)){
             step = 1;
             uuid = WebContext.getCookie("UserSessionUUID");
         }
-        else
-        {
+        else{
             Cookie[] cookies = WebContext.getRequest().getCookies();
             if (cookies!=null && cookies.length < 1) step = 2;
         }
-        if (Strings.isBlank(uuid))
-        {
+        if (Strings.isBlank(uuid)){
             step = 2;
-            try
-            {
+            try{
                 uuid = WebContext.getSession().getId();
             }
-            catch (Exception e)
-            {
+            catch (Exception e){
                 uuid = "";
             }
         }
-        if (Strings.isBlank(uuid))
-        {
+        if (Strings.isBlank(uuid)){
             step = 3;
             uuid = Core.genUuid();
         }
-        try
-        {
+        try{
             if (step > 0) WebContext.getSession().setAttribute("UserSessionUUID", uuid);
             if (step > 1) WebContext.getResponse().addCookie(new Cookie("UserSessionUUID", uuid));
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             // ignored
         }
         return uuid;

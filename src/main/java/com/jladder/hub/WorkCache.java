@@ -3,10 +3,14 @@ package com.jladder.hub;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.jladder.datamodel.DataModelForMapRaw;
+import com.jladder.lang.Times;
 import com.jladder.lang.func.Func1;
+import com.jladder.lang.script.Script;
 import com.jladder.proxy.ProxyConfig;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.time.Duration;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,10 +21,11 @@ public class WorkCache implements IWorkCache{
     private final int proxytime=5;
     private final int moduletime=20;
 
-    private Cache<String, DataModelForMapRaw> dmcache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
+    private Cache<String, DataModelForMapRaw> DataModelcache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
 
-    private Cache<String, ProxyConfig> proxycache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(proxytime, TimeUnit.MINUTES).build();
+    private Cache<String, ProxyConfig> ProxyCache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(proxytime, TimeUnit.MINUTES).build();
 
+    private Cache<String, Script> ScriptCache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
     private Map<String,Cache<String,Object>> timedCache = new ConcurrentHashMap<String,Cache<String,Object>>();
 
     public WorkCache(){
@@ -32,42 +37,62 @@ public class WorkCache implements IWorkCache{
 //    TimedCache<String, Object> timedCache = new TimedCache<String, Object>(3600);
     @Override
     public void addDataModelCache(String key, DataModelForMapRaw raw) {
-        dmcache.put("_DataModel_"+key,raw);
+        DataModelcache.put("_DataModel_"+key,raw);
     }
 
     @Override
     public DataModelForMapRaw getDataModelCache(String key) {
-        return dmcache.getIfPresent("_DataModel_"+key);
+        return DataModelcache.getIfPresent("_DataModel_"+key);
     }
 
     @Override
     public void removeDataModelCache(String key) {
-        dmcache.invalidate("_DataModel_"+key);
+        DataModelcache.invalidate("_DataModel_"+key);
     }
 
     @Override
     public void removeAllDataModelCache() {
-        dmcache.invalidateAll();
+        DataModelcache.invalidateAll();
+    }
+
+    @Override
+    public void addScriptCache(String lib, Script script) {
+        ScriptCache.put("_Script_"+lib,script);
+    }
+
+    @Override
+    public Script getScriptCache(String lib) {
+        return ScriptCache.getIfPresent("_Script_"+lib);
+    }
+
+    @Override
+    public void removeScriptCache(String lib) {
+        ScriptCache.invalidate("_Script_"+lib);
+    }
+
+    @Override
+    public void removeAllScriptCache() {
+        ScriptCache.invalidateAll();
     }
 
     @Override
     public void addProxyCache(String key, ProxyConfig raw) {
-        proxycache.put(key,raw);
+        ProxyCache.put(key,raw);
     }
 
     @Override
     public ProxyConfig getProxyCache(String key) {
-        return proxycache.getIfPresent(key);
+        return ProxyCache.getIfPresent(key);
     }
 
     @Override
     public void removeProxyCache(String key) {
-        proxycache.invalidate(key);
+        ProxyCache.invalidate(key);
     }
 
     @Override
     public void removeAllProxyCache() {
-        proxycache.invalidateAll();
+        ProxyCache.invalidateAll();
     }
 
     @Override
@@ -119,6 +144,18 @@ public class WorkCache implements IWorkCache{
         }
     }
 
+    @Override
+    public <T> void addModuleCache(String key, T data, String module, Date invalid) {
+        if(timedCache.containsKey(module)){
+            Cache<String, Object> cache = timedCache.get(module);
+            cache.put(key,data);
+        }else{
+            long diff =  (invalid.getTime()-new Date().getTime())/1000;
+            Cache<String,Object> cache = Caffeine.newBuilder().maximumSize(200).expireAfterWrite(diff, TimeUnit.SECONDS).build();
+            timedCache.put(module,cache);
+            cache.put(key,data);
+        }
+    }
     @Override
     public <T> T getModuleCache(String key, String module) {
         if(timedCache.containsKey(module)) {

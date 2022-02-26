@@ -15,7 +15,7 @@ public class Json {
 
     static {
         GsonBuilder GSON_BUILDER = new GsonBuilder();
-        GSON = GSON_BUILDER.create();
+        GSON = GSON_BUILDER.setDateFormat("yyyy-MM-dd HH:mm:ss").create();
         GSON_SUPPORT_EXPOSE = GSON_BUILDER.excludeFieldsWithoutExposeAnnotation().create();
         GSON_DISABLE_HTML = GSON_BUILDER.disableHtmlEscaping().create();
         GSON_PRETTY_PRINT = GSON_BUILDER.setPrettyPrinting().create();

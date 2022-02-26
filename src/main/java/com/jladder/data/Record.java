@@ -30,7 +30,11 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
         if(record.size()<1)return true;
         return false;
     }
-
+    public Record put(boolean isPut,String key,Object value){
+        if(!isPut)return this;
+        super.put(key,value);
+        return this;
+    }
     /***
      * 放置键值
      * @param key 键名
@@ -38,10 +42,8 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
      * @return
      */
     public Record put(String key,Object value){
-
         super.put(key,value);
         return this;
-    
     }
     /**
      * 重命名
@@ -90,7 +92,6 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
             }else return null;
         }
         if(Strings.hasValue(clazz.getSimpleName())){
-            System.out.println(clazz.getSimpleName());
             for (Field field : clazz.getDeclaredFields()) {
                 try {
                     boolean flag = field.isAccessible();
@@ -162,10 +163,10 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
         return Json.toJson(this);
     }
     public String getString(String key){
-        return com.jladder.lang.Collections.getString(this,key,false);
+        return com.jladder.lang.Collections.getString(this,key,"",false);
     }
     public String getString(String key, boolean ignoreCase) {
-        return com.jladder.lang.Collections.getString(this,key,ignoreCase);
+        return com.jladder.lang.Collections.getString(this,key,"",ignoreCase);
     }
     public String getString(String key,String dValue){
         return getString(key,dValue,false);
@@ -298,7 +299,7 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
     public Object find(String path)
     {
         if (Strings.isBlank(path)) return null;
-        String[] nodes = path.split(path.contains("/")?"/":".");
+        String[] nodes = path.split(path.contains("/")?"/":"\\.");
         Object data = this;
         try
         {

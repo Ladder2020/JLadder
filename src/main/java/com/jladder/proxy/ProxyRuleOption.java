@@ -18,4 +18,9 @@ public class ProxyRuleOption {
     /// 缓存策略
     /// </summary>
     public static  final String Cache = "Cache";
+    /// <summary>
+    /// 幂等
+    /// </summary>
+    public static final String Idempotency="Idempotency";
+
 }

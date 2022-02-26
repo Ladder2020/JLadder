@@ -162,7 +162,7 @@ public class QueryAction
         if (!dm.enable()) return null;
         dm.matchColumns(columns);
         dm.setCondition(condition);
-        return getData(dm,null,true);
+        return getData(dm,null,false);
     }
 
     /// <summary>
@@ -181,7 +181,7 @@ public class QueryAction
         if (!dm.enable()) return null;
         dm.matchColumns(columns);
         dm.setCondition(Record.parse(condition));
-        return getData(dm,null,true);
+        return getData(dm,null,false);
     }
 
 
@@ -197,20 +197,17 @@ public class QueryAction
         return getData(tableName,condition,null,null,clazz);
     }
 
-
-    /// <summary>
-    /// 获取实体列表
-    /// </summary>
-    /// <param name="tableName">模版名称</param>
-    /// <param name="condition">条件</param>
-    /// <param name="columns">列节选</param>
-    /// <param name="param">扩展参数</param>
-    /// <param name="clazz">类泛型</param>
-    /// <param name="<T>"></param>
-    /// <returns></returns>
-
-    public static <T> List<T> getData(String tableName, Cnd condition, String columns, String param,Class<T> clazz)
-    {
+    /**
+     * 获取实体列表
+     * @param tableName 模型名称
+     * @param condition 过滤条件
+     * @param columns 列选
+     * @param param 扩展参数
+     * @param clazz 类型
+     * @param <T> 泛型
+     * @return
+     */
+    public static <T> List<T> getData(String tableName, Cnd condition, String columns, String param,Class<T> clazz){
         if (Strings.isBlank(tableName)) return null;
         IDataModel dm = DaoSeesion.getDataModel(tableName, param);
         if (!dm.enable()) return null;
@@ -220,13 +217,11 @@ public class QueryAction
         if (dm.isNull()) return null;
         dm.setCondition(condition);
         Receipt ret = LatchAction.getData(dm);
-        if (ret.result)
-        {
+        if (ret.result){
             List<Record> rs = (List<Record>) ret.data;
             return Rs.toClass(rs,clazz);
         }
-        else
-        {
+        else{
             Dao dao = new Dao(Strings.isBlank(dm.getConn())?"defaultDatabase":dm.getConn());
             dm.setDialect(dao.getDialect());
             dao.Tag = dm.getRaw().Name;
@@ -238,7 +233,7 @@ public class QueryAction
     }
 
     /// <summary>
-    /// 获取数据(对外处理)
+    ///
     /// </summary>
     /// <param name="dao">Dao工具</param>
     /// <param name="dm">Dao助手</param>
@@ -246,35 +241,43 @@ public class QueryAction
     /// <param name="param">参数文本</param>
     /// <param name="columns">字段文本</param>
     /// <returns></returns>
-    public static AjaxResult getData(IDao dao, IDataModel dm, String condition, String param, String columns)
-    {
+
+    /**
+     * 获取数据(对外处理)
+     * @param dao 数据库操作对象
+     * @param dm 数据模型
+     * @param condition 条件文本
+     * @param param 扩展参数
+     * @param columns 列选
+     * @return
+     */
+    public static AjaxResult getData(IDao dao, IDataModel dm, String condition, String param, String columns){
         if (dm.isNull()) return null;
         dm.matchColumns(columns);
         if (dm.isNull()) return new AjaxResult(702);
         dm.setCondition(condition);
-        List<Record> recordes = getData(dm, dao,true);
+        List<Record> recordes = getData(dm, dao,false);
         return new AjaxResult().setData(recordes);
     }
-
-
-    /// <summary>
-    /// 获取数据(对外访问)
-    /// </summary>
-    /// <param name="tableName">模型名称</param>
-    /// <returns></returns>
-
+    /**
+     * 获取数据(对外访问)
+     * @param tableName 模型名称
+     * @return
+     */
     public static AjaxResult getData(String tableName){
         return getData(tableName,"","","","");
     }
-    /// <summary>
-    /// 获取数据(对外访问)
-    /// </summary>
-    /// <param name="tableName">表名文本</param>
-    /// <param name="condition">条件文本</param>
-    /// <param name="columns">字段文本</param>
-    /// <param name="param">参数文本</param>
-    /// <param name="rel">资源对应</param>
-    /// <returns></returns>
+
+
+    /**
+     * 获取数据(对外访问)
+     * @param tableName 模型名称
+     * @param condition 条件文本
+     * @param columns 列选
+     * @param param 扩展参数
+     * @param rel 资源索引
+     * @return
+     */
     public static AjaxResult getData(String tableName, String condition, String columns, String param, String rel)
     {
         if (Strings.isBlank(tableName)) return new AjaxResult(444).setRel(rel);
@@ -286,7 +289,7 @@ public class QueryAction
         if (dm.isNull()) return new AjaxResult(702).setRel(rel).setDuration(startTime);
         dm.setCondition(Strings.mapping(condition));
         String error="";
-        List<Record> rs = getData(dm,null,true,error);
+        List<Record> rs = getData(dm,null,false,error);
 
         if(rs == null) return new AjaxResult(500).setRel(rel).setDuration(startTime).setData(error).setMessage("查询执行错误");
         return rs.size() < 1 ? new AjaxResult(404).setRel(rel).setDuration(startTime) : new AjaxResult(rs).setRel(rel).setDuration(startTime);
@@ -313,26 +316,24 @@ public class QueryAction
      * @return
      */
 
-    public static List<Record> getData(String tableName, Cnd condition, String columns, Object param)
-    {
+    public static List<Record> getData(String tableName, Cnd condition, String columns, Object param) {
         if (Strings.isBlank(tableName)) return null;
         IDataModel dm = DaoSeesion.getDataModel(tableName, (param instanceof String?(String)param : Json.toJson(Record.parse(param))));
         if (dm.isNull()) return null;
         dm.matchColumns(columns);
         dm.setCondition(condition);
-        return getData(dm,null,true);
+        return getData(dm,null,false);
     }
 
-    /// <summary>
-    /// 获取数据(对内服务)
-    /// </summary>
-    /// <param name="tableName">模版名称</param>
-    /// <param name="condition">条件对象</param>
-    /// <param name="columns">列节选</param>
-    /// <param name="param">扩展参数</param>
-    /// <returns></returns>
-    public static List<Record> getData(String tableName, String condition, String columns, String param)
-    {
+    /**
+     * 获取数据(对内服务)
+     * @param tableName 模型名称
+     * @param condition 条件文本
+     * @param columns 列选
+     * @param param 扩展参数
+     * @return
+     */
+    public static List<Record> getData(String tableName, String condition, String columns, String param){
         if (Strings.isBlank(tableName)) return null;
         IDataModel dm = DaoSeesion.getDataModel(tableName, param);
         if (dm.isNull()) return null;
@@ -342,75 +343,65 @@ public class QueryAction
         return getData(dm);
     }
 
-    /// <summary>
-    /// 获取数据列表
-    /// </summary>
-    /// <param name="keepDaoPool">数据连接池</param>
-    /// <param name="dm">数据模型</param>
-    /// <returns></returns>
-    public static List<Record> getData(KeepDaoPool keepDaoPool, IDataModel dm)
-    {
+    /**
+     * 获取数据列表
+     * @param keepDaoPool 数据库操作池
+     * @param dm 数据模型
+     * @return
+     */
+    public static List<Record> getData(KeepDaoPool keepDaoPool, IDataModel dm){
         if (keepDaoPool == null || dm == null) return null;
-        KeepDao keepdao = keepDaoPool.CreateKeepDao(dm.getConn());
+        KeepDao keepdao = keepDaoPool.createKeepDao(dm.getConn());
 //        WebScope.SetDataContorl(dm);
         if (dm.isNull()) return null;
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetData);
         Receipt latchresult = LatchAction.getData(dm);
         List<Record> subQueryAction = dm.getRelationAction("query");
-        if (subQueryAction == null && latchresult.result)
-        {
-            return analyze.CountCacheDataEnd((List<Record>)latchresult.data);
+        if (subQueryAction == null && latchresult.result) {
+            return analyze.countCacheDataEnd((List<Record>)latchresult.data);
         }
         SqlText sqltext = dm.getSqlText();
-        if (subQueryAction == null)
-        {
+        if (subQueryAction == null){
             List<Record> recordes = handleQueryResult(keepDaoPool, keepdao.Dao.query(sqltext), dm);
             LatchAction.setData(dm, recordes);
-            return analyze.CountDataEnd(recordes);
+            return analyze.countDataEnd(recordes);
         }
-        else
-        {
-            if (latchresult.result)
-            {
+        else {
+            if (latchresult.result) {
                 List<Record> rs = (List<Record>) latchresult.data;
-                for (Record record : rs)
-                {
+                for (Record record : rs){
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
                 }
                 rs = handleQueryResult(keepDaoPool, keepdao.Dao.query(sqltext), dm);
-                return analyze.CountCacheDataEnd(rs);
+                return analyze.countCacheDataEnd(rs);
             }
-            else
-            {
-
-                List<Record> recordes = keepdao.Dao.query(sqltext, record ->
-                {
+            else {
+                List<Record> recordes = keepdao.Dao.query(sqltext, record ->{
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
                     return true;
                 });
                 handleQueryResult(keepDaoPool, recordes, dm);
                 LatchAction.setData(dm, recordes);
-                return analyze.CountDataEnd(recordes);
+                return analyze.countDataEnd(recordes);
             }
         }
     }
     public static List<Record> getData(IDataModel dm){
-        return getData(dm,null,true);
+        return getData(dm,null,false);
     }
-    public static List<Record> getData(IDataModel dm, IDao dao, boolean supportTran)
-    {
+    public static List<Record> getData(IDataModel dm, IDao dao, boolean supportTran){
         String errorMessage="";
         return getData(dm, dao, supportTran,errorMessage);
     }
-    /// <summary>
-    /// 获取数据(对内服务)
-    /// </summary>
-    /// <param name="dm">数据库操作对象</param>
-    /// <param name="dao">数据库连接对象</param>
-    /// <param name="supportTran"></param>
-    /// <returns></returns>
-    public static List<Record> getData(IDataModel dm, IDao dao,boolean supportTran,String errorMessage)
-    {
+    /**
+     * 获取数据(对内服务)
+     * @param dm 数据模型
+     * @param dao 数据库操作对象
+     * @param supportTran 是否支撑事务
+     * @param errorMessage 错误消息
+     * @return
+     */
+    public static List<Record> getData(IDataModel dm, IDao dao,boolean supportTran,String errorMessage){
         errorMessage = "";
         if (dm == null|| !dm.enable())return null;
 //        WebScope.SetDataContorl(dm);
@@ -418,76 +409,66 @@ public class QueryAction
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetData);
         Receipt latchresult = LatchAction.getData(dm);
         //静态数据逻辑
-        if (DataModelType.Data.equals(dm.Type))
-        {
-            if(latchresult == null || !latchresult.result)return analyze.CountDataEnd((List<Record>)null);
+        if (DataModelType.Data.equals(dm.Type)){
+            if(latchresult == null || !latchresult.result)return analyze.countDataEnd((List<Record>)null);
             List<Record> subQueryAction1 = dm.getRelationAction("query");
             if (subQueryAction1 == null && latchresult.result)
             {
-                return analyze.CountCacheDataEnd((List<Record>)latchresult.data);
+                return analyze.countCacheDataEnd((List<Record>)latchresult.data);
             }
         }
         //含有dao对象视为无后续动作查询
-        if (dao != null)
-        {
-            if (latchresult.result)
-            {
-                return analyze.CountCacheDataEnd((List<Record>)latchresult.data);
+        if (dao != null){
+            if (latchresult.result){
+                return analyze.countCacheDataEnd((List<Record>)latchresult.data);
             }
-            else
-            {
+            else{
                 dm.setDialect(dao.getDialect());
                 dao.setTag(dm.getName());
                 List<Record> rs = dao.query(dm.getSqlText());
                 if (rs == null) return null;
                 LatchAction.setData(dm,rs);
-                return analyze.CountCacheDataEnd(rs);
+                return analyze.countCacheDataEnd(rs);
             }
         }
         List<Record> subQueryAction = dm.getRelationAction("query");
-        if (subQueryAction == null && latchresult.result)
-        {
-            return analyze.CountCacheDataEnd((List<Record>)latchresult.data);
+        if (subQueryAction == null && latchresult.result){
+            return analyze.countCacheDataEnd((List<Record>)latchresult.data);
         }
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
-        KeepDao keepDao = keepDaoPool.CreateKeepDao(dm.getConn());
+        KeepDao keepDao = keepDaoPool.createKeepDao(dm.getConn());
         dm.setDialect(keepDao.Dao.getDialect());
         SqlText sql = dm.getSqlText();
         keepDao.Dao.setTag(dm.getName());
-        if (subQueryAction == null)
-        {
+        if (subQueryAction == null){
             List<Record> data = keepDao.Dao.query(sql);
             errorMessage = keepDao.Dao.getErrorMessage();
             List<Record> rs = handleQueryResult(keepDaoPool, data, dm);
-            keepDaoPool.End();
+            keepDaoPool.end();
             LatchAction.setData(dm, rs);
-            return analyze.CountDataEnd(rs);
+            return analyze.countDataEnd(rs);
         }
-        else
-        {
-            if (latchresult.result)
-            {
+        else{
+            if (latchresult.result) {
                 List<Record> rs = (List<Record>) latchresult.data;
                 for (Record record : rs)
                 {
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
                 }
                 rs=handleQueryResult(keepDaoPool, keepDao.Dao.query(sql), dm);
-                keepDaoPool.End();
-                return analyze.CountCacheDataEnd(rs);
+                keepDaoPool.end();
+                return analyze.countCacheDataEnd(rs);
             }
-            else
-            {
-                List<Record> recordes = keepDao.Dao.query(sql, record ->
-                {
+            else{
+                List<Record> recordes = keepDao.Dao.query(sql, record ->{
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
                     return true;
                 });
                 errorMessage = keepDao.Dao.getErrorMessage();
                 handleQueryResult(keepDaoPool, recordes, dm);
-                keepDaoPool.End();
+                keepDaoPool.end();
                 LatchAction.setData(dm, recordes);
-                return analyze.CountDataEnd(recordes);
+                return analyze.countDataEnd(recordes);
             }
         }
     }
@@ -579,7 +560,7 @@ public class QueryAction
                 ret.records.forEach(record ->{
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dataModel);
                 });
-                keepDaoPool.End();
+                keepDaoPool.end();
             }
             PageResult pr = new PageResult();
             pr.records = records;
@@ -623,7 +604,7 @@ public class QueryAction
                     return true;
                 });
                 handleQueryResult(keepDaoPool,records, dataModel);
-                keepDaoPool.End();
+                keepDaoPool.end();
             }
             pr.message = dao.getErrorMessage();
             pr.records = records;
@@ -687,7 +668,7 @@ public class QueryAction
                     bpr = LatchAction.getPageData(dm, pager);
                     if (bpr==null || bpr.statusCode != 200)
                     {
-                        analyze.IsCache = true;
+                        analyze.isCache = true;
                         SqlText pagesqltext=dm.getWhere();
                         String cSqlText = "select count(0) from (select 1 as i from " + dm.TableName + pagesqltext.cmd + dm.getGroup() + ")yifeng";
                         int total = dao.getValue(SqlText.create(cSqlText,pagesqltext.getParameters()),Integer.class);
@@ -702,7 +683,7 @@ public class QueryAction
                 bpr = LatchAction.getPageData(dm, pager);
                 if (bpr==null || bpr.statusCode != 200)
                 {
-                    analyze.IsCache = true;
+                    analyze.isCache = true;
                     SqlText where = dm.getWhere();
                     String cSqlText = "select count(0) from (select 1 as i from " + dm.getTableName() + where.getCmd()+ dm.getGroup() + ") yifeng";
                     int total = dao.getValue(SqlText.create(cSqlText,where.getParameters()),Integer.class);
@@ -723,7 +704,7 @@ public class QueryAction
             bpr = LatchAction.getPageData(dm, pager);
             if (bpr==null || bpr.statusCode != 200)
             {
-                analyze.IsCache = true;
+                analyze.isCache = true;
                 argMap = new Record();
                 String sqltext = "select count(*) from " + dm.TableName + dm.getWhere() + dm.getGroup();
                 int total = dao.getValue(new SqlText(sqltext),Integer.class);
@@ -762,7 +743,7 @@ public class QueryAction
             });
             pr.message = dao.getErrorMessage();
             records = handleQueryResult(keeps, records, dm);
-            keeps.End();
+            keeps.end();
         }
         pr.records = records;
         pr.condition = argMap;
@@ -770,7 +751,7 @@ public class QueryAction
         pr.columns = dm.getColumnList();
         pr.queryform = dm.getQueryForm();
         dao.close();
-        analyze.CountDataEnd(records);
+        analyze.countDataEnd(records);
         return pr;
     }
 
@@ -924,7 +905,7 @@ public class QueryAction
         if (dm.isNull()) return null;
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetBean);
         if (keepDaoPool == null) return null;
-        KeepDao keepDao = keepDaoPool.CreateKeepDao(dm.getConn());
+        KeepDao keepDao = keepDaoPool.createKeepDao(dm.getConn());
         //作用域的数据控制
 //        WebScope.SetDataContorl(dm);
         SqlText sqlText = dm.getSqlText();
@@ -936,12 +917,12 @@ public class QueryAction
         subQueryAction = dm.getRelationAction("entity");
         if (subQueryAction != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
         List<Record> ret = handleQueryResult(keepDaoPool, Rs.create(record), dm);
-        keepDaoPool.End();
-        analyze.CountDataEnd(record);
+        keepDaoPool.end();
+        analyze.countDataEnd(record);
         return ret.get(0);
     }
     public static AjaxResult getBean(IDataModel dm){
-        return getBean(dm,null,true);
+        return getBean(dm,null,false);
     }
     /// <summary>
     /// 获取单条记录
@@ -972,7 +953,7 @@ public class QueryAction
             return new AjaxResult(result).setDuration(starttime);
         }
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
-        KeepDao keepdao = keepDaoPool.CreateKeepDao(dm.getConn());
+        KeepDao keepdao = keepDaoPool.createKeepDao(dm.getConn());
         dm.setDialect(keepdao.Dao.getDialect());
         keepdao.Dao.setTag(dm.getRaw().Name);
         Record record = keepdao.Dao.fetch(dm.getSqlText());
@@ -984,11 +965,11 @@ public class QueryAction
         if (subQueryAction != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
         subQueryAction = dm.getRelationAction("entity");
         if (subQueryAction != null)subActionQuery(keepDaoPool, record, subQueryAction, dm);
-        analyze.CountDataEnd(record);
+        analyze.countDataEnd(record);
         List<Record> rrss = new ArrayList<Record>();
         rrss.add(record);
         List<Record> ret = handleQueryResult(keepDaoPool, rrss, dm);
-        keepDaoPool.End();
+        keepDaoPool.end();
         return new AjaxResult().setData(Collections.first(ret,null).item2).setDuration(starttime);
     }
     /**
@@ -1046,7 +1027,7 @@ public class QueryAction
         IDao dao = DaoSeesion.NewDao(dm.getConn());
         dao.setTag(dm.getRaw().Name) ;
         T value = dao.getValue(new SqlText(querySqlText,where.getParameters()), clazz);
-        analyze.EndPoint();
+        analyze.endPoint();
         return value;
     }
 
@@ -1115,7 +1096,7 @@ public class QueryAction
                     dm.getWhere() + dm.getGroup() + dm.getOrder();
             List<Record> rs = dao.query(new SqlText(querySqlText));
             if (rs == null) return Strings.hasValue(dao.getErrorMessage())? null:new ArrayList<T>();
-            analyze.CountCacheData(rs).EndPoint();
+            analyze.countCacheData(rs).endPoint();
 
             return Collections.select(rs,r->r.get(0,clazz));
 //
@@ -1178,7 +1159,7 @@ public class QueryAction
     {
         KeepDaoPool keep = new KeepDaoPool();
         handleQueryResult(keep, rs, dm);
-        keep.End();
+        keep.end();
         return rs;
     }
     /// <summary>
@@ -1199,6 +1180,7 @@ public class QueryAction
             String tablename = action.getString("tableName", true);
             String fieldname = action.getString("fieldname", true);
             String relation = action.getString("relation");
+            String condition = action.getString("condition");
             switch (DbSqlDataType.get(option))
             {
                 case GetData:
@@ -1242,12 +1224,14 @@ public class QueryAction
                     if (mapping.size() == 1)
                     {
                         String key = mapping.first().key;
-                        String wfield = Collections.getString(subdm.getFieldConfig(key), "fieldname");
+                        String wfield = Collections.getString(subdm.getFieldConfig(key), "fieldname","");
                         String kv = mapping.first().value.toString();
                         final String[] vs = {""};
                         rs.forEach(x -> vs[0] += x.getString(kv) + ",");
                         subdm.matchColumns(action.getString("columns"));
                         subdm.setCondition(new Record(wfield + ":in", vs[0]));
+                        if(Strings.hasValue(condition))subdm.setCondition(condition);
+                        if(Strings.hasValue(condition))subdm.setCondition(condition);
                         List<Record> data = getData(keepDaoPool, subdm);
                         Record records = Record.turn(data,key, true);
                         rs.forEach(x ->{
@@ -1258,7 +1242,7 @@ public class QueryAction
                     else
                     {
                         Record filemapping=new Record();
-                        mapping.forEach((x,y) -> filemapping.put(x, Collections.getString(subdm.getFieldConfig(x),"fieldname")));
+                        mapping.forEach((x,y) -> filemapping.put(x, Collections.getString(subdm.getFieldConfig(x),"fieldname","")));
                         Cnd cnd = new Cnd();
                         rs.forEach(x ->{
                             Cnd c = new Cnd();
@@ -1267,6 +1251,7 @@ public class QueryAction
                         });
                         subdm.matchColumns(action.getString("columns"));
                         subdm.setCondition(cnd);
+                        if(Strings.hasValue(condition))subdm.setCondition(condition);
                         List<Record> data = getData(keepDaoPool, subdm);
                         Map<String, List<Record>> turndic = new HashMap<String, List<Record>>();
                         data.forEach(x ->{
@@ -1291,42 +1276,52 @@ public class QueryAction
                     Record mapping = Record.parse(relation);
                     if (mapping.size() < 1) continue;
                     IDataModel subdm = DaoSeesion.getDataModel(tablename, action.getString("param", true));
-                    if (mapping.size() == 1)
-                    {
+                    if (mapping.size() == 1){
                         String key = mapping.first().key;
-                        String wfield = Collections.getString(subdm.getFieldConfig(key),"fieldname");
+                        String wfield = Collections.getString(subdm.getFieldConfig(key),"fieldname","");
                         String kv = mapping.first().value.toString();
                         final String[] vs = {""};
                         rs.forEach(x -> vs[0] += x.getString(kv) + ",");
-                        subdm.matchColumns(action.getString("columns"));
+                        String columns =  action.getString("columns");
+                        if(Strings.hasValue(columns))columns+=","+key;
+                        subdm.matchColumns(columns);
                         subdm.setCondition(new Record(wfield + ":in", vs[0]));
+                        if(Strings.hasValue(condition))subdm.setCondition(condition);
                         List<Record> data = getData(keepDaoPool, subdm);
                         Record records = Record.turn(data,key,false);
                         rs.forEach(x ->{
                             Object d = records.getObject(x.getString(kv));
-                            if (Regex.isMatch(fieldname, "^\\*"))
-                            {
-                                x.merge(Record.parse(d));
-
-                            }else
-                            {
+                            if (Regex.isMatch(fieldname, "^\\*")){
+                                String fv = fieldname.replace("*","");
+                                if(Strings.isBlank(fv))
+                                    x.merge(Record.parse(d));
+                                else{
+                                    if(d==null)x.put(fv,null);
+                                    else x.put(fv,Record.parse(d).get(fv));
+                                }
+                            }else{
                                 x.put(fieldname, d);
                             }
-
                         });
                     }
-                    else
-                    {
+                    else{
                         Record filemapping = new Record();
-                        mapping.forEach((x,y) -> filemapping.put(x, Collections.getString(subdm.getFieldConfig(x),"fieldname")));
+                        final String[] require = {""};
+                        mapping.forEach((x,y) -> {
+                            filemapping.put(x, Collections.getString(subdm.getFieldConfig(x),"fieldname",""));
+                            require[0] +=(x+",");
+                        });
                         Cnd cnd = new Cnd();
                         rs.forEach(x ->{
                             Cnd c = new Cnd();
                             mapping.forEach((y,z) -> c.put(filemapping.getString(y), x.getString(z.toString())));
                             cnd.or(c);
                         });
-                        subdm.matchColumns(action.getString("columns"));
+                        String columns = action.getString("columns");
+                        if(Strings.hasValue(columns))columns+=Strings.rightLess(require[0],1);
+                        subdm.matchColumns(columns);
                         subdm.setCondition(cnd);
+                        if(Strings.hasValue(condition))subdm.setCondition(condition);
                         List<Record> data = getData(keepDaoPool, subdm);
                         Record turndic = new Record();
                         data.forEach(x ->{
@@ -1338,7 +1333,15 @@ public class QueryAction
                             final String[] k = {"##"};
                             mapping.forEach((y,z) -> k[0] += x.getString(z.toString()) + "##");
                             Object d = turndic.get(k[0]);
-                            if (Regex.isMatch(fieldname, "^\\*")) x.merge(Record.parse(d));
+                            if (Regex.isMatch(fieldname, "^\\*")){
+                                String fv = fieldname.replace("*","");
+                                if(Strings.isBlank(fv))
+                                    x.merge(Record.parse(d));
+                                else{
+                                    if(d==null)x.put(fv,null);
+                                    else x.put(fv,Record.parse(d).get(fv));
+                                }
+                            }
                             else  x.put(fieldname, d);
                         });
                     }

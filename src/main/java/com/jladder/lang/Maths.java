@@ -1,5 +1,9 @@
 package com.jladder.lang;
 
+import org.springframework.util.Assert;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +45,12 @@ public abstract class Maths {
                 return arg0 < arg1;
             }
         }, nums);
+    }
+    public static BigDecimal divide(long num1, long num2) {
+        return divide(BigDecimal.valueOf(num1),BigDecimal.valueOf(num2),2,RoundingMode.HALF_UP);
+    }
+    public static BigDecimal divide(long num1, long num2,int scale,RoundingMode mode) {
+        return divide(BigDecimal.valueOf(num1),BigDecimal.valueOf(num2),scale,mode);
     }
 
     private interface CompareSomeThing {
@@ -237,5 +247,77 @@ public abstract class Maths {
     {
         int v = (int)Math.pow(2, position);
         return ((val & v) >> position) == 1;
+    }
+
+
+
+
+    /**
+     * 提供精确的乘法运算<br>
+     * 如果传入多个值为null或者空，则返回0
+     *
+     * @param values 多个被乘值
+     * @return 积
+     * @since 4.0.0
+     */
+    public static BigDecimal multiply(Number... values) {
+        if (Core.isEmpty(values)) {
+            return BigDecimal.ZERO;
+        }
+        Number value = values[0];
+        BigDecimal result = new BigDecimal(value.toString());
+        for (int i = 1; i < values.length; i++) {
+            value = values[i];
+            result = result.multiply(new BigDecimal(value.toString()));
+        }
+        return result;
+    }
+
+
+    /**
+     * 提供(相对)精确的除法运算,当发生除不尽的情况时,由scale指定精确度
+     *
+     * @param v1           被除数
+     * @param v2           除数
+     * @param scale        精确度，如果为负值，取绝对值
+     * @param roundingMode 保留小数的模式 {@link RoundingMode}
+     * @return 两个参数的商
+     */
+    public static BigDecimal divide(BigDecimal v1, BigDecimal v2, int scale, RoundingMode roundingMode) {
+        Assert.notNull(v2, "Divisor must be not null !");
+        if (null == v1) {
+            return BigDecimal.ZERO;
+        }
+        if (scale < 0) {
+            scale = -scale;
+        }
+        return v1.divide(v2, scale, roundingMode);
+    }
+
+    public static BigDecimal round(BigDecimal number, int scale){
+        return round(number,scale,RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 保留固定位数小数<br>
+     * 例如保留四位小数：123.456789 =》 123.4567
+     *
+     * @param number       数字值
+     * @param scale        保留小数位数，如果传入小于0，则默认0
+     * @param roundingMode 保留小数的模式 {@link RoundingMode}，如果传入null则默认四舍五入
+     * @return 新值
+     */
+    public static BigDecimal round(BigDecimal number, int scale, RoundingMode roundingMode) {
+        if (null == number) {
+            number = BigDecimal.ZERO;
+        }
+        if (scale < 0) {
+            scale = 0;
+        }
+        if (null == roundingMode) {
+            roundingMode = RoundingMode.HALF_UP;
+        }
+
+        return number.setScale(scale, roundingMode);
     }
 }

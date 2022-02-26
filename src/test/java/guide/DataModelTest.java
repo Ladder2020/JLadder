@@ -2,7 +2,7 @@ package guide;
 
 import com.jladder.actions.impl.QueryAction;
 import com.jladder.actions.impl.SaveAction;
-import com.jladder.configs.Configs;
+import com.jladder.configs.Configure;
 import com.jladder.data.Record;
 import com.jladder.datamodel.DataModelForMap;
 import com.jladder.datamodel.DataModelForMapRaw;
@@ -15,7 +15,7 @@ public class DataModelTest {
 
     @Test
     public void initTest(){
-        Configs.loadSettingsFromFile("config.json");
+        Configure.loadSettingsFromFile("config.json");
         //创建一个模型
         IDataModel dm = new DataModelForMap();
         dm.TableName="sys_user";
@@ -41,7 +41,7 @@ public class DataModelTest {
 
     @Test
     public void JsonTest(){
-        Configs.loadSettingsFromFile("config.json");
+        Configure.loadSettingsFromFile("config.json");
         //第一种：可在启动时加载,
         DataHub.LoadJsonFile("dm1.json");
         //或者
@@ -55,22 +55,9 @@ public class DataModelTest {
     }
     @Test
     public void xmlTest(){
-        Configs.loadSettingsFromFile("config.json");
+        Configure.loadSettingsFromFile("config.json");
         //加载xml模型文件
         DataHub.LoadXmlFile("dm1.xml");
-
-        //query或者save操作
-        QueryAction.getCount("ticket_nodefile",new Cnd("format",".png"));
-
-
-
-
-
-    }
-    public void dbTest(){
-        //配置模型数据库
-        DataHub.TemplateTableName="lader_models";
-        DataHub.TemplateConn="defaultDatabase";
 
         //query或者save操作
         QueryAction.getCount("ticket_nodefile",new Cnd("format",".png"));

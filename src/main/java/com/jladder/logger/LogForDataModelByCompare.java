@@ -15,33 +15,33 @@ public class LogForDataModelByCompare
     /// <summary>
     /// 模版名称
     /// </summary>
-    public String TableName;
+    public String tablename;
     /// <summary>
     /// 原数据
     /// </summary>
-    public List<Record> OldRawData;
+    public List<Record> oldrawdata;
     /// <summary>
     /// 当前数据
     /// </summary>
-    public Object Data;
+    public Object data;
 
     /// <summary>
     /// 创建时间
     /// </summary>
-    public Date CreateTime= Times.now();
+    public Date createtime= Times.now();
 
     /// <summary>
     /// 用户信息
     /// </summary>
-    public String UserInfo;
+    public String userinfo;
 
     /// <summary>
     /// 不同之处
     /// </summary>
-    public List<Record> Different;
+    public List<Record> different;
     public LogForDataModelByCompare(String tableName,String userinfo){
-        this.TableName = tableName;
-        this.UserInfo = userinfo;
+        this.tablename = tableName;
+        this.userinfo = userinfo;
     }
 
     /// <summary>
@@ -49,8 +49,8 @@ public class LogForDataModelByCompare
     /// </summary>
     public void Diff()
     {
-        List<Record> rs = OldRawData;
-        Record bean = Record.parse(Data);
+        List<Record> rs = oldrawdata;
+        Record bean = Record.parse(data);
         List<Record> ret = new ArrayList<Record>();
         AtomicInteger index = new AtomicInteger();
         rs.forEach(raw ->{
@@ -65,7 +65,7 @@ public class LogForDataModelByCompare
              }
              index.getAndIncrement();
         });
-        Different = ret;
+        different = ret;
     }
 
 }

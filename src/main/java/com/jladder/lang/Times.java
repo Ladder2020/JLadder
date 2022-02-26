@@ -156,8 +156,11 @@ public abstract class Times {
         throw Core.makeThrow("未实现");
     }
 
+    /**
+     * 获取日期文本
+     * @return
+     */
     public static String getDate() {
-
         return sD(new Date());
     }
 
@@ -939,12 +942,18 @@ public abstract class Times {
     }
 
     /**
+     * 以当前时间时间格式
+     * @param fmt
+     * @return
+     */
+    public static String format(String fmt){
+        return format(fmt,new Date());
+    }
+    /**
      * 以给定的时间格式来安全的对时间进行格式化，并返回格式化后所对应的字符串
      * 
-     * @param fmt
-     *            时间格式
-     * @param d
-     *            时间对象
+     * @param fmt 时间格式
+     * @param d 时间对象
      * @return 格式化后的字符串
      */
     public static String format(String fmt, Date d) {
@@ -1351,6 +1360,25 @@ public abstract class Times {
     public static Period getDiff(Date start, Date end){
         return Period.between(toLocalDate(start),toLocalDate(end));
     }
+    public static String getDuration(int length){
+        return getDuration((long) length);
+    }
+    public static String getDuration(long length){
+        if(length==0)return "00:00:00";
+        boolean f=length<0;
+        length = Math.abs(length);
+        long hours =  length/3600;
+        if(hours>=1){
+            length = length - 3600* hours;
+        }else hours=0;
+        long min = length / 60;
+        if(min>=1){
+            length = length - 60* min;
+        }else{
+            min=0;
+        }
+        return (f?"-":"")+(hours<=9?"0"+hours:hours)+":" + (min<=9?"0"+min:min)+":"  + (length<=9?"0"+length:length) ;
+    }
 
     public static Tuple4<Integer,Integer,Integer,Integer> getDuration(Date start, Date end){
         if (start == null || start.equals(new Date(0))) return new Tuple4<Integer,Integer,Integer,Integer>(0,0,0,0);
@@ -1371,6 +1399,21 @@ public abstract class Times {
         long sec = diff % nd % nh % nm / ns;
         return new Tuple4<Integer,Integer,Integer,Integer>((int)day,(int)hour,(int)min,(int)sec);
     }
+
+    /**
+     * 计算两个日期相差的天数，如果date2 ＞ date1 返回正数，否则返回负数
+     *
+     * @param date1
+     *            Date
+     * @param date2
+     *            Date
+     * @return long
+     */
+    public static long minuteDiff(Date date1, Date date2) {
+        return (date2.getTime() - date1.getTime()) /(1000 * 60);
+    }
+
+
 
     /**
      * 计算两个日期相差的天数，如果date2 ＞ date1 返回正数，否则返回负数
@@ -1536,6 +1579,10 @@ public abstract class Times {
         return cal.getTime();
     }
 
+    public static Date addDay(int day) {
+        return addDay(new Date(),day);
+    }
+
     /**
      * 取得当前时间距离1900/1/1的天数
      *
@@ -1650,6 +1697,9 @@ public abstract class Times {
         return diff / unit;
     }
 
+    public static Date addMinute(int minute){
+        return addMinute(new Date(),minute);
+    }
     /**
      * 取得指定日期过 minute 分钟后的日期 (当 minute 为负数表示指定分钟之前)
      *

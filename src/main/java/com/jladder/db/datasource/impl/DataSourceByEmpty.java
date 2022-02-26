@@ -16,7 +16,7 @@ public class DataSourceByEmpty extends IDataSource {
 
     public DataSourceByEmpty(DbInfo info) {
         System.out.println("使用空数据库连接池->DataSourceByEmpty");
-        dsMap.put(info.getName(),new Database(createDataSource(info),info));
+        dsMap.put(info.getName(),new Database(createDataSource(info),info,"jdbc"));
     }
     protected DataSource createDataSource(DbInfo info) {
         final DataSource ds = new DataSource() {

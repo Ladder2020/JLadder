@@ -6,6 +6,7 @@ import com.jladder.lang.Collections;
 import com.jladder.lang.Core;
 import com.jladder.lang.Strings;
 import com.jladder.lang.func.Tuple2;
+import com.jladder.logger.LogFoRequest;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -19,7 +20,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 上下文环境
+ */
 public class WebContext {
+
+    /**
+     * 是否web环境
+     * @return
+     */
+    public static boolean isWeb(){
+        return getRequest()!=null;
+    }
+
+    /**
+     * 获取请求头对象
+     * @return
+     */
     public static HttpServletRequest getRequest() {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) return null;
@@ -27,8 +44,10 @@ public class WebContext {
         return request;
     }
 
-    ;
-
+    /**
+     * 获取回复头对象
+     * @return
+     */
     public static HttpServletResponse getResponse() {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) return null;
@@ -94,15 +113,30 @@ public class WebContext {
         cookie.setPath("/");
         requestAttributes.getResponse().addCookie(cookie);
     }
-
-    public static String getAttribute(String name) {
+    public static String getAttributeString(String name) {
+        Object v = getAttribute(name);
+        if(v==null)return null;
+        return v.toString();
+    }
+    public static Object getAttribute(HttpServletRequest request,String name) {
+        if (request == null) return null;
+        Object val = request.getAttribute(name);
+        if (null == val) return null;
+        return val;
+    }
+    public static Object getAttribute(String name) {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) return null;
         HttpServletRequest request = requestAttributes.getRequest();
         if (request == null) return null;
         Object val = request.getAttribute(name);
         if (null == val) return null;
-        return val.toString();
+        return val;
+    }
+    public static boolean setAttribute(HttpServletRequest request,String name,Object value) {
+        if (request == null) return false;
+        request.setAttribute(name,value);
+        return true;
     }
     public static boolean setAttribute(String name,Object value) {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -208,11 +242,63 @@ public class WebContext {
      * 获取请求码
      * @return
      */
-    public static String getRequestMark() {
-        String mark = getAttribute("__requestmark__");
+    public static String getMark() {
+        String mark = getAttributeString("__requestmark__");
         if(Strings.hasValue(mark))return mark;
         mark = Core.genUuid();
         setAttribute("__requestmark__",mark);
         return mark;
+    }
+
+    /***
+     * 获取请求码
+     * @param request 请求头对象
+     * @return
+     */
+    public static String getMark(HttpServletRequest request) {
+        Object mark =  request.getAttribute("__requestmark__");
+        if(mark!=null)return mark.toString();
+        String newMask = Core.genUuid();
+        request.setAttribute("__requestmark__",newMask);
+        return newMask;
+    }
+    public static void setTag(String tag){
+        setAttribute("__requesttag__",tag);
+    }
+    public static String getTag(){
+        return getAttributeString("__requesttag__");
+    }
+
+
+    public static void setMark(HttpServletRequest request, String requestmask) {
+        request.setAttribute("__requestmark__",requestmask);
+    }
+
+    /**
+     * 设置请求日志
+     * @return
+     */
+    public static LogFoRequest setLogger() {
+        return setLogger(getRequest());
+    }
+
+    /**
+     * 设置请求日志
+     * @param request 请求对象
+     * @return
+     */
+    public static LogFoRequest setLogger(HttpServletRequest request) {
+        if(request==null)return null;
+        LogFoRequest log = new LogFoRequest(request);
+        request.setAttribute("___loggerforrequest____",log);
+        return log;
+    }
+    public static LogFoRequest getLogger(){
+        return getLogger(getRequest());
+    }
+    public static LogFoRequest getLogger(HttpServletRequest request){
+        if(request==null)return null;
+        LogFoRequest log = (LogFoRequest)request.getAttribute("___loggerforrequest____");
+        return log;
     }
 }

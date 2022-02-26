@@ -40,6 +40,7 @@ public class ArgumentMapping {
                 return ret;
             }
             String contentType = request.getContentType();
+            if(Strings.isBlank(contentType))contentType="";
             if(contentType!=null && contentType.indexOf("application/json")>-1){
                 contentType="application/json";
             }

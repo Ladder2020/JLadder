@@ -1,6 +1,8 @@
 package com.jladder.db.datasource;
-
 import com.jladder.db.DbInfo;
+import com.jladder.db.datasource.impl.DataSourceByDruid;
+import com.jladder.db.datasource.impl.DataSourceByHikari;
+import com.jladder.lang.Strings;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -13,6 +15,7 @@ import java.util.logging.Logger;
 
 public class Database implements DataSource, Closeable, Cloneable{
 
+    private String pn;
     private final DataSource ds;
 //    private final String driver;
     private final DbInfo info;
@@ -23,9 +26,12 @@ public class Database implements DataSource, Closeable, Cloneable{
      * @param ds     原始的DataSource
      * @param info 数据库驱动类名
      */
-    public Database(DataSource ds, DbInfo info) {
+    public Database(DataSource ds, DbInfo info,String poolName) {
         this.ds = ds;
         this.info = info;
+        this.pn=poolName;
+        if(Strings.isBlank(poolName))pn=ds.getClass().getName();
+
     }
 
     /**
@@ -58,17 +64,32 @@ public class Database implements DataSource, Closeable, Cloneable{
         }
     }
 
+    public void closeConnection(Connection conn){
+        switch (pn){
+            case "druid":
+            case "com.alibaba.druid.pool.DruidDataSource":
+                DataSourceByDruid.closeConnection(ds,conn);
+                break;
+            case "hikari":
+                DataSourceByHikari.closeConnection(ds,conn);
+                break;
+            default:
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                break;
+        }
+    }
+
     @Override
     public Connection getConnection(){
         Connection ret;
         try{
             ret = ds.getConnection();
         }catch (SQLException e){
-            error++;
-            if(error>5){
-                Global.get().destroy();
-                error=0;
-            }
+            e.printStackTrace();
             return null;
         }
         return ret;

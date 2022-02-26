@@ -131,14 +131,10 @@ public class Receipt<T>
         return this;
     }
     public  AjaxResult toResult(){
-        AjaxResult ret = new AjaxResult();
-        ret.statusCode = this.result?200:500;
+        AjaxResult ret = new AjaxResult(this.result?200:500,this.message);
         ret.data = this.data;
-        ret.message = ret.message;
         return ret;
     }
-
-
 }
 
 

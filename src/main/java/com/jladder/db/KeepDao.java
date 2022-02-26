@@ -12,45 +12,45 @@ public class KeepDao
     /// <summary>
     /// 数据库事务是否可以管理
     /// </summary>
-    public boolean IsManageTran;
+    public boolean isManageTran;
     /// <summary>
     /// 是否允许关闭
     /// </summary>
-    public boolean IsAllowClose= true;
+    public boolean isAllowClose= true;
     /// <summary>
     /// 提请次数
     /// </summary>
-    public int TakeTimes = 0;
+    public int takeTimes = 0;
     /// <summary>
     /// 完成次数
     /// </summary>
-    public int FinishTimes = 0;
+    public int finishTimes = 0;
     /// <summary>
     /// 是否当前活动
     /// </summary>
-    public boolean IsActive= true;
+    public boolean isActive= true;
 
 
 
-    public int Sequence= 0;
+    public int sequence= 0;
 
     /// <summary>
     /// 提请一次
     /// </summary>
     /// <returns></returns>
-    public int Take()
+    public int take()
     {
-        TakeTimes++;
-        return TakeTimes;
+        takeTimes++;
+        return takeTimes;
     }
     /// <summary>
     /// 完成放置一次
     /// </summary>
     /// <returns></returns>
-    public int Finish()
+    public int finish()
     {
-        FinishTimes++;
-        return FinishTimes;
+        finishTimes++;
+        return finishTimes;
     }
 
 

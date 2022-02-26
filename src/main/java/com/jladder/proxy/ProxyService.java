@@ -1,8 +1,7 @@
 package com.jladder.proxy;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.jladder.actions.WebScope;
+import com.jladder.web.WebScope;
 import com.jladder.actions.impl.QueryAction;
 import com.jladder.actions.impl.SaveAction;
 import com.jladder.data.*;
@@ -17,16 +16,18 @@ import com.jladder.lang.*;
 import com.jladder.lang.Collections;
 import com.jladder.lang.script.Script;
 import com.jladder.logger.LogFoRequest;
+import com.jladder.logger.LogOption;
 import com.jladder.logger.Logs;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.openapi30.Operation;
 import com.jladder.openapi30.PathItem;
 import com.jladder.web.WebContext;
+import org.apache.commons.logging.Log;
 
 import java.util.*;
 
 public class ProxyService {
-//    private static TimedCache<String, AjaxResult> TimedCache = CacheUtil.newTimedCache(3600);
+
     /// <summary>
     /// 获取交互权限
     /// </summary>
@@ -37,31 +38,27 @@ public class ProxyService {
         return null;
     }
 
-
-    /// <summary>
-    /// 代理服务执行方法
-    /// </summary>
-    /// <param name="config">代理配置信息</param>
-    /// <param name="data">用户参数数据</param>
-    /// <param name="env">调用环境代码</param>
-    /// <param name="header">请求头信息</param>
-    /// <param name="authinfo">认证信息</param>
-    /// <returns></returns>
-    public static AjaxResult execute(ProxyConfig config, Record data, int env, Record header, CrossAccessAuthInfo authinfo, String follow)
-    {
+    /**
+     * 代理服务执行方法
+     * @param config 代理配置信息
+     * @param data 用户参数数据
+     * @param env 调用环境代码
+     * @param header 请求头信息
+     * @param authinfo 认证信息
+     * @param follow
+     * @return
+     */
+    public static AjaxResult execute(ProxyConfig config, Record data, int env, Record header, CrossAccessAuthInfo authinfo, String follow){
         //声明运行时实例对象
         ProxyRunning running = new ProxyRunning(data, authinfo, header, config, env, follow);
-        try
-        {
+        try{
             //获取调用环境
-            ProxyFunctionInfo funinfo = config.Get(env);
+            ProxyFunctionInfo funinfo = config.get(env);
             if (funinfo == null) return end(new AjaxResult(500, "未找到相应调用环境[0292]"), running);
-            if ("polymer".equals(funinfo.type ) && Strings.hasValue(follow))
-            {
+            if ("polymer".equals(funinfo.type ) && Strings.hasValue(follow)){
                 return end(handlePolymer((ProxyPolymer)funinfo.result, running), running);
             }
-            if (authinfo != null)
-            {
+            if (authinfo != null){
                 //WebScope.setValue("proxy_auth_info", authinfo);
             }
             if (Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Head) || Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Error) || Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Follow))
@@ -69,8 +66,7 @@ public class ProxyService {
                 running.trace.put("head", Json.toJson(header));
             }
             //是否忽略请求日志
-            if (!Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Ignore))
-            {
+            if (!Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Ignore)) {
                 running.requesting = new LogFoRequest();
                 running.requesting.type=authinfo == null ? "proxy" : authinfo.mode;
                 running.requesting.path=config.raw.name;
@@ -78,94 +74,78 @@ public class ProxyService {
                 running.requesting.userinfo =(authinfo == null ? "" : authinfo.username + (Strings.isBlank(authinfo.withwho) ? "" : "|" + authinfo.withwho));
                 running.requesting.withwho = (authinfo == null ? "" :authinfo.withwho);
                 running.requesting.uuid = running.uuid;
-                running.requesting.setReqeust(data);
+                running.requesting.setRequest(data);
+
                 //Logs.Write(running.requesting, LogOption.Request);
             }
-
-            if (config.CheckOption(ProxyLogOption.Info) || config.CheckOption(ProxyLogOption.Error) || config.CheckOption(ProxyLogOption.Follow))
-            {
+            if (config.checkOption(ProxyLogOption.Info) || config.checkOption(ProxyLogOption.Error) || config.checkOption(ProxyLogOption.Follow)) {
                 running.trace.put("info", "版本号:" + config.raw.version + System.lineSeparator()
                         + "加密方式:" + config.raw.type + System.lineSeparator()
 //                        + "关联请求ID:" + WebScope.getRequestMark() + System.lineSeparator()
-                        + "客户端Ip:" + header.getString("ladder-client-ip") + System.lineSeparator()
+                        + "客户端Ip:" + header.getString("ladder-client-ip")
 //                        + "请求地址:" + WebContext.Current?.Request.Path.Value
                 );
             }
-
             AjaxResult res = new AjaxResult(456); //返回结果
             if (data == null) data = new Record(); //解请求参数
             //region 用户参数映射列表,无用户级参数配置，直接把请求数据传递给调用级数据
             String ignoreLogKeys = "";
-            if (!Rs.isBlank(config.mappings))
-            {
+            if (!Rs.isBlank(config.mappings)){
                 config.mappings.sort(Comparator.comparing(x -> x.level));
-
-                for (ProxyMapping mapping : config.mappings)
-                {
+                for (ProxyMapping mapping : config.mappings){
                     String key = data.haveKey(mapping.paramname);
                     if (Strings.isBlank(key) && "0".equals(mapping.ignore)) return end(new AjaxResult(400, "参数不足"+mapping.paramname), running);
                     //移除大文本的日志记录
                     if (Regex.isMatch(mapping.datatype, "(file)|(text)")) ignoreLogKeys += key + ",";
                     Object v = Strings.hasValue(key) ? data.get(key) : mapping.dvalue;
-                    if (("1".equals(mapping.ignore) || "启用".equals(mapping.ignore)) && (v == null || Strings.isBlank(v.toString())))
-                    {
+                    if (("1".equals(mapping.ignore) || "启用".equals(mapping.ignore)) && (v == null || Strings.isBlank(v.toString()))){
                         if (Strings.hasValue(mapping.valid)) return end(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0125]"), running);
                         continue;
                     }
                     //默认日期时间
-                    if (v instanceof String && Regex.isMatch(mapping.datatype, "(date)|(time)") && Regex.isMatch(v.toString(), "^\\s*\\$"))
-                    {
-                        if (Regex.isMatch(mapping.datatype, "^\\s*date\\s*$"))
-                        {
+                    if (v instanceof String && Regex.isMatch(mapping.datatype, "(date)|(time)") && Regex.isMatch(v.toString(), "^\\s*\\$")){
+                        if (Regex.isMatch(mapping.datatype, "^\\s*date\\s*$")) {
                             if (Regex.isMatch(v.toString(), "^\\$date$"))
                                 v = Times.getDate();
                             if (Regex.isMatch(v.toString(), "^\\$((datetime)|(now))$"))
                                 v = Times.getNow();
-                            if (Regex.isMatch(v.toString(), "^\\d*$"))
-                            {
+                            if (Regex.isMatch(v.toString(), "^\\d*$")){
                                 v = Times.sD(Times.D(Long.parseLong(v.toString())));
                             }
                         }
-                        else
-                        {
+                        else{
                             if (Regex.isMatch(v.toString(), "^\\$((datetime)|(now))$"))
                                 v = Times.getNow();
-                            if (Regex.isMatch(v.toString(), "^\\d*$"))
-                            {
+                            if (Regex.isMatch(v.toString(), "^\\d*$")){
                                 v = Times.sDT(Times.D(Long.parseLong(v.toString())));;
                             }
                         }
                     }
                     //验证器
-                    if (Strings.hasValue(mapping.valid))
-                    {
+                    if (Strings.hasValue(mapping.valid)){
                         if (v == null) return end(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0155]"), running);
                         Receipt check = Strings.check(v.toString(),mapping.valid);
                         if (!check.isSuccess())
                             return end(new AjaxResult(444, "参数[" + mapping.paramname + "]" + check.message), running);
                     }
                     //格式化
-                    if (Strings.hasValue(mapping.format))
-                    {
+                    if (Strings.hasValue(mapping.format)){
 
                         v = Strings.mapping(Strings.mapping(Strings.mapping(mapping.format),"value", v.toString()),data);
                     }
                     //映射参数
                     String[] ps = { mapping.paramname };
-                    if (!Strings.isBlank(mapping.mapping))
-                    {
+                    if (!Strings.isBlank(mapping.mapping)){
                         String[] mmss = mapping.mapping.split("\\|",-1);
                         Record pd = running.paramdata;
                         for(String m : mmss){
                             ps = m.split(m.contains("/") ? "/" : "\\.");
-                            if (ps.length == 1)
-                            {
+                            if (ps.length == 1){
                                 if (pd.get(ps[0]) instanceof Record && Strings.isJson(v.toString(),1))
                                     pd.get(ps[0],Record.class).merge(Record.parse(v));
                                 else pd.put(ps[0], v);
                             }
-                            else
-                            {
+                            else{
                                 Record record = Record.parse(pd.get(ps[0]));
                                 if(record==null)record =  new Record();
                                 pd.put(ps[0], record);
@@ -185,20 +165,17 @@ public class ProxyService {
             }
             else running.paramdata = Record.parse(data);
             //记录请求参数
-            if (config.CheckOption(ProxyLogOption.Request) || config.CheckOption(ProxyLogOption.Error) || config.CheckOption(ProxyLogOption.Follow))
-            {
+            if (config.checkOption(ProxyLogOption.Request) || config.checkOption(ProxyLogOption.Error) || config.checkOption(ProxyLogOption.Follow)){
                 running.trace.put("request", Json.toJson(data.filter(ignoreLogKeys)));
             }
             //endregion
             ///region填充参数
             ignoreLogKeys = "";
-            if (!Rs.isBlank(config.params))
-            {
+            if (!Rs.isBlank(config.params)){
                 Record newparamData = new Record();
                 config.params.sort(Comparator.comparing(x->x.level));
                 //调用环境参数列表
-                for (ProxyParam param : config.params)
-                {
+                for (ProxyParam param : config.params){
                     String key = running.paramdata.haveKey(param.paramname);
                     String stringvalue = (Strings.isBlank(key) ? param.dvalue : running.paramdata.getString(key));
                     if ("1".equals(param.required) && Strings.isBlank(stringvalue)){
@@ -210,8 +187,7 @@ public class ProxyService {
                     if("2".equals(param.required) && Strings.isBlank(key))continue;
                     //默认日期时间
                     if (Strings.hasValue(stringvalue) && Regex.isMatch(param.datatype, "(date)|(time)") && Regex.isMatch(stringvalue, "^\\s*\\$")) {
-                        if (Regex.isMatch(param.datatype, "^\\s*date\\s*$"))
-                        {
+                        if (Regex.isMatch(param.datatype, "^\\s*date\\s*$")){
                             if (Regex.isMatch(stringvalue, "^\\$date$"))
                                 stringvalue = Times.getDate();
                             if (Regex.isMatch(stringvalue, "^\\$((datetime)|(now))$"))
@@ -221,8 +197,7 @@ public class ProxyService {
                                 stringvalue = Times.sD(Times.D(Long.parseLong(stringvalue)));
                             }
                         }
-                        else
-                        {
+                        else{
                             if (Regex.isMatch(stringvalue, "^\\$((datetime)|(now))$")) stringvalue = Times.getNow();
                             if (Regex.isMatch(stringvalue, "^\\d*$")) stringvalue = Times.sDT(Times.D(Long.parseLong(stringvalue)));
                         }
@@ -285,37 +260,29 @@ public class ProxyService {
             }
             //endregion
 
-            if (config.CheckOption(ProxyLogOption.Call))
-            {
+            if (config.checkOption(ProxyLogOption.Call)){
                 Record filterData = running.paramdata.filter(ignoreLogKeys);
                 running.trace.put("call", Json.toJson(filterData) + System.lineSeparator() + HttpHelper.toFormData(filterData,false));
             }
-
-            if (config.CheckOption(ProxyLogOption.Idempotency))
-            {
+            if (config.checkOption(ProxyLogOption.Idempotency)){
                 Record filterData = running.paramdata.filter(ignoreLogKeys);
                 running.hashcode = HttpHelper.toFormData(filterData,false);
-                if (Strings.hasValue(running.hashcode) && authinfo != null)
-                {
+                if (Strings.hasValue(running.hashcode) && authinfo != null) {
                     running.hashcode += authinfo.username + authinfo.withwho + authinfo.ip;
                     running.hashcode = Security.md5(running.hashcode);
                 }
-                if (Strings.hasValue(running.hashcode))
-                {
+                if (Strings.hasValue(running.hashcode)){
 
                     AjaxResult old = (AjaxResult)DataHub.WorkCache.getModuleCache(running.hashcode,"_Proxy_Idempotency_");
-                    if (old != null)
-                    {
+                    if (old != null){
                         running.hashstatus = true;
                         return end(old, running);
                     }
-                    else
-                    {
+                    else{
                         DataHub.WorkCache.addModuleCache(running.hashcode, new AjaxResult(AjaxResultCode.ProxyMethodRefused).setMessage("禁止重复请求[0325]"),"_Proxy_Idempotency_",5);
                     }
                 }
             }
-
             //替换参数
             if(funinfo.param!=null)funinfo.param.forEach((k,v) -> running.paramdata.put(k, v));
             //配置调用环境类型直接返回结果
@@ -323,9 +290,9 @@ public class ProxyService {
             //region 转换调用环境的数据，包括Data和Head
 
             ReStruct<Record, Record> tResult = WebHub.CrossAccess.DoTransition(running.paramdata, config, env, header);
-            if (!tResult.Success) return end(res.set(506, "不具备调用执行条件[0300]"), running);
-            running.paramdata = tResult.ResultA;
-            header = tResult.ResultB;
+            if (!tResult.isSuccess()) return end(res.set(506, "不具备调用执行条件[0300]"), running);
+            running.paramdata = tResult.getA();
+            header = tResult.getB();
             //endregion
             //region 处理过程事件
             AjaxResult callResult = WebHub.CrossAccess.OnCall(config, running.paramdata, header, authinfo);
@@ -333,8 +300,7 @@ public class ProxyService {
             //endregion
             switch (funinfo.type.toLowerCase()){
                 //region 多接口聚合结果
-                case "join":
-                {
+                case "join":{
                     String joinconfig = Json.toJson(funinfo.result);
                     //对象
                     if(Strings.isJson(joinconfig,1)){
@@ -368,8 +334,7 @@ public class ProxyService {
                 break;
                 //endregion
                 //region 自定义配置
-                case "config":
-                {
+                case "config":{
                     String configjson = Json.toJson(funinfo.result);
                     //对象
                     if(Strings.isJson(configjson,1)){
@@ -428,13 +393,12 @@ public class ProxyService {
                 break;
                 //endregion
                 //region 负载平衡
-                case "balance":
-                    {
+                case "balance":{
                         List<ProxyRouteFunctionInfo> routes = (List<ProxyRouteFunctionInfo>)funinfo.result;
                         if (routes == null || routes.size() < 1) return end(new AjaxResult(842, "负载路由未匹配"), running);
                         try
                         {
-                            funinfo = routes.get(config.GetWeightIndex()).funinfo;
+                            funinfo = routes.get(config.getWeightIndex()).funinfo;
                         }
                         catch (Exception e)
                         {
@@ -455,59 +419,51 @@ public class ProxyService {
             }
             return new AjaxResult(400, "未进行有效处理[0390]");
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
+            e.printStackTrace();
             //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = config.Name, Type = "Proxy" }, LogOption.Error);
             AjaxResult result = new AjaxResult(500, e.toString()).setXData(Core.getStackTrace(e));
             //WebHub.DoRequest.ProxyError(config, result);
             return result;
         }
-        finally
-        {
-            StringBuffer logText = new StringBuffer();
-            running.trace.forEach((k,v) ->{
-                logText.append("--" + k+ "_start--" + System.lineSeparator() + v + System.lineSeparator() + "--" + k + "_end--" + System.lineSeparator());
-            });
-            String out = logText.toString();
-            if(Strings.hasValue(out))Logs.writeLog(out,"proxy/"+ config.name+"/" +Times.getDate());
+        finally{
+            Logs.write(running);
+            Logs.write(running.requesting);
+//            String out = logText.toString();
+//            if(Strings.hasValue(out)) Logs.write(out,"logs/proxy/"+ config.name+"/" +Times.getDate()+".log",LogOption.Proxy);
             //if (logText.length() > 0) Logs.WriteLog("----" + running.Uuid + "----" + System.lineSeparator() + logText + "----" + running.Uuid + "----", "Proxy/" + config.Name);
         }
     }
 
-
-    /// <summary>
-    /// 收尾处理
-    /// </summary>
-    /// <param name="result">处理结果</param>
-    /// <param name="running">运行时信息</param>
-    /// <returns></returns>
-    private static AjaxResult end(AjaxResult result, ProxyRunning running)
-    {
-        if (result.success)
-        {
-            if (!running.config.CheckOption(ProxyLogOption.Request) && !running.config.CheckOption(ProxyLogOption.Follow)) running.trace.delete("request");
-            if (!running.config.CheckOption(ProxyLogOption.Head) && !running.config.CheckOption(ProxyLogOption.Follow)) running.trace.delete("head");
-            if (!running.config.CheckOption(ProxyLogOption.Call) && !running.config.CheckOption(ProxyLogOption.Follow)) running.trace.delete("call");
-            if (!running.config.CheckOption(ProxyLogOption.Info) && !running.config.CheckOption(ProxyLogOption.Follow)) running.trace.delete("info");
-            if (running.config.CheckOption(ProxyLogOption.Result) && !running.config.CheckOption(ProxyLogOption.Follow))
-            {
+    /**
+     * 收尾处理
+     * @param result 处理结果
+     * @param running 运行时信息
+     * @return
+     */
+    private static AjaxResult end(AjaxResult result, ProxyRunning running){
+        if (result.success){
+            if (!running.config.checkOption(ProxyLogOption.Request) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("request");
+            if (!running.config.checkOption(ProxyLogOption.Head) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("head");
+            if (!running.config.checkOption(ProxyLogOption.Call) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("call");
+            if (!running.config.checkOption(ProxyLogOption.Info) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("info");
+            if (running.config.checkOption(ProxyLogOption.Result) && !running.config.checkOption(ProxyLogOption.Follow)){
                 if (running.requesting != null) running.requesting.result = Json.toJson(result);
                 running.trace.put("result", Json.toJson(result));
             }
         }
-        else
-        {
+        else{
             if (running.requesting != null) running.requesting.result = Json.toJson(result);
             running.trace.put("result", Json.toJson(result));
         }
-        if (running.requesting != null)
-        {
+        if (running.requesting != null){
             running.requesting.setEnd();
+            List<String> baselines = running.config.getRuleValues(ProxyRuleOption.Timeout, running.authinfo);
+            if(!Rs.isBlank(baselines))running.requesting.baseline=Convert.toInt(Collections.first(baselines,null));
             //Logs.Write(running.Requesting, LogOption.Request);
         }
-        if (running.config.CheckOption(ProxyLogOption.Idempotency) && Strings.hasValue(running.hashcode) && !running.hashstatus)
-        {
-            List<String> limits = running.config.GetRuleValues("Idempotency", running.authinfo);
+        if (running.config.checkOption(ProxyLogOption.Idempotency) && Strings.hasValue(running.hashcode) && !running.hashstatus){
+            List<String> limits = running.config.getRuleValues(ProxyRuleOption.Idempotency, running.authinfo);
             if (Rs.isBlank(limits)) DataHub.WorkCache.addModuleCache(running.hashcode, result, "_Proxy_Idempotency_",5);
             else
             {
@@ -518,34 +474,27 @@ public class ProxyService {
             }
         }
         result = WebHub.CrossAccess.OnResult(result, running.config, running.paramdata, running.header, running.uuid, running.authinfo);
-        try
-        {
+        try{
             //控制节点路径
-            List<ProxyRule> rule_list = running.config.GetRules(ProxyRuleOption.NodePath, running.authinfo);
-
-            ProxyRule dore = rule_list==null ? null: rule_list.get(rule_list.size() - 1);
-            if (dore != null)
-            {
-                try
-                {
+            List<ProxyRule> rule_list = running.config.getRules(ProxyRuleOption.NodePath, running.authinfo);
+            ProxyRule dore = Rs.isBlank(rule_list)? null: rule_list.get(rule_list.size() - 1);
+            if (dore != null){
+                try {
                     result.data = Record.parse(result.data).find(dore.nodepath);
                 }
-                catch (Exception e)
-                {
+                catch (Exception e) {
                     result.set(AjaxResultCode.DataTransaction.getCode(), "数据转换错误[137]");
                 }
             }
             //切割结构体
-            List<String> cut = running.config.GetRuleValues(ProxyRuleOption.CutResult, running.authinfo);
-            if (!Rs.isBlank(cut) && Collections.any(cut,x -> "1".equals(x))) result.setCut(true);
+            List<String> cut = running.config.getRuleValues(ProxyRuleOption.CutResult, running.authinfo);
+            if (!Rs.isBlank(cut) && Collections.any(cut,x -> "1".equals(x))) result.cut(true);
             //保存数据缓存
-            rule_list = running.config.GetRules(ProxyRuleOption.Cache, running.authinfo);
-            ProxyRule cacherule = (rule_list==null?null:rule_list.get(rule_list.size() - 1));
-            if (cacherule != null)
-            {
+            rule_list = running.config.getRules(ProxyRuleOption.Cache, running.authinfo);
+            ProxyRule cacherule = (Rs.isBlank(rule_list)?null:rule_list.get(rule_list.size() - 1));
+            if (cacherule != null){
                 String  cachek = null;//缓存键名
-                switch (cacherule.nodepath)
-                {
+                switch (cacherule.nodepath){
                     case "tagwho":
                         cachek = running.config.name + running.authinfo.withwho;
                         break;
@@ -559,8 +508,7 @@ public class ProxyService {
                 if (Strings.hasValue(cachek)) DataHub.WorkCache.addModuleCache(cachek, new Record("Result",result).put("Request",running.data).put("AuthInfo",running.authinfo), "Proxy_Result_Cache", Integer.parseInt(cacherule.value));
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             e.printStackTrace();
 //            result.Set((int)AjaxResultCode.DataTransaction, "数据转换错误[146]");
 //            Logs.Write(new LogForError(e.Message, "ProxyEnd").SetStackTrace(e.StackTrace).SetModule("ProxyService"), LogOption.Error);
@@ -568,14 +516,13 @@ public class ProxyService {
         running.stopWatch.stop();
         return result.setDuration(running.stopWatch).setRel(running.hashstatus?  new Record("uuid", running.uuid).put("hashcode", running.hashcode).put("name", running.config.name).toString():running.uuid);
     }
-    /// <summary>
-    /// 调用执行
-    /// </summary>
-    /// <param name="funInfo">调用信息</param>
-    /// <param name="running">运行时信息</param>
-    /// <returns></returns>
-    private static AjaxResult call(ProxyFunctionInfo funInfo, ProxyRunning running)
-    {
+    /**
+     * 调用执行
+     * @param funInfo 调用信息
+     * @param running 运行时信息
+     * @return
+     */
+    private static AjaxResult call(ProxyFunctionInfo funInfo, ProxyRunning running){
         ///region 进行环境方法调用
         switch (funInfo.type.toLowerCase())
         {
@@ -754,39 +701,29 @@ public class ProxyService {
                 ///region 网络请求
 
             case "httpjson":
-            case "postjson":
-            {
-
+            case "postjson":{
+                fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
-                {
+                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
                     re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 }
-
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
-                {
+                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")) {
                     re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 }
-
-                if (!re.isSuccess())
-                {
-
+                if (!re.isSuccess()){
 //                    Logs.WriteLog($"错误消息:{re.Message}\n数据备注:{re.Data}", "proxy_error_httpjson");
                     return new AjaxResult(505, re.message+"[0717]").setData(re.data);
                 }
-                else
-                {
+                else{
                     String retText = re.data;
                     boolean isJson = Strings.isJson(retText);
-                    if (isJson)
-                    {
+                    if (isJson){
                         //WebReply.SetContentTypeToJson();
                         return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
                     }
-                    else
-                    {
+                    else{
                         return new AjaxResult().setData(retText).setDataType("html");
                     }
                 }
@@ -794,35 +731,29 @@ public class ProxyService {
             case "httpget":
             case "http":
             case "get":
-            case "web":
-            {
+            case "web":{
+                fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
-                {
+                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
                     re = HttpHelper.request(rpath.data, running.paramdata, "get",running.header);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
-                {
+                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
                     re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
                 }
-                if (!re.isSuccess())
-                {
+                if (!re.isSuccess()){
                     Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httpget");
                     return new AjaxResult(505, re.message+"[0754]").setData(re.data);
                 }
-                else
-                {
+                else {
                     String retText = re.data;
                     boolean isJson = Strings.isJson(retText);
-                    if (isJson)
-                    {
+                    if (isJson){
 //                        WebReply.SetContentTypeToJson();
                         return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
                     }
-                    else
-                    {
+                    else{
                         return new AjaxResult().setData(retText).setDataType("html");
                     }
                 }
@@ -831,55 +762,47 @@ public class ProxyService {
             case "post":
             case "webpost":
             {
+                fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
-                {
+                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
                     re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
-                {
+                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
                     re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
                 }
-                if (!re.isSuccess())
-                {
-
+                if (!re.isSuccess()){
                     Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httppost");
                     return new AjaxResult(505, re.message+"[0791]").setData(re.data);
                 }
-                else
-                {
+                else{
                     String  retText = re.data;
                     boolean isJson = Strings.isJson(retText);
-                    if (isJson)
-                    {
+                    if (isJson){
 //                        WebReply.SetContentTypeToJson();
                         return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
                     }
-                    else
-                    {
+                    else{
                         return new AjaxResult().setData(retText).setDataType("html");
                     }
                 }
             }
             case "upload":
-            case "httpupload":
-            {
+            case "httpupload":{
+                fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 List<UploadFile> files = new ArrayList<UploadFile>();
                 Record ps = new Record();
                 running.paramdata.forEach((k,v)->{
-                    if (v instanceof UploadFile)
-                    {
+                    if (v instanceof UploadFile){
                         UploadFile uploadfile = (UploadFile)v;
                         if (uploadfile == null || Core.isEmpty(uploadfile.getData())) return;
                         files.add(uploadfile);
                         return;
                     }
-                    if (v instanceof List)
-                    {
+                    if (v instanceof List){
                         List<UploadFile> uploadfiles = (List<UploadFile>)v;
                         if (uploadfiles == null || uploadfiles.size()<1) return;
                         files.addAll(uploadfiles);
@@ -888,21 +811,17 @@ public class ProxyService {
                     ps.put(k,v);
                 });
                 Receipt<String> re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭"))
-                {
+                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
                     re = HttpHelper.upload(rpath.data, files, ps);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关"))
-                {
+                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
                     re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
                 }
-                if (!re.isSuccess())
-                {
+                if (!re.isSuccess()){
                     Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_upload");
                     return new AjaxResult(505, re.message);
                 }
-                else
-                {
+                else{
                     if(!Core.isEmpty(files)){
                         StringBuilder uploadlog = new StringBuilder("上传文件个数:" + files.size() + System.lineSeparator());
                         files.forEach(fileinfo ->{
@@ -916,12 +835,10 @@ public class ProxyService {
                     }
                     String  retText = re.data;
                     boolean isJson = Strings.isJson(retText);
-                    if (isJson)
-                    {
+                    if (isJson){
                         return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
                     }
-                    else
-                    {
+                    else{
                         return new AjaxResult().setData(retText).setDataType("html");
                     }
                 }
@@ -931,33 +848,23 @@ public class ProxyService {
                 //region 静态结果
 
             case "result":
-
                 return new AjaxResult().setData(funInfo.result);
             case "random":
             {
                 if (funInfo.result == null) return new AjaxResult(404, "无数据结果");
-                if (funInfo.result instanceof List)
-                {
+                if (funInfo.result instanceof List){
                     List al = (List)funInfo.result;
                     return al.size() == 0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
                 }
-//                if (funInfo.Result is List<object>)
-//                {
-//                    var al = (List<object>)funInfo.Result;
-//                    return al.IsBlank() ? new AjaxResult(404, "无数据结果") : new AjaxResult().SetData(al[R.Random(0, al.Count)]);
-//                }
-                if (funInfo.result instanceof String)
-                {
+                if (funInfo.result instanceof String) {
                     List al = Json.toObject(funInfo.result.toString(),List.class);
                     return al.size()==0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
                 }
                 String jsontext = Json.toJson(funInfo.result);
-                if (jsontext.startsWith("{") && jsontext.endsWith("}"))
-                {
+                if (jsontext.startsWith("{") && jsontext.endsWith("}")){
                     return new AjaxResult().setData(funInfo.result);
                 }
-                else if (jsontext.startsWith("[") && jsontext.endsWith("]"))
-                {
+                else if (jsontext.startsWith("[") && jsontext.endsWith("]")){
                     List al = Json.toObject(jsontext, List.class);
                     return al.size()==0? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
                 }
@@ -971,15 +878,12 @@ public class ProxyService {
         return new AjaxResult(400, "未进行有效逻辑处理");
     }
 
-
-
-
-    /// <summary>
-    /// 处理多组聚合
-    /// </summary>
-    /// <param name="polymer">多组聚合对象</param>
-    /// <param name="running">运行时信息</param>
-    /// <returns></returns>
+    /**
+     * 处理多组聚合
+     * @param polymer 多组聚合对象
+     * @param running 运行时信息
+     * @return
+     */
     private static AjaxResult handlePolymer(ProxyPolymer polymer, ProxyRunning running)
     {
         //redis数据库的序号
@@ -1233,14 +1137,13 @@ public class ProxyService {
 
          */
     }
-    /// <summary>
-    /// 执行代理服务
-    /// </summary>
-    /// <param name="key">服务的键名</param>
-    /// <param name="data">请求数据</param>
-    /// <returns></returns>
-    public static AjaxResult execute(String key, Record data)
-    {
+    /**
+     * 执行代理服务
+     * @param key 服务的键名
+     * @param data 请求数据
+     * @return
+     */
+    public static AjaxResult execute(String key, Record data){
         ProxyConfig config = DataHub.WorkCache.getProxyCache(key);
         if (config == null)
         {
@@ -1256,7 +1159,16 @@ public class ProxyService {
         return execute(config, data,0,null,null,null);
     }
 
-
+    /**
+     * 执行接口代理
+     * @param service 服务器
+     * @param tag 接口标签
+     * @param data 请求数据
+     * @param sign 用户标识
+     * @param key 用户密钥
+     * @param version 版本
+     * @return
+     */
     public static AjaxResult execute(String service, String tag, Record data, String sign, String key, String version){
         return execute(service,tag,data,sign,key,version,"POST",0,null);
     }
@@ -1275,7 +1187,6 @@ public class ProxyService {
      */
     public static AjaxResult execute(String service, String tag, Record data, String sign, String key, String version, String method, int envcode, Record header)
     {
-
         Receipt<Record> hhh = Security.encryptByHead(tag, data, sign, key, version, envcode, header);
         if (hhh.isSuccess())
         {
@@ -1290,72 +1201,73 @@ public class ProxyService {
 //        return LocalCache.GetCache(key, "Proxy_Result_Cache");
     }
 
-    /// <summary>
-    /// 获取代理的配置
-    /// </summary>
-    /// <param name="key">键名</param>
-    /// <param name="version">版本号</param>
-    /// <returns></returns>
-    public static ProxyConfig getProxyConfig(String key, String version)
-    {
+    /**
+     * 获取代理的配置
+     * @param key 键名
+     * @param version 版本号
+     * @return
+     */
+    public static ProxyConfig getProxyConfig(String key, String version) {
         if (Strings.isBlank(version)) version = "";
         ProxyConfig config = DataHub.WorkCache.getProxyCache(key + version);
         ProxyConfig newest = DataHub.WorkCache.getProxyCache(key);
-        if (config == null)
-        {
-            if (Strings.isBlank(version))
-            {
+        if (config == null){
+            if (Strings.isBlank(version)){
                 DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","",DbProxy.class);
                 if (bean == null) return null;
                 config = new ProxyConfig(bean);
                 if (!WebHub.CrossAccess.OnConfig(config)) return null;
                 DataHub.WorkCache.addProxyCache(key, config);
             }
-            else
-            {
-                if (newest == null)
-                {
+            else{
+                if (newest == null){
                     DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","", DbProxy.class);
-                    if (bean != null)
-                    {
+                    if (bean != null){
                         newest = new ProxyConfig(bean);
                         if (!WebHub.CrossAccess.OnConfig(newest)) return null;
                         DataHub.WorkCache.addProxyCache(key, newest);
                     }
                 }
                 if (newest != null && newest.raw.version.equals(version)) return newest;
-
                 Record data = QueryAction.getRecord("sys_service_versions", new Cnd("name", key).put("version", version),"","");
-                if (data == null)
-                {
+                if (data == null){
                     DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","",DbProxy.class);
                     if (bean == null) return null;
                     config = new ProxyConfig(bean);
                     if (!WebHub.CrossAccess.OnConfig(config)) return null;
                     DataHub.WorkCache.addProxyCache(key + version, config);
                 }
-                else
-                {
+                else{
                     data.put("id", data.getString("serviceid"));
                     config = new ProxyConfig(data.toClass(DbProxy.class));
                     if (!WebHub.CrossAccess.OnConfig(config)) return null;
                     DataHub.WorkCache.addProxyCache(key + version, config);
                 }
             }
-
         }
         return config;
     }
 
-
+    /**
+     * 填充代理请求的header头
+     * @param running 运行信息
+     */
+    private static void fillLadderHeader(ProxyRunning running){
+        if(running.authinfo!=null){
+            if(Strings.hasValue(running.authinfo.ip)) running.header.put("ladder_client_ip",running.authinfo.ip);
+            if(Strings.hasValue(running.authinfo.mode))running.header.put("ladder_client_mode",running.authinfo.mode);
+            if(Strings.hasValue(running.authinfo.withwho))running.header.put("ladder_client_withwho",running.authinfo.withwho);
+            if(Strings.hasValue(running.authinfo.sign))running.header.put("ladder_client_sign",running.authinfo.sign);
+            if(Strings.hasValue(running.authinfo.client))running.header.put("ladder_client_client",running.authinfo.client);
+            running.header.put("ladder_client_mark",WebContext.getMark());
+        }
+    }
     public static void RemoveCache(String key){
         DataHub.WorkCache.removeProxyCache(key);
     }
 
     public static String getMarkDown(String key){
-
         return "";
-
     }
     public static PathItem getOpenAPI(String key){
         ProxyConfig config = getProxyConfig(key,null);

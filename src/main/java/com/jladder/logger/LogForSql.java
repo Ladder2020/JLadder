@@ -1,70 +1,71 @@
 package com.jladder.logger;
 
+import com.jladder.Ladder;
 import com.jladder.actions.impl.EnvAction;
 import com.jladder.data.Record;
 import com.jladder.db.DbParameter;
 import com.jladder.db.Rs;
 import com.jladder.db.SqlText;
-import com.jladder.hub.DataHub;
 import com.jladder.lang.Json;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
 import com.jladder.web.WebContext;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class LogForSql {
-    /// <summary>
-    /// 执行类型
-    /// </summary>
+    /**
+     * 执行类型
+     */
     public String type = "query";
-    /// <summary>
-    /// sql文本
-    /// </summary>
+    /**
+     * sql文本
+     */
     public String sqltext;
-    /// <summary>
-    /// 连接器
-    /// </summary>
+    /**
+     * 连接器
+     */
     public String conn;
-    /// <summary>
-    /// 是否错误
-    /// </summary>
+    /**
+     * 是否错误
+     */
     public boolean isError;
 
-    /// <summary>
-    /// 是否超期
-    /// </summary>
+    /**
+     * 是否超期
+     */
     public boolean isOverTime;
 
-    /// <summary>
-    /// 开始时间
-    /// </summary>
+    /**
+     * 开始时间
+     */
     public Date starttime =  new Date();
-
-    /// <summary>
-    /// 结束时间
-    /// </summary>
+    /**
+     * 结束时间
+     */
     public Date endtime;
 
-    /// <summary>
-    /// 持续时长
-    /// </summary>
-    public String duration;
+    /**
+     * 持续时长
+     */
+    public int duration;
 
-    /// <summary>
-    /// 引发原因
-    /// </summary>
+    /**
+     * 引发原因
+     */
     public String cause;
 
-    /// <summary>
-    /// 调用堆栈
-    /// </summary>
+    /**
+     * 调用堆栈
+     */
     public String stacktrace;
-    /// <summary>
-    /// 填充数据
-    /// </summary>
+    /**
+     * 填充数据
+     */
     public String data;
 
     /// <summary>
@@ -72,78 +73,69 @@ public class LogForSql {
     /// </summary>
 //    public String visitor = EnvAction.GetEnvValue("username");
     public String visitor;
-    /// <summary>
-    /// 请求标示
-    /// </summary>
+    /**
+     * 请求标识
+     */
     public String requestmark;
-    /// <summary>
-    /// 标签,用于模型名称
-    /// </summary>
+    /**
+     * 标签,用于模型名称
+     */
     public String tag;
 
 
-    /// <summary>
-    /// 设置模型标签
-    /// </summary>
-    /// <param name="tag"></param>
-    /// <returns></returns>
-    public LogForSql SetTag(String tag)
-    {
+    /**
+     * 设置模型标签
+     * @param tag 标签名称
+     */
+    public LogForSql SetTag(String tag){
         this.tag = tag;
         return this;
     }
-
-    /// <summary>
-    /// 设置引发原因
-    /// </summary>
-    /// <param name="message">错误信息</param>
-    /// <returns></returns>
-    public LogForSql setCause(String message)
-    {
+    /**
+     * 设置引发原因
+     * @param message 错误信息
+     */
+    public LogForSql setCause(String message){
         this.cause = message;
         return this;
     }
-    /// <summary>
-    /// 设置调用堆栈
-    /// </summary>
-    /// <param name="trace">堆栈</param>
-    /// <returns></returns>
-    public LogForSql setStackTrace(String trace)
-    {
+    /**
+     * 设置调用堆栈
+     * @param trace 堆栈
+     */
+    public LogForSql setStackTrace(String trace){
         this.stacktrace = trace;
         return this;
     }
-    /// <summary>
-    /// 设置调用堆栈
-    /// </summary>
-    /// <param name="type">执行类型</param>
-    /// <returns></returns>
-    public LogForSql setType(String type)
-    {
+
+    /**
+     * 设置调用堆栈
+     * @param type 执行类型
+     */
+    public LogForSql setType(String type){
         if (Strings.isBlank(type)) return this;
         String[] ts = Regex.split(type.trim(), "\\s");
         this.type = ts[0];
         return this;
     }
-    /// <summary>
-    /// 实例化
-    /// </summary>
-    /// <param name="sqltext">sql文本</param>
-    public LogForSql(String sqltext)
-    {
-        this.sqltext = sqltext;
-        this.requestmark = WebContext.getAttribute("__requestmark__");
+    /**
+     * 实例化
+     * @param cmd sql命令
+     */
+    public LogForSql(String cmd){
+        this.sqltext = cmd;
+        this.requestmark = WebContext.getAttributeString("__requestmark__");
     }
-    /// <summary>
-    /// 实例化
-    /// </summary>
-    /// <param name="sqltext">sql文本</param>
-    /// <param name="conn">连接器</param>
-    public LogForSql(String sqltext, String conn)
-    {
-        this.sqltext = sqltext;
+
+    /**
+     * 实例化
+     * @param cmd sql命令
+     * @param conn 连接器
+     */
+    public LogForSql(String cmd, String conn){
+        this.sqltext = cmd;
         this.conn = conn;
-        this.requestmark =WebContext.getAttribute("__requestmark__");
+        this.requestmark =WebContext.getAttributeString("__requestmark__");
     }
     /// <summary>
     /// 实例化
@@ -151,41 +143,43 @@ public class LogForSql {
     /// <param name="sqltext">sql文本</param>
     /// <param name="conn">连接器</param>
     /// <param name="iserror">是否错误</param>
-    public LogForSql(String sqltext, String conn, boolean iserror)
-    {
-        this.sqltext = sqltext;
+    public LogForSql(String cmd, String conn, boolean isError){
+        this.sqltext = cmd;
         this.conn = conn;
-        this.isError = iserror;
-        this.requestmark = WebContext.getAttribute("__requestmark__");
+        this.isError = isError;
+        this.requestmark = WebContext.getAttributeString("__requestmark__");
     }
     /// <summary>
     /// 实例化
     /// </summary>
     /// <param name="sqltext">sql文本</param>
     /// <param name="iserror">是否错误</param>
-    public LogForSql(String sqltext, boolean iserror)
-    {
-        this.sqltext = sqltext;
-        this.isError = iserror;
-        this.requestmark = WebContext.getAttribute("__requestmark__");
+    public LogForSql(String cmd, boolean isError){
+        this.sqltext = cmd;
+        this.isError = isError;
+        this.requestmark = WebContext.getMark();
     }
     /// <summary>
     /// 实例化
     /// </summary>
-    public LogForSql()
-    {
-    }
+    public LogForSql(){}
     /// <summary>
-    /// 实例化
+    ///
     /// </summary>
-    public LogForSql(SqlText sqltext)
-    {
+
+    /**
+     * 实例化
+     * @param sqltext sql语句
+     */
+    public LogForSql(SqlText sqltext){
         if(sqltext==null)return;
         this.sqltext = sqltext.cmd;
         if (Rs.isBlank(sqltext.parameters)) return;
         Record dic = new Record();
         sqltext.parameters.forEach(x -> dic.put(x.name, x.value));
         this.data = dic.toString();
+        this.requestmark = WebContext.getMark();
+        setType(sqltext.cmd);
     }
     public LogForSql setEnd(){
         return setEnd(false);
@@ -194,29 +188,31 @@ public class LogForSql {
     /***
      * 设置结束点
      * @param isError 是否含有错误
-     * @return
      */
 
-    public LogForSql setEnd(boolean isError)
-    {
+    public LogForSql setEnd(boolean isError){
         this.isError = isError;
+        if(isError){
+            LogFoRequest request_log = WebContext.getLogger();
+            if(request_log!=null)request_log.increaseException();
+        }
         endtime = new Date();
         long time = (endtime.getTime() - starttime.getTime());
-        if (time > DataHub.SqlWarnTime) this.isOverTime = true;
-        duration = time + "ms";
-        requestmark=WebContext.getRequestMark();
+        if (time > Ladder.Settings().getSqlWarnTime()) this.isOverTime = true;
+        duration = (int)time;
+        requestmark=WebContext.getMark();
+        if(Strings.isBlank(this.type))setType(this.sqltext);
+        if(Strings.isBlank(visitor))visitor = EnvAction.getEnvValue("username");
         return this;
     }
-    public LogForSql SetData(List<DbParameter> data)
-    {
+    public LogForSql setData(List<DbParameter> data) {
         if (Rs.isBlank(data)) return this;
         Record dic = new Record();
         data.forEach(x -> dic.put(x.name, x.value));
         this.data = dic.toString();
         return this;
     }
-    public LogForSql SetData(Map<String, Object> data)
-    {
+    public LogForSql setData(Map<String, Object> data){
         if (data == null || data.size()<1) return this;
         this.data = Json.toJson(data);
         return this;
@@ -231,16 +227,17 @@ public class LogForSql {
         return this;
     }
     public void write(){
-        Logs.writeSql(this);
+        Logs.write(this);
     }
-
     /***
      * 设置异常信息
      * @param e 异常
      */
     public void setException(Exception e) {
         e.printStackTrace();
-        String error=e.getMessage();
-        setEnd(true).setCause(error);
+        this.stacktrace="";
+        List<StackTraceElement> stacks = Arrays.stream(e.getStackTrace()).limit(25).collect(Collectors.toList());
+        stacks.forEach(x->this.stacktrace+=x.getClassName()+"$"+x.getMethodName()+"("+x.getLineNumber()+")"+System.lineSeparator());
+        setEnd(true).setCause(e.getMessage());
     }
 }

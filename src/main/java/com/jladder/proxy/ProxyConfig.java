@@ -126,78 +126,71 @@ public class ProxyConfig {
         if (debugfunctioninfo != null) callinfo.put(1, debugfunctioninfo);
         this.name = raw.name;
         this.rules = QueryAction.getData("sys_service_limit", new Cnd("type", "proxy").put("itemcode", raw.id),null,null,ProxyRule.class);
-
-
         callinfo.forEach((index,info) ->{
-            switch (info.type.toLowerCase())
-        {
-            case "route":
-                try
-                {
-                    info.result = Json.toObject(Json.toJson(info.result), new TypeReference<List<ProxyRouteFunctionInfo>>() {});
-                }
-                catch (Exception e)
-                {
-                    //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = Name, Type = "Proxy" }, LogOption.Error);
-                }
-
-                break;
-            case "balance":
-                try
-                {
-                    List<ProxyRouteFunctionInfo> fs = Json.toObject(Json.toJson(info.result),new TypeReference<List<ProxyRouteFunctionInfo>>(){});
-                    if (fs != null)
+            switch (info.type.toLowerCase()){
+                case "route":
+                    try
                     {
-                        for (int i = 0; i < fs.size(); i++)
+                        info.result = Json.toObject(Json.toJson(info.result), new TypeReference<List<ProxyRouteFunctionInfo>>() {});
+                    }
+                    catch (Exception e)
+                    {
+                        //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = Name, Type = "Proxy" }, LogOption.Error);
+                    }
+
+                    break;
+                case "balance":
+                    try
+                    {
+                        List<ProxyRouteFunctionInfo> fs = Json.toObject(Json.toJson(info.result),new TypeReference<List<ProxyRouteFunctionInfo>>(){});
+                        if (fs != null)
                         {
-                            int weight = fs.get(i).weight > 0 ? fs.get(i).weight : 1;
-                            for (int j = 0; j < weight; j++)
+                            for (int i = 0; i < fs.size(); i++)
                             {
-                                weightmaplist.add(i);
+                                int weight = fs.get(i).weight > 0 ? fs.get(i).weight : 1;
+                                for (int j = 0; j < weight; j++)
+                                {
+                                    weightmaplist.add(i);
+                                }
                             }
+                            info.result = fs;
                         }
-                        info.result = fs;
+                    }
+                    catch (Exception e)
+                    {
+                        //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = Name, Type = "Proxy" }, LogOption.Error);
+                    }
+                    break;
+                case "random":
+                {
+                    String jsonText = Json.toJson(info.result);
+                    if (jsonText.startsWith("[") && jsonText.endsWith("]"))
+                    {
+                        info.result = Json.toObject(jsonText, new TypeReference<List<Object>>() {});
+                    }
+                    else
+                    {
+                        ArrayList<Object> result = new ArrayList<Object>();
+                        result.add(info.result);
+                        info.result = result;
+
                     }
                 }
-                catch (Exception e)
+                break;
+                case "polymer":
                 {
-                    //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = Name, Type = "Proxy" }, LogOption.Error);
+                    info.result = Json.toObject(Json.toJson(info.result),ProxyPolymer.class);
                 }
                 break;
-            case "random":
-            {
-                String jsonText = Json.toJson(info.result);
-                if (jsonText.startsWith("[") && jsonText.endsWith("]"))
-                {
-                    info.result = Json.toObject(jsonText, new TypeReference<List<Object>>() {});
-                }
-                else
-                {
-                    ArrayList<Object> result = new ArrayList<Object>();
-                    result.add(info.result);
-                    info.result = result;
-                    
-                }
             }
-            break;
-            case "polymer":
-            {
-                info.result = Json.toObject(Json.toJson(info.result),ProxyPolymer.class);
-            }
-            break;
-        }
-
-
-            });
-
-
+        });
     }
     /// <summary>
     /// 获取调用环境配置
     /// </summary>
     /// <param name="env"></param>
     /// <returns></returns>
-    public ProxyFunctionInfo Get(int env)
+    public ProxyFunctionInfo get(int env)
     {
         if (callinfo.containsKey(env)) return callinfo.get(env);
         else return null;
@@ -210,7 +203,7 @@ public class ProxyConfig {
     /// </summary>
     /// <param name="option"></param>
     /// <returns></returns>
-    public boolean CheckOption(int option)
+    public boolean checkOption(int option)
     {
         if (raw == null) return false;
         return Maths.isBitEq1(raw.logoption,(byte)option);
@@ -219,14 +212,14 @@ public class ProxyConfig {
     /// 获取权重
     /// </summary>
     /// <returns></returns>
-    public int GetWeightIndex()
+    public int getWeightIndex()
     {
 
         int index = R.random(0, weightmaplist.size());
         return weightmaplist.get(index);
     }
-    public List<String> GetRuleValues(String eventcode){
-        return GetRuleValues(eventcode,null);
+    public List<String> getRuleValues(String eventcode){
+        return getRuleValues(eventcode,null);
     }
     /// <summary>
     /// 获取规则数据数组
@@ -234,7 +227,7 @@ public class ProxyConfig {
     /// <param name="eventcode">动作代码</param>
     /// <param name="userinfo">用户信息</param>
     /// <returns></returns>
-    public List<String> GetRuleValues(String eventcode,CrossAccessAuthInfo userinfo)
+    public List<String> getRuleValues(String eventcode,CrossAccessAuthInfo userinfo)
     {
         if(Rs.isBlank(rules))return null;
         if (userinfo == null)
@@ -256,8 +249,8 @@ public class ProxyConfig {
      * @param eventcode
      * @return
      */
-    public List<ProxyRule> GetRules(String eventcode){
-        return GetRules(eventcode,null);
+    public List<ProxyRule> getRules(String eventcode){
+        return getRules(eventcode,null);
     }
 
     /***
@@ -266,15 +259,13 @@ public class ProxyConfig {
      * @param userinfo 用户信息
      * @return
      */
-    public List<ProxyRule> GetRules(String eventcode, CrossAccessAuthInfo userinfo)
+    public List<ProxyRule> getRules(String eventcode, CrossAccessAuthInfo userinfo)
     {
         if (Rs.isBlank(rules)) return null;
-        if (userinfo == null)
-        {
+        if (userinfo == null){
             return Collections.where(rules,x->Core.is(x.eventcode,eventcode)  && (x.mappingtype == 1111));
         }
-        else
-        {
+        else{
             return Collections.where(rules,x ->Core.is( x.eventcode , eventcode) && (
                 (x.mappingtype == 1 && Core.is(x.mappingvalue,userinfo.username)) ||
                         (x.mappingtype == 2 && userinfo.groups.contains(x.mappingvalue)) ||
@@ -288,7 +279,7 @@ public class ProxyConfig {
     /// <param name="name">名称</param>
     /// <param name="value">值</param>
     /// <returns></returns>
-    public ProxyConfig PutExt(String name, Object value)
+    public ProxyConfig putExt(String name, Object value)
     {
         extdata.put(name, value);
         return this;
@@ -299,7 +290,7 @@ public class ProxyConfig {
     /// <param name="name">名称</param>
     /// <param name="value">值</param>
     /// <returns></returns>
-    public <T> T GetExt(String name,Class<T> glass)
+    public <T> T getExt(String name,Class<T> glass)
     {
         return extdata.get(name,glass);
     }

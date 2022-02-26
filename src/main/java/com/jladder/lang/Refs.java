@@ -189,17 +189,17 @@ public class Refs {
 
         boolean canNull = false;//返回值是否为void类型
         ReStruct<Class, Method> re = getMethod(className, methodName);
-        if (!re.Success)return new Receipt(false);
-        if (re.ResultB.getReturnType().equals(Void.class)) canNull = true;
-        int modify = re.ResultB.getModifiers();
-        Object[] param=mappingMethodParam(re.ResultB,data);
+        if (!re.isSuccess())return new Receipt(false);
+        if (re.getB().getReturnType().equals(Void.class)) canNull = true;
+        int modify = re.getB().getModifiers();
+        Object[] param=mappingMethodParam(re.getB(),data);
         Object ret;
         try {
             if(Modifier.isStatic(modify)){
-                ret = re.ResultB.invoke(null,param);
+                ret = re.getB().invoke(null,param);
             }else{
 
-                ret = re.ResultB.invoke( re.ResultA.newInstance(),param);
+                ret = re.getB().invoke( re.getA().newInstance(),param);
             }
             if (ret == null && !canNull)
             {

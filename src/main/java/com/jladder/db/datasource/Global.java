@@ -1,7 +1,6 @@
 package com.jladder.db.datasource;
 
-import com.jladder.configs.Configs;
-import com.jladder.configs.SourceDirection;
+import com.jladder.Ladder;
 import com.jladder.db.DbInfo;
 
 /**
@@ -47,7 +46,7 @@ public class Global {
 				}
 			}
 		}else{
-			if(info!=null)Configs.put(info.getName(),info, SourceDirection.Memory);
+			if(info!=null) Ladder.Settings().getDatabase().put(info.getName(),info);
 		}
 
 		return factory;

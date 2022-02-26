@@ -5,11 +5,17 @@ import com.jladder.data.Record;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.DESKeySpec;
+import javax.crypto.spec.IvParameterSpec;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Comparator;
 
 public class Security {
@@ -103,23 +109,30 @@ public class Security {
         return ret;
     }
 
+    /**
+     * 解密Base64
+     * @param data 源文本数据
+     * @return
+     */
     public static String decryptByBase64(String data){
         try {
-            return new String((new BASE64Decoder()).decodeBuffer(data),StandardCharsets.UTF_8);
-        } catch (IOException e) {
+            return new String(Base64.getDecoder().decode(data),StandardCharsets.UTF_8);
+           // return new String((new BASE64Decoder()).decodeBuffer(data),StandardCharsets.UTF_8);
+        } catch (Exception e) {
             e.printStackTrace();
             return "";
         }
     }
     public static String encryptByBase64(String data){
-        return (new BASE64Encoder()).encode(data.getBytes(StandardCharsets.UTF_8));
+       // return (new BASE64Encoder()).encode(data.getBytes(StandardCharsets.UTF_8));
+        return new String(Base64.getEncoder().encode(data.getBytes(StandardCharsets.UTF_8)));
     }
 
     public static String encryptByBase64(byte[] data){
         return (new BASE64Encoder()).encode(data);
     }
 
-    public static String EncryptByBase2(String source)
+    public static String encryptByBase2(String source)
     {
         if (Strings.isBlank(source)) return "";
         String base64Str = encryptByBase64(source);
@@ -128,7 +141,7 @@ public class Security {
         String md5 = md5(base64Str + position + len) + "qwerrttyuioplkjhgfgddasszxxccvvbnnm963257411";
         return len == 0 ? position +""+ len + base64Str : position+ "" + len + base64Str.substring(0, position) + md5.substring(0, len) +base64Str.substring(position);
     }
-    public static String DecryptByBase2(String source)
+    public static String decryptByBase2(String source)
     {
         if (Strings.isBlank(source) || !Regex.isMatch(source, "^\\d{2}")) return null;
         try {
@@ -142,4 +155,71 @@ public class Security {
             return null;
         }
     }
+    /**
+     * 生成key
+     *
+     * @param password
+     * @return
+     * @throws Exception
+     */
+    private static Key generateKey(String password) throws Exception {
+        DESKeySpec dks = new DESKeySpec(password.getBytes("utf-8"));
+        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance( "DES/CBC/PKCS5Padding");
+        return keyFactory.generateSecret(dks);
+    }
+
+    /**
+     * DES加密字符串
+     *
+     * @param password 加密密码，长度不能够小于8位
+     * @param data 待加密字符串
+     * @return 加密后内容
+     */
+    public static String encryptByDES(String password, String data) {
+        if (password== null || password.length() < 8) {
+            throw new RuntimeException("加密失败，key不能小于8位");
+        }
+        if (data == null)
+            return null;
+        try {
+            Key secretKey = generateKey(password);
+            Cipher cipher = Cipher.getInstance("DES/CBC/PKCS5Padding");
+            IvParameterSpec iv = new IvParameterSpec("12345678".getBytes("utf-8"));
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
+            byte[] bytes = cipher.doFinal(data.getBytes("utf-8"));
+            //JDK1.8及以上可直接使用Base64，JDK1.7及以下可以使用BASE64Encoder
+            //Android平台可以使用android.util.Base64
+            return new String(Base64.getEncoder().encode(bytes));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return data;
+        }
+    }
+    /**
+     * DES解密字符串
+     *
+     * @param password 解密密码，长度不能够小于8位
+     * @param data 待解密字符串
+     * @return 解密后内容
+     */
+    public static String decryptByDES(String password, String data) {
+        if (password== null || password.length() < 8) {
+            throw new RuntimeException("加密失败，key不能小于8位");
+        }
+        if (data == null)
+            return null;
+        try {
+            Key secretKey = generateKey(password);
+            Cipher cipher = Cipher.getInstance("DES/CBC/PKCS5Padding");
+            IvParameterSpec iv = new IvParameterSpec("12345678".getBytes("utf-8"));
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
+            return new String(cipher.doFinal(Base64.getDecoder().decode(data.getBytes("utf-8"))), "utf-8");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return data;
+        }
+    }
+
+
 }

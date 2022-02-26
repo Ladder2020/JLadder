@@ -12,31 +12,39 @@ import com.jladder.db.datasource.Global;
 import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.enums.DbGenType;
 import com.jladder.db.jdbc.IBaseSupport;
+import com.jladder.hub.DataHub;
 import com.jladder.lang.*;
 import com.jladder.lang.func.Action0;
 import com.jladder.lang.func.Func2;
 import com.jladder.lang.func.Func3;
 import com.jladder.lang.func.Tuple3;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 public  class Dao implements IDao {
-
     public IBaseSupport support;
-
     public Dao(){
-        support = new BaseSupportByJDBC();
+        JdbcTemplate jdbc = DataHub.getJdbcTemplate("defaultDatabase");
+        if(jdbc!=null){
+            support = new BaseSupportByTemplate();
+        }else {
+            support = new BaseSupportByJDBC();
+        }
+
     }
     public Dao(String conn){
-        if(Strings.isBlank(conn)){
-            support = new BaseSupportByJDBC();
-            return;
+        JdbcTemplate jdbc = DataHub.getJdbcTemplate(conn);
+        if(jdbc!=null){
+            support = new BaseSupportByTemplate(conn);
+        }else {
+            support = new BaseSupportByJDBC(conn);
         }
-        support = new BaseSupportByJDBC(conn);
         support.maskcode = conn;
     }
 
@@ -228,14 +236,14 @@ public  class Dao implements IDao {
     public int update(String tableName, Object data, Object cnd, String columns, boolean adjust) {
 
         if (Strings.isBlank(tableName) || data == null) return 0;
-        Map<String,Object> record = SaveColumn.Clip(Record.parse(data), columns);
+        Map<String,Object> record = SaveColumn.clip(Record.parse(data), columns);
         if (record == null || record.size() < 1) return 0;
         Cnd _cnd = Cnd.parse(cnd);
         if (!adjust) return update(tableName, record, _cnd);
         List<Map<String, Object>> fileds = support.getFieldInfo(tableName);
         Record entry = new Record();
         fileds.forEach(x ->{
-            String name = com.jladder.lang.Collections.getString(x,"name");
+            String name = com.jladder.lang.Collections.getString(x,"name","");
             Tuple3<Boolean, String, Object> key = com.jladder.lang.Collections.first(record, (k, v) -> Regex.isMatch(k, "^[\\$@#\\*]?" + name));
             if (key.item1) entry.put(key.item2, key.item3);
         });
@@ -266,7 +274,7 @@ public  class Dao implements IDao {
             if (Regex.isMatch(key, "^!")) continue;
             if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null)
             {
-                sqltext += key.substring(1) + " = " + com.jladder.lang.Collections.getString(record,key) + ",";
+                sqltext += key.substring(1) + " = " + com.jladder.lang.Collections.getString(record,key,"") + ",";
                 continue;
             }
             sqltext += key + " = " + "@" + key + ",";
@@ -283,7 +291,7 @@ public  class Dao implements IDao {
                         String handlekey = com.jladder.lang.Collections.haveKey(hands,"sql");
                         if (Strings.hasValue(handlekey))
                         {
-                            obj = this.getValue(new SqlText(com.jladder.lang.Collections.getString(hands,handlekey)),Object.class);
+                            obj = this.getValue(new SqlText(com.jladder.lang.Collections.getString(hands,handlekey,"")),Object.class);
                             changeRecord.put(key, obj);
                         }
                     }
@@ -315,16 +323,16 @@ public  class Dao implements IDao {
         //是字典且不纠正自动 就直接执行
         if ((bean instanceof Map) && !adjust)
         {
-            return insertData(tableName, SaveColumn.Clip((Map<String, Object>)bean, columns), null);
+            return insertData(tableName, SaveColumn.clip((Map<String, Object>)bean, columns), null);
         }
         //转化数据类型到Record类型
-        Map<String, Object> record = SaveColumn.Clip(Record.parse(bean), columns);
+        Map<String, Object> record = SaveColumn.clip(Record.parse(bean), columns);
         if (record == null || record.size() < 1) return 0;
         if (!adjust) return insertData(tableName, record, null);
         List<Map<String, Object>> fileds = support.getFieldInfo(tableName);
         Record entry = new Record();
         fileds.forEach(x ->{
-            String name = com.jladder.lang.Collections.getString(x,"name");
+            String name = com.jladder.lang.Collections.getString(x,"name","");
             Tuple3<Boolean, String, Object> key = com.jladder.lang.Collections.first(record, (k, v) -> Regex.isMatch(k, "^[\\$@#\\*]?" + name));
             if (key.item1) entry.put(key.item2, key.item3);
         });
@@ -346,15 +354,13 @@ public  class Dao implements IDao {
             if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null)
             {
                 sqltext += key.substring(1) + ",";
-                valtext += com.jladder.lang.Collections.getString(record,key) + ",";
+                valtext += com.jladder.lang.Collections.getString(record,key,"") + ",";
                 continue;
             }
             sqltext += key + ",";
             valtext += "@" + key + ",";
-
             if (obj == null) obj = null;
-            else
-            {
+            else{
                 //如果文本串是一个sql语句，提取并执行，注意只能有一个sql键
                 if ((obj instanceof String) && Regex.isMatch((String)obj, "^\\s*\\{\\s*sql:[\\w\\W]*}$"))
                 {
@@ -365,10 +371,13 @@ public  class Dao implements IDao {
                         String handlekey = com.jladder.lang.Collections.haveKey(hands,"sql");
                         if (!Strings.isBlank(handlekey))
                         {
-                            obj = this.getValue(new SqlText(com.jladder.lang.Collections.getString(hands,handlekey)),Object.class);
+                            obj = this.getValue(new SqlText(com.jladder.lang.Collections.getString(hands,handlekey,"")),Object.class);
                             changeRecord.put(key, obj);
                         }
                     }
+                }
+                if(obj instanceof Date){
+                    obj =  new java.sql.Timestamp(((Date)obj).getTime());
                 }
             }
             vals.add(new DbParameter(key,obj));
@@ -451,7 +460,7 @@ public  class Dao implements IDao {
     }
     public int save(String tableName, Map<String, Object> record, String keyName, DbGenType gen){
         //主键内容为空，为新增
-        if (Strings.isBlank(Collections.getString(record,keyName)))
+        if (Strings.isBlank(Collections.getString(record,keyName,null)))
         {
             Object id = null;
             switch (gen)
@@ -650,7 +659,7 @@ public  class Dao implements IDao {
 
     @Override
     public void close() {
-
+        support.close();
     }
 
     @Override

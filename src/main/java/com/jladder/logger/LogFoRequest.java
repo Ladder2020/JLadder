@@ -1,211 +1,244 @@
 package com.jladder.logger;
 
+import com.jladder.Ladder;
 import com.jladder.actions.impl.EnvAction;
+import com.jladder.configs.Configure;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.web.ArgumentMapping;
+import com.jladder.web.WebContext;
+import com.jladder.web.WebScope;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.InetAddress;
 import java.util.Date;
 
 public class LogFoRequest {
-    /// <summary>
-    /// 唯一标识
-    /// </summary>
+    /**
+     * 唯一标识
+     */
     public String uuid = Core.genUuid();
 
-    /// <summary>
-    /// 请求类型
-    /// </summary>
+    /**
+     * 请求类型
+     */
     public String type;
 
-    /// <summary>
-    /// 开始时间
-    /// </summary>
+    /**
+     * 开始时间
+     */
     public Date starttime;
-    /// <summary>
-    /// 结束时间
-    /// </summary>
+    /**
+     * 结束时间
+     */
     public Date endtime;
-    /// <summary>
-    /// 持续时长
-    /// </summary>
-    public String duration;
-    /// <summary>
-    /// 请求参数
-    /// </summary>
+    /**
+     * 持续时长
+     */
+    public int duration;
+    /**
+     * 请求参数
+     */
     public String request;
-    /// <summary>
-    /// 站点
-    /// </summary>
+    /**
+     * 站点
+     */
     public String site;
-    /// <summary>
-    /// 服务器
-    /// </summary>
+    /**
+     * 服务器
+     */
     public String server;
-    /// <summary>
-    /// 路径
-    /// </summary>
+    /**
+     * 路径
+     */
     public String url;
-    /// <summary>
-    /// 请求方式
-    /// </summary>
+    /**
+     * 请求方式
+     */
     public String method;
-    /// <summary>
-    /// 来源地
-    /// </summary>
+    /**
+     * 来源地
+     */
     public String referer;
 
-    /// <summary>
-    /// 映射路径
-    /// </summary>
+    /**
+     * 映射路径
+     */
     public String path;
 
-    /// <summary>
-    /// 用户信息
-    /// </summary>
+    /**
+     * 用户信息
+     */
     public String userinfo;
-    /// <summary>
-    /// 关联服务用户
-    /// </summary>
+
+    public String getWithwho() {
+        return withwho;
+    }
+
+    public void setWithwho(String withwho) {
+        this.withwho = withwho;
+    }
+
+    /**
+     * 关联服务用户
+     */
     public String withwho;
-    /// <summary>
-    /// 请求标记
-    /// </summary>
+    /**
+     * 请求标记
+     */
     public String sessionid;
 
-    /// <summary>
-    /// 请求标记
-    /// </summary>
+    /**
+     * 请求标记
+     */
     public String requestmark;
 
-    /// <summary>
-    /// 请求头信息
-    /// </summary>
+    /**
+     * 请求头信息
+     */
     public String header;
 
-    /// <summary>
-    /// 访问者IP地址
-    /// </summary>
+    /**
+     * 访问者IP地址
+     */
     public String ip;
 
-    /// <summary>
-    /// 创建日志
-    /// </summary>
+    /**
+     * 创建日期
+     */
     public String createdate = Times.getDate();
-    /// <summary>
-    /// 处理结果
-    /// </summary>
+    /**
+     * 处理结果
+     */
     public String result;
 
-    /// <summary>
-    /// 异常数量
-    /// </summary>
+    /**
+     * 异常数量
+     */
     public int exceptions;
-
-
-    /// <summary>
-    /// 标签,用于模型名称
-    /// </summary>
+    /**
+     * 环境，0:生成|1:开发|2:测试
+     */
+    private int env=0;
+    /**
+     * 标签,用于模型名称
+     */
     public String tag;
+    /**
+     * 基线
+     */
+    public int baseline=0;
+
+    public int getBaseline() {
+        return baseline;
+    }
+
+    public void setBaseline(int baseline) {
+        this.baseline = baseline;
+    }
+
+
+
     public LogFoRequest(){
-        site = WebHub.SiteName;
+        site = Ladder.Settings().getSite();
         starttime = new Date();
-        userinfo = EnvAction.GetEnvValue("username");
+        userinfo = EnvAction.getEnvValue("username");
 //        //去处地址栏参数
-        if (Strings.hasValue(url))
-        {
+        if (Strings.hasValue(url)){
             url = Regex.replace(url, "\\?[\\w\\W]*$", "");
         }
         ip = HttpHelper.getIp();
     }
-    /// <summary>
-    /// 初始化
-    /// </summary>
-    public LogFoRequest(HttpServletRequest request)
-    {
-        site = WebHub.SiteName;
+
+    /**
+     * 初始化
+     * @param request 请求对象
+     */
+    public LogFoRequest(HttpServletRequest request){
+        site = Ladder.Settings().getSite();
         method = request.getMethod();
         referer = request.getHeader("referer");
         url = request.getRequestURL().toString();
         this.request = Json.toJson(ArgumentMapping.getRequestParams(request));
         starttime = new Date();
-        //userinfo = EnvAction.GetEnvValue("username");
-//        //去处地址栏参数
-        if (Strings.hasValue(url))
-        {
-            url = Regex.replace(url, "\\?[\\w\\W]*$", "");
+        //去处地址栏参数
+        if (Strings.hasValue(url)) {
+            path = Regex.replace( Regex.replace(url, "\\?[\\w\\W]*$", ""),"http[s]?://[\\w\\.:]*?/","");
         }
-        requestmark = Core.toString(request.getAttribute("__requestmark__"));
+        sessionid=request.getSession().getId();
+        type="Controller";
+        requestmark = WebContext.getMark(request);
         ip = HttpHelper.getIp();
     }
-    /// <summary>
-    /// 设置访问路径
-    /// </summary>
-    /// <param name="path"></param>
-    /// <returns></returns>
-    public LogFoRequest setPath(String path)
-    {
-        path = path;
+
+    /**
+     * 设置访问路径
+     * @param path 路径
+     * @return
+     */
+    public LogFoRequest setPath(String path) {
+        this.path = path;
         return this;
     }
-    /// <summary>
-    /// 设置请求信息
-    /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public LogFoRequest setRequest(Object data)
-    {
+    /**
+     * 设置请求信息
+     * @param data 数据对象
+     * @return
+     */
+    public LogFoRequest setRequest(Object data){
         request = Json.toJson(data);
         return this;
     }
-    /// <summary>
-    /// 设置请求信息
-    /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public LogFoRequest setReqeust(Object data)
-    {
-        request = Json.toJson(data);
-        return this;
-    }
-    /// <summary>
-    /// 设置结束点
-    /// </summary>
-    /// <returns></returns>
-    public LogFoRequest setEnd()
-    {
+
+    /**
+     * 设置结束点
+     * @return
+     */
+    public LogFoRequest setEnd(){
         endtime = Times.now();
         if(starttime==null){
-            duration = "0ms";
+            duration = 0;
             return this;
         }
         long time = (endtime.getTime() - starttime.getTime());
-        duration = time+"ms";
-//        TimeSpan ts = endtime.subtract(StartTime);
-//        Duration = Math.round(ts., 0) + "ms";
-//        var tag = WebScope.GetTag();
-//        if (tag.HasValue()) Tag = tag;
+        duration = (int)time;
+        this.tag = WebContext.getTag();
+        server = Configure.getString("_MachineInfo_IP_");
+        if(Strings.isBlank(server)){
+            server=Machine.getLocalIp();
+            Configure.put("_MachineInfo_IP_",server);
+        }
+        if(Strings.isBlank(userinfo))userinfo = EnvAction.getEnvValue("username");
+        env=Ladder.Settings().getEnv();
         return this;
     }
-    /// <summary>
-    /// 设置请求头
-    /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public LogFoRequest setHeader(Object data)
-    {
+
+    /**
+     * 设置请求头
+     * @param data 请求头数据
+     * @return
+     */
+    public LogFoRequest setHeader(Object data) {
         header = Json.toJson(data);
         return this;
     }
-    /// <summary>
-    /// 增长异常数量
-    /// </summary>
-    /// <returns></returns>
+    /**
+     * 增长异常数量
+     * @return
+     */
     public LogFoRequest increaseException()
     {
         exceptions ++;
+        return this;
+    }
+
+    public int getEnv() {
+        return env;
+    }
+
+    public LogFoRequest setEnv(int env) {
+        this.env = env;
         return this;
     }
 }

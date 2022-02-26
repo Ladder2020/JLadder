@@ -5,23 +5,23 @@ public class LogForDataModelByKeep
     /// <summary>
     /// 数据
     /// </summary>
-    public Object Data;
+    public Object data;
     /// <summary>
     /// 是否是增加
     /// </summary>
-    public boolean IsAdd;
+    public boolean isAdd;
     /// <summary>
     /// 模版名称
     /// </summary>
-    public String TableName;
+    public String tablename;
 
     /// <summary>
     /// 用户信息
     /// </summary>
-    public String UserInfo;
+    public String userinfo;
 
     public LogForDataModelByKeep(String name, String userinfo) {
-        this.TableName = name;
-        this.UserInfo = userinfo;
+        this.tablename = name;
+        this.userinfo = userinfo;
     }
 }

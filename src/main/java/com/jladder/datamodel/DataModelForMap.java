@@ -1,76 +1,45 @@
 package com.jladder.datamodel;
-import com.jladder.actions.WebScope;
+
+import com.jladder.Ladder;
 import com.jladder.actions.Curd;
 import com.jladder.actions.impl.LatchAction;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
+import com.jladder.db.*;
 import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.db.jdbc.OrderBy;
 import com.jladder.db.jdbc.impl.Dao;
 import com.jladder.entity.DBMagic;
 import com.jladder.entity.DataModelTable;
-import com.jladder.hub.DataHub;
 import com.jladder.lang.Collections;
-import com.jladder.lang.func.Tuple2;
-import com.jladder.db.*;
 import com.jladder.lang.*;
+import com.jladder.lang.func.Tuple2;
+import com.jladder.web.WebScope;
 import org.w3c.dom.Element;
-
 import java.util.*;
 import java.util.regex.Matcher;
 
-/// <summary>
-/// 字典核心动态数据模型
-/// </summary>
+/**
+ * 以Map为存储原型的数据模型
+ */
 public class DataModelForMap extends IDataModel{
-    /// <summary>
-    /// 线程锁  2018-08-30 处理iis异常
-    /// </summary>
+
     private static Object lock = new Object();
-//    /// <summary>
-//    /// 列模型,模型根据条件会变短
-//    /// </summary>
-//    public List<Map<String, Object>> columnlist;
 
-//    /// <summary>
-//    /// 数据库连接文本，用于跨域操作，数据库连接键名或者数据库连接的json文本
-//    /// </summary>
-//    public String conn;
-//    /// <summary>
-//    /// 条件对象
-//    /// </summary>
-//    public Cnd condition  = new Cnd();
-    /// <summary>
-    /// 排序对象
-    /// </summary>
-//    public OrderBy order;
-
-    /// <summary>
-    /// 分组对象
-    /// </summary>
-//    public GroupBy group;
-    /// <summary>
-    /// 字段数组
-    /// </summary>
-    // ReSharper disable once InconsistentNaming
     private  Map<String, String> columns = new HashMap<String, String>();
     /// <summary>
     /// 列上的表达式数组
     /// </summary>
     // ReSharper disable once InconsistentNaming
     private  List<String> expressList = new ArrayList<String>();
-    /// <summary>
-    /// 事件列表
-    /// </summary>
+    /**
+     * 事件列表
+     */
     public Map<String, List<Record>> Events = new HashMap<String, List<Record>>();
-//    /// <summary>
-//    /// 真实的数据
-//    /// </summary>
-//    public String TableName;
-    /// <summary>
-    /// 全字段
-    /// </summary>
+    /**
+     * 全字段
+     */
     public List<Map<String, Object>> FullColumns;
     /***
      * 全场景字段
@@ -166,45 +135,41 @@ public class DataModelForMap extends IDataModel{
     {
         fromXml(xElement,param);
     }
-    /// <summary>
-    /// 从JSON文件初始化
-    /// </summary>
-    /// <param name="path">文件路径</param>
-    /// <param name="nodeName">节点名称</param>
+    /**
+     * 从JSON文件初始化
+     * @param path 文件路径
+     * @param nodeName 节点名称
+     * @return
+     */
     public boolean fromJsonFile(String path, String nodeName){
         Raw.Scheme = "json";
         String content = Json.FromFile(path);
-        try
-        {
+        try{
             Map<String, Map<String, Object>> jMap = Json.toObject(content, new TypeReference<Map<String, Map<String, Object>>>() {});
-
             if (jMap.containsKey(nodeName)){
                 DataModelTable dt = Collections.toClass(jMap.get(nodeName), DataModelTable.class);
                 fromDataTable(dt);
             }
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return false;
         }
         return true;
     }
-    /// <summary>
-    /// 从xml元素解析
-    /// </summary>
-    /// <param name="element">元素节点</param>
-    /// <param name="param">参数列表</param>
-    /// <returns></returns>
-    public boolean fromXml(Element element,String param)
-    {
+    /**
+     * 从xml元素解析
+     * @param element 元素节点
+     * @param param 参数列表
+     * @return
+     */
+    public boolean fromXml(Element element,String param){
         Raw.Scheme = "xml";
         if (element == null) throw Core.makeThrow("片选节点为空");
         Raw.Name = element.getAttribute("name");
         Raw.Type = element.getAttribute("type");
         Raw.Enable= element.getAttribute("enable");
         if (Strings.isBlank(Raw.Name)) throw  Core.makeThrow("映射名称不能空");
-        try
-        {
+        try{
             Element node = Xmls.getElement(element,"tableName,table,tablename");
             Raw.Table = (node==null?"":node.getTextContent());
             node = Xmls.getElement(element,"conn");
@@ -212,29 +177,24 @@ public class DataModelForMap extends IDataModel{
             node = Xmls.getElement(element,"data");
             Raw.Data = (node==null?"":node.getTextContent());
             node = Xmls.getElement(element, "columns");
-            if (node != null && node.hasChildNodes())
-            {
+            if (node != null && node.hasChildNodes()){
                 ColumnList = new ArrayList<Map<String,Object>>();
                 Xmls.getElements(node,"column").forEach(x -> ColumnList.add(Xmls.toMap(x)));
             }
             List<Element> ps = Xmls.getElements(element, "param");
-            if (ps!=null && ps.size()>0)
-            {
+            if (ps!=null && ps.size()>0){
                 Raw.Params = new ArrayList<Map<String,Object>>();
                 ps.forEach(x -> Raw.Params.add(Xmls.toMap(x,(e,d) ->{
                     if (Strings.hasValue(e.getTextContent())) d.put("dvalue", e.getTextContent());
                 })));
             }
             List<Element> events = Xmls.getElements(element, "events");
-            if (events != null && events.size()>0)
-            {
-
+            if (events != null && events.size()>0){
                 //Raw.Events =new Dictionary<string, List<Record>>();
                 HashMap<String, List<Record>> eventdic = new HashMap<String, List<Record>>();
                 events.forEach(x ->{
                     List<Element> es = Xmls.getElements(x, null);
-                    if (es==null && es.size()>0)
-                    {
+                    if (es==null && es.size()>0){
                         List<Record> evs = new ArrayList<Record>();
                         es.forEach(y -> evs.add(Record.parse(Xmls.toMap(y))));
                         //Raw.Events.Put(x.Name.LocalName, evs);
@@ -256,8 +216,7 @@ public class DataModelForMap extends IDataModel{
             AllColumns = ColumnList;
             fromRaw(Raw,param);
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             e.printStackTrace();
             throw Core.makeThrow("解析过程发生异常");
         }
@@ -274,8 +233,7 @@ public class DataModelForMap extends IDataModel{
         Raw.Name = magic.Name;
         Raw.Type = "maigc";
         Type = DataModelType.Magic;
-        switch (magic.RelationType.toLowerCase())
-        {
+        switch (magic.RelationType.toLowerCase()){
             case "rawtable":
             case "raw":
                 Raw.Table = magic.TableName.replace("*","");
@@ -290,22 +248,19 @@ public class DataModelForMap extends IDataModel{
                 TableName = Raw.Table;
                 break;
             default:
-                    break;
+                break;
         }
-
         if (Strings.isBlank(client)) client = "pc";
         switch (client)
         {
             case "mobile":
             case "phone":
             case "h5":
-
                 ColumnList = Json.toObject(magic.MColumns,List.class);
                 break;
             default:
                 ColumnList = Json.toObject(magic.PColumns,List.class);
                 break;
-
         }
         Raw.AllColumns = ColumnList;
         AllColumns = ColumnList;
@@ -348,10 +303,8 @@ public class DataModelForMap extends IDataModel{
     }
 
     public int fromDbTable(String table, String conn){
-
         if (Strings.isBlank(conn)) return fromDbTable(table);
-        else
-        {
+        else{
             IDao dao = DaoSeesion.NewDao(conn);
             try{
                 List<Map<String, Object>> fields = dao.getFieldInfo(table);
@@ -378,39 +331,33 @@ public class DataModelForMap extends IDataModel{
     /// <param name="param">参数数据</param>
     @Override
     public void fromRaw(DataModelForMapRaw raw,String param){
-
         if (raw == null) return;
         Order = null;
         Group = null;
         Raw = raw;
         ColumnList = raw.AllColumns;
         AllColumns = raw.AllColumns;
-
         //处理一下事件
-        if (Strings.hasValue(raw.Events))
-        {
+        if (Strings.hasValue(raw.Events)){
             String eventstring = matchParam(Strings.mapping(raw.Events), param, true);
             if (Strings.isJson(eventstring,1)) Events = Json.toObject(eventstring,new TypeReference<Map<String, List<Record>>>(){});
         }
 
         TableName = raw.Table;
         Conn = raw.Conn;
-        if (((Object)true).equals(raw.Get("el_columns")) || raw.Params != null || !Strings.isBlank(param))
-        {
+        if (((Object)true).equals(raw.Get("el_columns")) || raw.Params != null || !Strings.isBlank(param)){
             String columnsString = Json.toJson(raw.AllColumns);
             columnsString = matchParam(columnsString, param, true);
             ColumnList = Json.toObject(columnsString,new TypeReference<List<Map<String, Object>>>(){});
             AllColumns = Json.toObject(columnsString,new TypeReference<List<Map<String, Object>>>(){});
         }
-
         Condition.clear();
         Condition.dialect = (DbDialectType.Default.equals(DbDialect) || DbDialect==null ?DaoSeesion.GetDialect(Conn): DbDialect);
         //解析列模型到条件字段
         Condition.initFieldMapping(parseColumsList());
 
         if (Strings.isBlank(Raw.Type)) Raw.Type = "table";
-        switch (Raw.Type.toLowerCase())
-        {
+        switch (Raw.Type.toLowerCase()){
             case "table":
             Type = DataModelType.Table;
             TableName =Strings.mapping( Raw.Table);
@@ -464,20 +411,20 @@ public class DataModelForMap extends IDataModel{
         FullColumns = filterColumns();
         if (Strings.hasValue(raw.Permission)) checkPermission(raw.Permission);
     }
-
-    /// <summary>
-    /// 从模版实体类中获取
-    /// </summary>
-    /// <param name="dao">数据库操作对象</param>
-    /// <param name="tableName">键表名</param>
-    /// <param name="param">参数列表</param>
-    /// <returns></returns>
+    /**
+     * 从模版实体类中获取
+     * @param dao 数据库操作对象
+     * @param tableName 键表名
+     * @param param 参数列表
+     * @return
+     */
     public int fromDataTable(IDao dao, String tableName, String param){
+        if(Strings.isBlank(tableName))return -1;
         boolean isuseTemplateConn = false;
         if (dao == null) dao = Dao;
         if (dao == null){
             isuseTemplateConn = true;
-            dao = DaoSeesion.GetDao(DataHub.TemplateConn);
+            dao = DaoSeesion.GetDao(Ladder.Settings().getTemplateConn());
         }
         if (dao != null) Dao = dao;
         if (tableName.startsWith("{") && tableName.endsWith("}")){
@@ -487,8 +434,7 @@ public class DataModelForMap extends IDataModel{
             else {
                 String type = dic.getString("type");
                 String conn = dic.getString("conn");
-                switch (type.toLowerCase())
-                {
+                switch (type.toLowerCase()){
                     case "magic":
                         {
                             Cnd cnd = new Cnd();
@@ -496,10 +442,38 @@ public class DataModelForMap extends IDataModel{
                             if (Strings.hasValue(dic.getString("name"))) cnd.put("name", dic.getString("name"));
                             if (cnd.isBlank()) return -1;
                             if (dao != null){
-                                DBMagic magic = dao.fetch(DataHub.MagicTableName, cnd).toClass(DBMagic.class);
+                                DBMagic magic = dao.fetch(Ladder.Settings().getMagicTableName(), cnd).toClass(DBMagic.class);
                                 if (magic == null) return -1;
                                 result = fromMagic(magic,dic.getString("client")) ? 1 : -1;
                             }
+                        }
+                        break;
+                    case "event":
+                        {
+                            String v = dic.getString("tableName,table,name", true);
+                            if (Strings.isBlank(v)) return -1;
+                            if (Strings.isBlank(conn)){
+                                result = fromDataTable(null,v,dic.getString("param", true));
+                            }
+                            else{
+                                Conn = conn;
+                                result = fromDataTable(DaoSeesion.NewDao(conn),v,dic.getString("param", true));
+                            }
+                            List<Record> events = Json.toObject(dic.getString("events"), new TypeReference<List<Record>>() {});
+                            if(!Rs.isBlank(events)){
+                                events.forEach(event->{
+                                    String ty=event.getString("type");
+                                    if(Strings.isBlank(ty))ty="resultset";
+                                    if(Events.containsKey(ty)){
+                                        Events.get(ty).add(event);
+                                    }else{
+                                        ArrayList<Record> nes = new ArrayList<Record>();
+                                        nes.add(event);
+                                        Events.put(ty, nes);
+                                    }
+                                });
+                            }
+                            Raw.Events=Json.toJson(Events);
                         }
                         break;
                     default:
@@ -524,8 +498,7 @@ public class DataModelForMap extends IDataModel{
                 IDao temp_dao = dao != null ? dao : DaoSeesion.GetDao();
                 Tuple2<Boolean, String> changecon = WebScope.MappingConn(temp_dao.getMarkCode(), tableName);
                 String thatconn = temp_dao.getMarkCode();
-                if (changecon.item1 && changecon.item2 != temp_dao.getMarkCode())
-                {
+                if (changecon.item1 && changecon.item2 != temp_dao.getMarkCode()){
                     thatconn = changecon.item2;
                 }
                 switch (tableName.substring(0, 1)){
@@ -533,7 +506,7 @@ public class DataModelForMap extends IDataModel{
                         {
                             com.jladder.db.jdbc.impl.Dao newDao = new Dao(thatconn);
                             try{
-                                DBMagic magic = newDao.fetch(DataHub.MagicTableName, new Cnd("name", tableName.substring(1))).toClass(DBMagic.class);
+                                DBMagic magic = newDao.fetch(Ladder.Settings().getMagicTableName(), new Cnd("name", tableName.substring(1))).toClass(DBMagic.class);
                                 if (magic == null) return -1;
                                 return fromMagic(magic,"1") ? 1 : -1;
                             }
@@ -550,9 +523,9 @@ public class DataModelForMap extends IDataModel{
 
             }
             Record re;
-            synchronized (lock)
-            {
-                re = dao.fetch(new SqlText("select * from " + DataHub.TemplateTableName + " where name=@name","name",tableName));
+            synchronized (lock){
+                dao.setTag("DataModel");
+                re = dao.fetch(new SqlText("select * from " +Ladder.Settings().getTemplateTableName()  + " where name=@name","name",tableName));
             }
             if (re == null) return 0;
             Raw.Scheme = "template";
@@ -592,8 +565,7 @@ public class DataModelForMap extends IDataModel{
 //        Raw.Events = Json.toObject(dt.events,new TypeReference<Map<String, List<Record>>>());
         Raw.Events = dt.events;
         //处理一下事件
-        if (Strings.hasValue(dt.events))
-        {
+        if (Strings.hasValue(dt.events)){
             String eventstring = matchParam(Strings.mapping(dt.events), param, true);
             if (Strings.isJson(eventstring,1)) Events = Json.toObject(eventstring,new TypeReference<Map<String, List<Record>>>(){});
         }
@@ -610,8 +582,7 @@ public class DataModelForMap extends IDataModel{
         Condition.dialect = ( DbDialectType.Default.equals(DbDialect) || DbDialect == null ? DaoSeesion.GetDialect(Conn) : DbDialect);
         //解析列模型到条件字段
         Condition.initFieldMapping(parseColumsList());
-        if (Strings.isBlank(dt.type) || dt.type.equals("table"))
-        {
+        if (Strings.isBlank(dt.type) || dt.type.equals("table")){
             Type = DataModelType.Table;
             dt.type = "table";
             TableName = dt.tablename;
@@ -622,8 +593,7 @@ public class DataModelForMap extends IDataModel{
                 break;
             case "data":
                 Type = DataModelType.Data;
-                if (Strings.hasValue(Raw.Data)&&Strings.isJson(Raw.Data,2))
-                {
+                if (Strings.hasValue(Raw.Data)&&Strings.isJson(Raw.Data,2)){
                     Raw.CacheItems = "TableRAM";
                     LatchAction.setData(this, Json.toObject(Raw.Data,new TypeReference<List<Record>>(){}));
                 }
@@ -642,7 +612,6 @@ public class DataModelForMap extends IDataModel{
                     Type = DataModelType.Sql;
                     //sql自定义语句 可以存放在data段，也可以直接在tableName，此时为级联字串
                     if (Strings.isBlank(dt.data) && Strings.isBlank(dt.tablename)) return -1;
-
                     if (Strings.isBlank(dt.tablename)){ //不在tableName   在data区
 
                         String data = matchParam(Strings.mapping(Raw.Data), param,false);
@@ -733,37 +702,27 @@ public class DataModelForMap extends IDataModel{
         }
         FullColumns = filterColumns();
     }
-    /// <summary>
-    /// 获取原始数据模板
-    /// </summary>
-    /// <param name="pname">排序属性</param>
-    /// <returns></returns>
-
     /***
-     *
-     * @param ordername
+     * 获取原始数据模板
+     * @param ordername 排序属性
      * @return
      */
-
     public List<Map<String, Object>> getRawColumnList(String ordername){
         List<Map<String, Object>> ret = new ArrayList<Map<String, Object>>();
         if (AllColumns == null) return ret;
         for (Map<String, Object> map : AllColumns){
-            String _as = com.jladder.lang.Collections.getString(map,"as",true);
-            if (Strings.hasValue(_as))
-            {
+            String _as = com.jladder.lang.Collections.getString(map,"as",null,true);
+            if (Strings.hasValue(_as)){
                 Map<String, Object> temp = Core.clone(map);
                 temp.put("fieldname", _as);
                 ret.add(temp);
             }
-            else
-            {
+            else{
                 ret.add(map);
             }
         }
         if (Strings.isBlank(ordername)) return ret;
-        else
-        {
+        else{
             java.util.Collections.sort(ret,Comparator.comparing(x-> Convert.toInt(x.get(ordername)==null?1:x.get(ordername)==null)));
             return ret;
         }
@@ -772,13 +731,10 @@ public class DataModelForMap extends IDataModel{
     @Override
     public List<Map<String, Object>> getColumnList(String propname) {
         List<Map<String, Object>> re_list = new ArrayList<Map<String, Object>>();
-        for (Map<String, Object> map : ColumnList)
-        {
-
-            String _as = com.jladder.lang.Collections.getString(map,"as",true);
-            if (Strings.hasValue(_as))
-            {
-
+        if(ColumnList==null)return re_list;
+        for (Map<String, Object> map : ColumnList){
+            String _as = com.jladder.lang.Collections.getString(map,"as",null,true);
+            if (Strings.hasValue(_as)) {
                 Map<String, Object> temp = Core.clone(map);
                 temp.put("fieldname", _as);
                 re_list.add(temp);
@@ -788,8 +744,7 @@ public class DataModelForMap extends IDataModel{
             }
         }
         if (Strings.isBlank(propname)) return re_list;
-        else
-        {
+        else{
             java.util.Collections.sort(re_list,Comparator.comparingInt(x-> com.jladder.lang.Collections.getInt(x,propname,true)));
             return re_list;
         }
@@ -813,9 +768,9 @@ public class DataModelForMap extends IDataModel{
         List<Map<String, Object>> newList = new ArrayList<Map<String, Object>>();//新的列模型
         for (Map<String, Object> cmap : ColumnList){
             Record config = Record.parse(cmap);
-            String strFn = com.jladder.lang.Collections.getString(cmap,"fieldname,name,oldname",true);
-            String strAs = com.jladder.lang.Collections.getString(cmap,"as,name", true);
-            String strOrder = com.jladder.lang.Collections.getString(cmap,"order",true);
+            String strFn = com.jladder.lang.Collections.getString(cmap,"fieldname,name,oldname","",true);
+            String strAs = com.jladder.lang.Collections.getString(cmap,"as,name","", true);
+            String strOrder = com.jladder.lang.Collections.getString(cmap,"order","",true);
             String showText = config.getString("isshow",true);
             boolean ishow=true;
             if(!Strings.isBlank(showText)){
@@ -828,7 +783,7 @@ public class DataModelForMap extends IDataModel{
                 }
             }
             //列表达式如果存在
-            String express = com.jladder.lang.Collections.getString(cmap, "expression");
+            String express = com.jladder.lang.Collections.getString(cmap, "expression",null);
             if (Strings.hasValue(express)){
                 if (!Strings.isJson(express,0)) expressList.add(Strings.mapping(express));
                 else{
@@ -836,9 +791,9 @@ public class DataModelForMap extends IDataModel{
                     //级联条件
                     if (expresstoevent != null && expresstoevent.size() > 1 && Strings.hasValue(com.jladder.lang.Collections.haveKey(expresstoevent,"tableName")) && Strings.hasValue(com.jladder.lang.Collections.haveKey(expresstoevent,"relation")))
                     {
-                        if (Strings.isBlank(com.jladder.lang.Collections.getString(cmap,"type"))||Regex.isMatch(com.jladder.lang.Collections.getString(cmap,"type"), "list|rs"))
+                        if (Strings.isBlank(com.jladder.lang.Collections.getString(cmap,"type",null))||Regex.isMatch(com.jladder.lang.Collections.getString(cmap,"type",""), "list|rs"))
                             expresstoevent.put("option", DbSqlDataType.OneToMany.getIndex());
-                        if (Regex.isMatch(com.jladder.lang.Collections.getString(cmap,"type"), "record|bean"))
+                        if (Regex.isMatch(com.jladder.lang.Collections.getString(cmap,"type",""), "record|bean"))
                             expresstoevent.put("option", DbSqlDataType.GetBean.getIndex());
 
                         switch (expresstoevent.getInt("option")){
@@ -852,13 +807,12 @@ public class DataModelForMap extends IDataModel{
                             case 11:
                                 addEvent("resultset", expresstoevent.put("fieldname", strFn).put("option", DbSqlDataType.GetData.getIndex()));
                                 break;
-
                         }
                         continue;
                     }
                 }
             }
-            if ("isdelete".equals(com.jladder.lang.Collections.getString(cmap,"sign")) && Strings.hasValue(strFn)){
+            if ("isdelete".equals(com.jladder.lang.Collections.getString(cmap,"sign",null)) && Strings.hasValue(strFn)){
                 expressList.add(strFn + "=0");
             }
             if (!Strings.isBlank(strFn)){
@@ -869,16 +823,14 @@ public class DataModelForMap extends IDataModel{
                 //if field is display
                 if (ishow){
                     //是否是额外字段
-                    String isext = com.jladder.lang.Collections.getString(cmap, "isext", true);
+                    String isext = com.jladder.lang.Collections.getString(cmap, "isext",null, true);
                     if(!Strings.isBlank(isext))isext =  "" + isext.toLowerCase().trim();
-                    if (Strings.isBlank(isext) || ( !"true".equals(isext) && "0".equals(isext)))
-                    {
+                    if (Strings.isBlank(isext) || ( !"true".equals(isext) && "0".equals(isext))){
                         newList.add(Core.clone(config));
                         columns.put(strFn, Strings.isBlank(strAs) ? strFn : strAs);
                     }
                 }
-                if (!Strings.isBlank(strOrder))
-                {
+                if (!Strings.isBlank(strOrder)){
                     Order.Put(strFn, strOrder, ishow?strAs: null);
                 }
             }
@@ -942,12 +894,12 @@ public class DataModelForMap extends IDataModel{
                     if (Strings.isBlank(y)) return false;
                     String f = Regex.replace(y.replace("#",""), ":[\\w\\W]*$", "");
                     if (Strings.isBlank(f)) return false;
-                    return f.equals(com.jladder.lang.Collections.getString(x,"fieldname")) || f.equals(com.jladder.lang.Collections.getString(x,"as"));
+                    return f.equals(com.jladder.lang.Collections.getString(x,"fieldname",null)) || f.equals(com.jladder.lang.Collections.getString(x,"as",null));
                 }).item2;
                 if (Strings.hasValue(one)){
                     // ReSharper disable once PossibleNullReferenceException
                     String[] orders = one.split(":");
-                    Order.Put(com.jladder.lang.Collections.getString(x,"fieldname"), orders.length>1?orders[1]:"asc", com.jladder.lang.Collections.getString(x,"as", true));
+                    Order.Put(com.jladder.lang.Collections.getString(x,"fieldname",""), orders.length>1?orders[1]:"asc", com.jladder.lang.Collections.getString(x,"as","", true));
                 }
             });
             // ReSharper disable once PossibleMultipleEnumeration
@@ -961,21 +913,20 @@ public class DataModelForMap extends IDataModel{
             if(propName==null)throw Core.makeThrow("字段属性不存在");
         }
         List<Map<String, Object>> newColumnList = com.jladder.lang.Collections.select(ColumnList, x -> x);
-        Map<String, Map<String, Object>> cmap = Rs.rever(newColumnList, propName);
-        Map<String, Map<String, Object>> asmap = Rs.rever(newColumnList, "as");
+        Map<String, Map<String, Object>> cmap = Collections.reverse(newColumnList, propName);
+        Map<String, Map<String, Object>> asmap = Collections.reverse(newColumnList, "as");
         List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
         for (String temp : cstrs){
             String str = temp.trim();//置换一下，temp不能写
             String orderSuffix = null;//排序后缀
             //此字段有排序值
             if (str.contains(":")){
-                Matcher regmatch = Regex.match(str, ":(\\w*\\d*)");
-                if (regmatch.find())
-                {
+                Matcher regmatch = Regex.match(str, ":(\\w*\\d*)$");
+                if (regmatch.find()){
                     orderSuffix = regmatch.group(1);
                     if (Strings.isBlank(orderSuffix)) orderSuffix = "asc";
                 }
-                str = Regex.replace(str, ":(\\w*\\d*)", ""); //剩下纯洁的字段名啦！
+                str = Regex.replace(str, ":(\\w*\\d*)$", ""); //剩下纯洁的字段名啦！
             }
             String findstr = str;//findstr为假设原始字段名
             String asStr = "";//查询替代字符
@@ -1089,9 +1040,8 @@ public class DataModelForMap extends IDataModel{
     /// <param name="option">选项</param>
     /// <param name="message">回馈信息</param>
     /// <returns></returns>
-    public Record genBean(String bean, int option, StringBuilder message)
-    {
-       return GenBeanTool.GenBean(this, Record.parse(bean), DbSqlDataType.get(option), message);
+    public Record genBean(String bean, int option, StringBuilder message){
+       return GenBeanTool.gen(this, Record.parse(bean), DbSqlDataType.get(option), message);
     }
     /// <summary>
     /// 获取重复检查的字段(bean中字段)
@@ -1106,8 +1056,8 @@ public class DataModelForMap extends IDataModel{
 
             String key = com.jladder.lang.Collections.haveKey(field,"unique");
             if (Strings.isBlank(key)) continue;
-            if (com.jladder.lang.Collections.getString(field,key).toLowerCase()!="true")continue;
-            String fieldName = com.jladder.lang.Collections.getString(field,"fieldname",true);
+            if (com.jladder.lang.Collections.getString(field,key,"").toLowerCase()!="true")continue;
+            String fieldName = com.jladder.lang.Collections.getString(field,"fieldname","",true);
             String beankey = com.jladder.lang.Collections.haveKey(bean,fieldName);
             if(Strings.isBlank(beankey))continue;
             rList.add(beankey);
@@ -1121,32 +1071,30 @@ public class DataModelForMap extends IDataModel{
     public List<String> hasUniqueFields(){
         List<String> rList = new ArrayList<String>();
         if (columns == null) return rList;
-        for (Map<String,Object> field : parseColumsList())
-        {
+        for (Map<String,Object> field : parseColumsList()){
             String key = com.jladder.lang.Collections.haveKey(field,"unique");
             if(Strings.isBlank(key))continue;
 
             if(Core.is(field.get(key),true,"true",1))
-            rList.add(com.jladder.lang.Collections.getString(field,"fieldname",true));
+            rList.add(com.jladder.lang.Collections.getString(field,"fieldname","",true));
         }
         return rList;
     }
-    /// <summary>
-    /// 根据属性以及属性数值获取字段组，可变参数为或的关系
-    /// </summary>
-    /// <param name="propName">属性名</param>
-    /// <param name="val">值,如果为null，所有含有此属性的</param>
-    /// <returns></returns>
+    /**
+     * 根据属性以及属性数值获取字段组，可变参数为或的关系
+     * @param propName 属性名
+     * @param val 值,如果为null，所有含有此属性的
+     * @return
+     */
     public List<String> getFields(String propName, Object ... val){
-        List<String> rList = new ArrayList<String>();
+        List<String> rList = new ArrayList<>();
         if (columns == null) return rList;
         for (Map<String, Object> field : ColumnList){
             if (!field.containsKey(propName)) continue;
-            if (val == null || val.length < 1) rList.add(com.jladder.lang.Collections.getString(field,"fieldname"));
-            else
-            {
+            if (val == null || val.length < 1) rList.add(com.jladder.lang.Collections.getString(field,"fieldname",""));
+            else{
                 if (com.jladder.lang.Collections.any(val, o -> field.get(propName).equals(o)))
-                    rList.add(com.jladder.lang.Collections.getString(field,"fieldname"));
+                    rList.add(com.jladder.lang.Collections.getString(field,"fieldname",""));
             }
         }
         return rList;
@@ -1162,7 +1110,7 @@ public class DataModelForMap extends IDataModel{
     {
         List<Map<String, Object>> list = parseColumsList();
         if(list==null)return null;
-        return com.jladder.lang.Collections.first(list, x-> fieldname.equals(com.jladder.lang.Collections.getString(x,"fieldname,name,as",true))).item2;
+        return com.jladder.lang.Collections.first(list, x-> fieldname.equals(com.jladder.lang.Collections.getString(x,"fieldname,name,as","",true))).item2;
     }
     /// <summary>
     /// 更新字段配置,注意最后是字段名
@@ -1172,13 +1120,11 @@ public class DataModelForMap extends IDataModel{
     /// <param name="fields">字段名称集合</param>
     public void updateFieldConfig(String propName, Object value, List<String> fields){
         if (fields == null || fields.size()<1 || ColumnList==null || ColumnList.size()<1) return;
-        ColumnList.forEach(c ->
-        {
-            String  fieldname = com.jladder.lang.Collections.getString(c,"fieldname,name");
+        ColumnList.forEach(c ->{
+            String  fieldname = com.jladder.lang.Collections.getString(c,"fieldname,name","");
             if(fieldname!=null)fieldname=fieldname.toLowerCase();
             String finalFieldname = fieldname;
-            if (com.jladder.lang.Collections.any(fields, x -> finalFieldname.equals(x.toLowerCase())))
-            {
+            if (com.jladder.lang.Collections.any(fields, x -> finalFieldname.equalsIgnoreCase(x))){
                 c.put(propName, value);
             }
         });
@@ -1191,13 +1137,11 @@ public class DataModelForMap extends IDataModel{
     /// <param name="fields">字段名数组</param>
     public void updateFieldConfig(String propName, Object value, String ... fields){
         if (fields == null || fields.length<1 || ColumnList==null || ColumnList.size()<1) return;
-        ColumnList.forEach(c ->
-        {
-            String  fieldname = com.jladder.lang.Collections.getString(c,"fieldname,name");
+        ColumnList.forEach(c ->{
+            String  fieldname = com.jladder.lang.Collections.getString(c,"fieldname,name",null);
             if(fieldname!=null)fieldname=fieldname.toLowerCase();
             String finalFieldname = fieldname;
-            if (com.jladder.lang.Collections.any(fields, x -> finalFieldname.equals(x.toLowerCase())))
-            {
+            if (com.jladder.lang.Collections.any(fields, x -> finalFieldname.equals(x.toLowerCase()))){
                 c.put(propName, value);
             }
         });
@@ -1233,14 +1177,12 @@ public class DataModelForMap extends IDataModel{
         if(Strings.isBlank(name)||action==null)return;
         if(Events==null)Events=new HashMap<String, List<Record>>();
         String key = com.jladder.lang.Collections.haveKey(Events,name);
-        if (Strings.isBlank(key))
-        {
+        if (Strings.isBlank(key)){
             List<Record> event =  new ArrayList<Record>();
             event.add(action);
             Events.put(name, event);
         }
-        else
-        {
+        else{
             List<Record> oldlist = Events.get(key);
             if(oldlist!=null&&oldlist.size()>0) oldlist.add(action);
             else{
@@ -1271,8 +1213,7 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     public void setCondition(String conditionText){
         if (Strings.isBlank(conditionText)) return;
-        if (Condition == null)
-        {
+        if (Condition == null){
             Condition = new Cnd(parseColumsList(), (DbDialectType.Default.equals(DbDialect) || DbDialect == null ? DaoSeesion.GetDialect(Conn) : DbDialect));
         }
         Condition.put(conditionText);
@@ -1433,7 +1374,6 @@ public class DataModelForMap extends IDataModel{
         if (DataModelType.Table.equals(Type) && DbDialectType.MYSQL.equals(DbDialect)){
             wraptext = "`";
         }
-
         String finalWraptext = wraptext;
         columns.forEach((x, y)->{
             reT[0] = reT[0] + (finalWraptext + prefix + x + finalWraptext + (Strings.isBlank(y) ? "" : " as " +finalWraptext+ y+finalWraptext) + splitStr);
@@ -1474,7 +1414,7 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     public List<Map<String, Object>> getAllQueryColumns(){
         java.util.Collections.sort(FullColumns, Comparator.comparingInt(x -> com.jladder.lang.Collections.getInt(x,"isshow",true)));
-        return com.jladder.lang.Collections.where(FullColumns, x->!Regex.isMatch(com.jladder.lang.Collections.getString(x,"ishow"),"^-"));
+        return com.jladder.lang.Collections.where(FullColumns, x->!Regex.isMatch(com.jladder.lang.Collections.getString(x,"ishow",""),"^-"));
     }
     /// <summary>
     /// 获取全字段
@@ -1515,10 +1455,10 @@ public class DataModelForMap extends IDataModel{
         if (Raw.Params != null && Raw.Params.size() > 0){
         for (Map<String,Object> col : Raw.Params)
         {
-            String fieldName = com.jladder.lang.Collections.getString(col,"fieldname", true);
+            String fieldName = com.jladder.lang.Collections.getString(col,"fieldname","", true);
             String key = com.jladder.lang.Collections.haveKey(matchDic,fieldName);
             if (Strings.hasValue(key)){
-                switch (com.jladder.lang.Collections.getString(col,"type")){
+                switch (com.jladder.lang.Collections.getString(col,"type","")){
                     case "where":
                         source = Strings.mapping(source,fieldName, Cnd.parse(matchDic.getString(key)).getWhere(true,true));
                         break;
@@ -1533,7 +1473,7 @@ public class DataModelForMap extends IDataModel{
             }
             else{
                 key = com.jladder.lang.Collections.haveKey(col,"defaultValue,default,dvalue");
-                if (Strings.hasValue(key)) source = Strings.mapping(source,fieldName, com.jladder.lang.Collections.getString(col,key));
+                if (Strings.hasValue(key)) source = Strings.mapping(source,fieldName, com.jladder.lang.Collections.getString(col,key,""));
             }
         }
         }
@@ -1555,7 +1495,7 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <returns></returns>
     public IDao fetchConnDao(){
-        if (Strings.isBlank(Raw.Conn)) return Dao !=null ? Dao : DaoSeesion.GetDao(DataHub.TemplateConn);
+        if (Strings.isBlank(Raw.Conn)) return Dao !=null ? Dao : DaoSeesion.GetDao(Ladder.Settings().getTemplateConn());
         else return DaoSeesion.NewDao(Raw.Conn);
     }
     /// <summary>

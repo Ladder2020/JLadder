@@ -1,11 +1,8 @@
 package com.jladder.db.bean;
-
-
 import com.jladder.db.enums.DbConst;
 import com.jladder.lang.Collections;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
-
 import java.util.Map;
 
 public class FieldInfo {
@@ -89,38 +86,30 @@ public class FieldInfo {
     public FieldInfo(String fieldname,String as){
 
     }
-
-
-    /// <summary>
-    /// 解析字段信息
-    /// </summary>
-    /// <param name="dic"></param>
-    /// <returns></returns>
-    public static FieldInfo Parse(Map<String, Object> dic)
-    {
+    /**
+     * 解析字段信息
+     * @param source 源数据
+     * @return
+     */
+    public static FieldInfo parse(Map<String, Object> source){
         FieldInfo fi = new FieldInfo();
-        fi.fieldname= Collections.getString(dic,"fieldname", true);
-        fi.type= Collections.getString(dic,"type", true);
-        fi.length= Integer.valueOf(Collections.getString(dic,"length", true));
+        fi.fieldname= Collections.getString(source,"fieldname","", true);
+        fi.type= Collections.getString(source,"type","", true);
+        fi.length= Collections.getInt(source,"length", true);
         if (fi.length < 1) fi.length = -1;
-        String gen =Collections.getString(dic,"gen", true);
-        fi.dvalue = Collections.getString(dic,"dvalue", true);
-        fi.descr = Collections.getString(dic,"descr", true);
-        fi.actioncode = Collections.getInt(dic,"actioncode", true);
-        if (Strings.hasValue(gen))
-        {
-            if (Regex.isMatch(gen, "autonum"))
-            {
+        String gen =Collections.getString(source,"gen","", true);
+        fi.dvalue = Collections.getString(source,"dvalue","", true);
+        fi.descr = Collections.getString(source,"descr","", true);
+        fi.actioncode = Collections.getInt(source,"actioncode", true);
+        if (Strings.hasValue(gen)){
+            if (Regex.isMatch(gen, "autonum")){
                 fi.pk = true;
                 fi.gen = DbConst.Gen_AutoNum;
             }
         }
-        if (Strings.hasValue(gen) && Regex.isMatch(gen, "(uuid)|(id)"))
-        {
+        if (Strings.hasValue(gen) && Regex.isMatch(gen, "(uuid)|(id)")){
             fi.isNull = false;
         }
         return fi;
     }
-
-
 }

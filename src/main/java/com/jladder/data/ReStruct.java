@@ -10,19 +10,49 @@ public class ReStruct<TM,TN>
     /// <summary>
     /// 是否成功
     /// </summary>
-    public boolean Success = false;
+    private boolean success = false;
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public TM getA() {
+        return a;
+    }
+
+    public void setA(TM a) {
+        this.a = a;
+    }
+
+    public TN getB() {
+        return b;
+    }
+
+    public void setB(TN b) {
+        this.b = b;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public ReStruct<TM,TN> setMessage(String message) {
+        this.message = message;
+        return this;
+    }
+
     /// <summary>
     /// 结果a
     /// </summary>
-    public TM ResultA;
+    private TM a;
     /// <summary>
     /// 结果a
     /// </summary>
-    public TN ResultB;
+    private TN b;
     /// <summary>
     /// 消息
     /// </summary>
-    public String Message;
+    private String message;
     /// <summary>
     /// 初始化
     /// </summary>
@@ -33,16 +63,15 @@ public class ReStruct<TM,TN>
     /// <param name="success">是否成功</param>
     public ReStruct(boolean success)
     {
-        Success = Success;
+        this.success = success;
     }
     /// <summary>
     /// 初始化
     /// </summary>
     /// <param name="message">消息</param>
-    public ReStruct(String message)
-    {
-        Success = false;
-        Message = message;
+    public ReStruct(String message) {
+        this.success = false;
+        this.message = message;
     }
 
     /// <summary>
@@ -51,11 +80,10 @@ public class ReStruct<TM,TN>
     /// <param name="success">是否成功</param>
     /// <param name="resulta">结果1</param>
     /// <param name="resultb">结果2</param>
-    public ReStruct(boolean success, TM resulta,TN resultb)
-    {
-        Success = success;
-        ResultA = resulta;
-        ResultB = resultb;
+    public ReStruct(boolean success, TM a,TN b){
+        this.success = success;
+        this.a = a;
+        this.b = b;
     }
 
     /// <summary>
@@ -63,9 +91,12 @@ public class ReStruct<TM,TN>
     /// </summary>
     /// <param name="result"></param>
     /// <returns></returns>
-    public static <TM,TN>  ReStruct SetResult(TM resulta,TN resultb)
-    {
-        ReStruct restruct = new ReStruct<TM, TN>(true, resulta,resultb);
+    public static <TM,TN>  ReStruct setResult(TM a,TN b){
+        ReStruct restruct = new ReStruct<TM, TN>(true, a,b);
         return restruct;
     }
+    public boolean isSuccess(){
+        return success;
+    }
+
 }

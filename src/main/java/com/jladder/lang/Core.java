@@ -28,7 +28,28 @@ public class Core {
         System.out.println("类:"+father.getClassName()+ ",方法:"+father.getMethodName());
         return new RuntimeException(String.format(format, args));
     }
-
+    /**
+     * 判断对象实现的所有接口中是否包含szInterface
+     *
+     * @param clazz
+     * @param szInterface
+     * @return
+     */
+    public static boolean isImplementsOf(Class<?> clazz, Class<?> szInterface) {
+        boolean flag = false;
+        Class<?>[] face = clazz.getInterfaces();
+        for (Class<?> c : face) {
+            if (c == szInterface) {
+                flag = true;
+            } else {
+                flag = isImplementsOf(c, szInterface);
+            }
+        }
+        if (!flag && null != clazz.getSuperclass()) {
+            return isImplementsOf(clazz.getSuperclass(), szInterface);
+        }
+        return flag;
+    }
     public static Type[] getTypeArguments(Type type) {
         if (null == type) {
             return null;

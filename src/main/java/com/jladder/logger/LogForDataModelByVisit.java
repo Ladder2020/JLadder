@@ -10,7 +10,7 @@ public class LogForDataModelByVisit
     /// <summary>
     /// 开始时间
     /// </summary>
-    public Date StartTime= Times.now();
+    public Date starttime= Times.now();
     /// <summary>
     /// 结束时间
     /// </summary>
@@ -18,7 +18,7 @@ public class LogForDataModelByVisit
     /// <summary>
     /// 持续时长
     /// </summary>
-    public String duration = "0ms";
+    public int duration = 0;
     /// <summary>
     /// 模版名称
     /// </summary>
@@ -45,7 +45,7 @@ public class LogForDataModelByVisit
     /// 设置结束点
     /// </summary>
     /// <returns></returns>
-    public LogForDataModelByVisit SetEnd()
+    public LogForDataModelByVisit setEnd()
     {
         endtime=Times.now();
 //        TimeSpan ts = EndTime.subtract(StartTime);

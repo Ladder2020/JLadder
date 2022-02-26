@@ -1,7 +1,7 @@
 package com.jladder.db;
 import com.alibaba.fastjson.JSONObject;
+import com.jladder.Ladder;
 import com.jladder.actions.impl.QueryAction;
-import com.jladder.configs.Configs;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
 import com.jladder.datamodel.FieldMapping;
@@ -87,12 +87,18 @@ public class Cnd {
     }
     public Cnd(String conditionText)
     {
-        dialect = Configs.exist("_DialectType") ? (DbDialectType)Configs.get("_DialectType",false) : DbDialectType.Default; ;
+        dialect = Ladder.Settings().getDbDialect();
         this.put(conditionText);
     }
-    public Cnd(List<Map<String, Object>> fullcolumn,DbDialectType dialect){
+
+    /**
+     * 初始化
+     * @param fullColumn 全字段列
+     * @param dialect
+     */
+    public Cnd(List<Map<String, Object>> fullColumn,DbDialectType dialect){
         this.dialect = dialect;
-        initFieldMapping(fullcolumn);
+        initFieldMapping(fullColumn);
     }
     public Cnd(String propnames,Object value){
         this.put(propnames,"=",value);
@@ -108,35 +114,26 @@ public class Cnd {
     public Cnd put(Map<String, Object> cndDic)
     {
         if (cndDic == null) return this;
-        for (Map.Entry<String, Object> item : cndDic.entrySet())
-        {
-
+        for (Map.Entry<String, Object> item : cndDic.entrySet()){
             if (item.getValue() == null&& !Regex.isMatch(item.getKey(), ":is")) continue;
-
             String[] keys=null;
             //var keys = Regex.Split(item.Key, @"\||,");
-
-            if (item.getKey().indexOf("|") > 0)
-            {
+            if (item.getKey().indexOf("|") > 0){
                 keys = item.getKey().split("|");
             }
-            else
-            {
+            else{
                 List<String> ks = Strings.splitByComma(item.getKey());
                 keys = ks.toArray(new String[ks.size()]);
             }
             if(Core.isEmpty(keys))return this;
-            if (keys.length == 1 && !Regex.isMatch(keys[0], "((\\$and\\d*)|(\\$or\\d*))$"))
-            {
+            if (keys.length == 1 && !Regex.isMatch(keys[0], "((\\$and\\d*)|(\\$or\\d*))$")){
                 String[] cstr = keys[0].split(":");
                 String fileName = cstr[0];
                 String op = cstr.length > 1 ? cstr[1] : "=";
-                if ((cstr.length > 2 &&  "or".equals(cstr[2].toLowerCase())))
-                {
+                if ((cstr.length > 2 &&  "or".equals(cstr[2].toLowerCase()))){
                     put(fileName, op, item.getValue(), OR);
                 }
-                else
-                {
+                else {
                     put(fileName, op, item.getValue(), AND);
                 }
                 continue;
@@ -145,24 +142,18 @@ public class Cnd {
             cnd.mapping = mapping;
             cnd.asKey=asKey;
             cnd.dialect=dialect;
-            for (String key : keys)
-            {
+            for (String key : keys){
                 String[] cstr = key.split(":");
                 String fileName = cstr[0];
                 if (Regex.isMatch(fileName, "\\$and\\d*$")) fileName = "and";
                 if (Regex.isMatch(fileName, "\\$or\\d*$")) fileName = "or";
                 String op = cstr.length > 1 ? cstr[1] : "=";
-                if (cstr.length < 3 || (cstr.length > 2 && "or".equals(cstr[2].toLowerCase())))
-                {
+                if (cstr.length < 3 || (cstr.length > 2 && "or".equals(cstr[2].toLowerCase()))) {
                     cnd.put(fileName, op, item.getValue(), OR);
                 }
-                else
-                {
+                else {
                     cnd.put(fileName, op, item.getValue(), AND);
                 }
-//                    if (cstr.Length<3||(cstr.Length > 2 && cstr[2].ToLower() == "and"))
-//
-//                    else
             }
             if (Regex.isMatch(item.getKey(), "\\$or\\d*$")) or(cnd);
             else  and(cnd);
@@ -171,16 +162,15 @@ public class Cnd {
     }
 
 
-    public Cnd put(List<Map<String, Object>> cndArea)
-    {
+    public Cnd put(List<Map<String, Object>> cndArea){
         for (Map<String, Object> dic : cndArea)
         {
-            String name = com.jladder.lang.Collections.getString(dic,"fieldname");
-            if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name");
+            String name = com.jladder.lang.Collections.getString(dic,"fieldname",null);
+            if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name",null);
             if (Strings.isBlank(name)) continue;
             this.put(
                     name,
-                    com.jladder.lang.Collections.getString(dic,"op") + com.jladder.lang.Collections.getString(dic,"option"),
+                    com.jladder.lang.Collections.getString(dic,"op","") + com.jladder.lang.Collections.getString(dic,"option",""),
                     dic.get("value"),
                     AND
             );
@@ -192,16 +182,12 @@ public class Cnd {
         conditionText = conditionText.trim();
         if (conditionText.length() < 1) return this;
         conditionText = Regex.replace(conditionText, "^\\s*where\\s*", "");
-
-        if (Strings.isJson(conditionText,1))
-        {
+        if (Strings.isJson(conditionText,1)){
             Map<String, Object> cmap = Json.toObject(conditionText,new TypeReference<Map<String,Object>>(){});
             return this.put(cmap);
         }
-        if (Strings.isJson(conditionText,2))
-        {
-            if (Regex.isMatch(conditionText, "^\\s*\\[\\s*\\["))
-            {
+        if (Strings.isJson(conditionText,2)){
+            if (Regex.isMatch(conditionText, "^\\s*\\[\\s*\\[")){
                 List<List<Map<String, Object>>> list = Json.toObject(conditionText, new TypeReference<List<List<Map<String, Object>>>>(){});
                 Cnd list_condition=new Cnd();
                 list.forEach(li ->{
@@ -214,50 +200,43 @@ public class Cnd {
                 and(list_condition);
                 return this;
             }
-            else
-            {
+            else{
                 List<Map<String, Object>> list = Json.toObject(conditionText,new TypeReference<List<Map<String, Object>>>(){});
                 for (Map<String, Object> dic : list){
-                    String name = com.jladder.lang.Collections.getString(dic,"fieldname");
-                    if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name");
+                    String name = com.jladder.lang.Collections.getString(dic,"fieldname",null);
+                    if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name",null);
                     if (Strings.isBlank(name)) continue;
                     this.put(
                             name,
-                            com.jladder.lang.Collections.getString(dic,"op") + com.jladder.lang.Collections.getString(dic,"option"),
+                            com.jladder.lang.Collections.getString(dic,"op","") + com.jladder.lang.Collections.getString(dic,"option",""),
                             dic.get("value"),
                             AND
                     );
                 }
             }
-
             return this;
         }
-        if (Strings.hasValue(conditionText))
-        {
-            PushWhereString(conditionText, AND);
+        if (Strings.hasValue(conditionText)){
+            pushWhereString(conditionText, AND);
         }
-
         return this;
     }
 
-    public Cnd put(String propnames,Object val){
-        return put(propnames,"=",val,this.AND);
+    public Cnd put(String fields,Object val){
+        return put(fields,"=",val,this.AND);
     }
 
-    public Cnd put(String propnames, String op, Object val){
-        return put(propnames,op,val,this.AND);
+    public Cnd put(String fields, String op, Object val){
+        return put(fields,op,val,this.AND);
     }
-
-    /// <summary>
-    /// 解析条件
-    /// </summary>
-    /// <param name="cnd">原数据对象</param>
-    /// <param name="mapping">全字段</param>
-    /// <param name="dialect">数据库方言</param>
-    /// <returns></returns>
-    public static Cnd parseRecord(Record cnd, Map<String, Map<String, Object>> mapping, DbDialectType dialect)
-    {
-
+    /**
+     * 解析条件
+     * @param cnd 原数据对象
+     * @param mapping 全字段
+     * @param dialect 数据库方言
+     * @return
+     */
+    public static Cnd parseRecord(Record cnd, Map<String, Map<String, Object>> mapping, DbDialectType dialect){
         if (cnd == null || Strings.isBlank(cnd.toString())) return null;
         if (mapping == null) return parse(cnd, null, dialect);
         Cnd ret = new Cnd();
@@ -266,43 +245,38 @@ public class Cnd {
         return ret.put(cnd);
     }
 
-    public Cnd put(boolean can, String propnames, Object val)
-    {
-        if (can) return put(propnames, val);
+    public Cnd put(boolean can, String fields, Object val) {
+        if (can) return put(fields, val);
         return this;
     }
-    public Cnd put(boolean can, String propnames, String op, Object val)
+    public Cnd put(boolean can, String fields, String op, Object val)
     {
-        if (can) return put(propnames, op, val);
+        if (can) return put(fields, op, val);
         return this;
     }
-    public Cnd put(boolean can, String propnames, String op, Object val, int option)
+    public Cnd put(boolean can, String fields, String op, Object val, int option)
     {
-        if (can) return put(propnames, op, val, option);
+        if (can) return put(fields, op, val, option);
         return this;
     }
 
 
     /***
-     *     放置条件
-     * @param propnames 属性名
+     * 放置条件
+     * @param fields 属性名
      * @param op 符号
      * @param val 值
      * @param option 选项，Cnd.AND和Cnd.OR
      * @return
      */
-    public Cnd put(String propnames, String op, Object val, int option)
-    {
-
-        if (Strings.isBlank(propnames))throw Core.makeThrow("条件对象属性值不能为空");
-        if ("and".equals(propnames.trim().toLowerCase()))
-        {
-            and(val instanceof Record  ? Cnd.parseRecord(Record.parse(val),mapping.fm,dialect):Cnd.parse(val));
+    public Cnd put(String fields, String op, Object val, int option) {
+        if (Strings.isBlank(fields))throw Core.makeThrow("条件对象属性值不能为空");
+        if ("and".equalsIgnoreCase(fields.trim())){
+            and((val instanceof Record) || (val instanceof JSONObject)  ? Cnd.parseRecord(Record.parse(val),mapping.fm,dialect):Cnd.parse(val));
             return this;
         }
-        if ("or".equals(propnames.trim().toLowerCase()))
-        {
-            or(val instanceof Record || val instanceof JSONObject ? Cnd.parseRecord(Record.parse(val), mapping.fm, dialect) : Cnd.parse(val));
+        if ("or".equalsIgnoreCase(fields.trim())){
+            or((val instanceof Record) || (val instanceof JSONObject) ? Cnd.parseRecord(Record.parse(val), mapping.fm, dialect) : Cnd.parse(val));
             return this;
         }
         if (Strings.isBlank(op)) op = "=";
@@ -312,8 +286,8 @@ public class Cnd {
         }
         if(val!=null&&Regex.isMatch(val.toString(), "^undefined$")&& !Regex.isMatch(op, "is")) return this;
         if (Regex.isMatch(op, "is") && val == null) val = "null";
-        List<String> nameArray = null;
-        nameArray = Strings.splitByComma(propnames);
+        List<String> nameArray;
+        nameArray = Strings.splitByComma(fields);
         //如果含有括号包裹
 
 
@@ -358,7 +332,7 @@ public class Cnd {
                     {
                         String type="string";
                         if(mapping.get(propname).get(typeKey) !=null){
-                            type =  com.jladder.lang.Collections.getString(mapping.get(propname),typeKey);
+                            type =  com.jladder.lang.Collections.getString(mapping.get(propname),typeKey,"");
                         }
 
                         //置换成实字段
@@ -433,7 +407,7 @@ public class Cnd {
                             else
                             {
                                 Date _t = Times.convert(val.toString());
-                                if (_t!=null && _t.getTime()>0) return this;
+                                if (_t==null && _t.getTime()<=0) return this;
                                 switch (dialect)
                                 {
                                     case ORACLE:
@@ -473,7 +447,7 @@ public class Cnd {
             else
             {
                 //获取条件回溯
-                Receipt<SqlText> recall = GetDataModelSql(val);
+                Receipt<SqlText> recall = getDataModelSql(val);
 
                 if (recall.result)
                 {
@@ -522,17 +496,14 @@ public class Cnd {
                             }
                             else
                             {
-                                Tuple2<ArrayList<String>,Boolean> ts = ToArrayText(val);
-                                if (ts.item1.size() > 0)
-                                {
+                                Tuple2<ArrayList<String>,Boolean> ts = toArrayText(val);
+                                if (ts.item1.size() > 0){
                                     currentText += propname + " " + op + " (";
-                                    for (String tt : ts.item1)
-                                    {
+                                    for (String tt : ts.item1){
                                         String inkey = Core.genUuid();
                                         currentText += "@" + inkey + ",";
                                         parameters.add(new DbParameter(inkey,tt));
                                     }
-
                                     currentText = Strings.rightLess(currentText,1)+") or ";
                                 }
                             }
@@ -542,10 +513,8 @@ public class Cnd {
                             break;
                         case "between":
                         {
-
-                            Tuple2<ArrayList<String>,Boolean> ts = ToArrayText(val);
-                            switch (ts.item1.size())
-                            {
+                            Tuple2<ArrayList<String>,Boolean> ts = toArrayText(val);
+                            switch (ts.item1.size()){
                                 case 0:
                                     throw Core.makeThrow("between数据条件不足[0497]");
                                 case 1:
@@ -597,23 +566,19 @@ public class Cnd {
         {
 
             currentText =Strings.rightLess(currentText,4);
-            PushWhereString(currentText, option);
-            if (option == AND)
-            {
+            pushWhereString(currentText, option);
+            if (option == AND) {
                 Most.add(canparse);
             }
-            else
-            {
+            else{
                 if(Most.size()>0){
                     Most.get(Most.size()-1).addAll(canparse);
                 }
                 else {
-
                     Most.add(canparse);
                 }
             }
         }
-
         return this;
     }
     /// <summary>
@@ -621,33 +586,27 @@ public class Cnd {
     /// </summary>
     /// <param name="data">数据</param>
     /// <returns></returns>
-    public static Receipt<SqlText> GetDataModelSql(Object data)
+    public static Receipt<SqlText> getDataModelSql(Object data)
     {
-//        return new Receipt<SqlText>(false,"未实现呢");
-
-        Func2<Map<String, Object>, SqlText> func = (dic) ->
-        {
+        Func2<Map<String, Object>, SqlText> func = (dic) ->{
             if (dic == null) return null;
             String tableName = dic.get("tableName")!=null?dic.get("tableName").toString():"";
             //条件回溯了
-            if (!Strings.isBlank(tableName))
-            {
-                String query = com.jladder.lang.Collections.getString(dic,"query", true);
-                if (Strings.hasValue(query)&& Regex.isMatch(query,"^(1)|(true)$"))
-                {
-                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param"));
+            if (!Strings.isBlank(tableName)){
+                String query = com.jladder.lang.Collections.getString(dic,"query",null, true);
+                if (Strings.hasValue(query)&& Regex.isMatch(query,"^(1)|(true)$")){
+                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param",""));
                     if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
-                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
-                    dm.setCondition(com.jladder.lang.Collections.getString(dic,"condition,where", true));
-                    List<String> rst = QueryAction.getValues(tableName, com.jladder.lang.Collections.getString(dic, "columns,column,columnstring", true), com.jladder.lang.Collections.getString(dic, "condition,where", true), com.jladder.lang.Collections.getString(dic, "param"), String.class);
+                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring","", true));
+                    dm.setCondition(com.jladder.lang.Collections.getString(dic,"condition,where","", true));
+                    List<String> rst = QueryAction.getValues(tableName, com.jladder.lang.Collections.getString(dic, "columns,column,columnstring","", true), com.jladder.lang.Collections.getString(dic, "condition,where","", true), com.jladder.lang.Collections.getString(dic, "param",""), String.class);
                     return new SqlText(Strings.arraytext(rst));
                 }
-                else
-                {
+                else{
                     //throw new Exception("需要确认逻辑");
-                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param"));
+                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param",""));
                     if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
-                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring", true));
+                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring","", true));
                     Object condition = com.jladder.lang.Collections.get(dic,"condition,where", true);
                     dm.setCondition(Cnd.parse(condition,dm));
                     return dm.getSqlText();
@@ -656,34 +615,26 @@ public class Cnd {
             return null;
         };
         Map<String, Object> record = null;
-        if (data instanceof String && Strings.isJson(data.toString(),1))
-        {
+        if (data instanceof String && Strings.isJson(data.toString(),1)){
             String str = data.toString();
-            if (Strings.isJson(str,1))
-            {
+            if (Strings.isJson(str,1)){
                 record = Json.toObject(str,new TypeReference<Map<String, Object>>(){});
             }
-            if(Strings.isJson(str,2))
-            {
+            if(Strings.isJson(str,2)){
                 data = Json.toObject(str,new TypeReference<List<Map<String, Object>>>(){});
             }
         }
-
-
-        if (Core.isType(data,new TypeReference<Map<String,Object>>(){}))
-        {
+        if (Core.isType(data,new TypeReference<Map<String,Object>>(){})){
             record = (Map<String,Object>)data;
         }
-        if (Core.isType(data,new TypeReference<List<Map<String, Object>>>(){}))
-        {
+        if (Core.isType(data,new TypeReference<List<Map<String, Object>>>(){})){
             List<Map<String, Object>> datas = (List<Map<String, Object>>)data;
             List<SqlText> p = com.jladder.lang.Collections.where(com.jladder.lang.Collections.select(datas, x->func.invoke(x)), x->!x.isBlank());
             List<DbParameter> parameters = new ArrayList<DbParameter>();
             p.forEach(x -> parameters.addAll(x.getParameters()));
             return new Receipt<SqlText>().setData(new SqlText(Strings.ArrayToString(com.jladder.lang.Collections.select(p, x -> x.getCmd())," union ",""), parameters));
         }
-        if (data instanceof Record)
-        {
+        if (data instanceof Record){
             record = (Map<String, Object>) data;
         }
         if(data instanceof JSONObject){
@@ -722,17 +673,15 @@ public class Cnd {
             List<DbParameter> parameters = new ArrayList<DbParameter>();
             for (Object o : datas)
             {
-                Receipt<SqlText> sql = GetDataModelSql(o);
-                if (sql.result)
-                {
+                Receipt<SqlText> sql = getDataModelSql(o);
+                if (sql.result){
                     sqltext += sql.message + " union ";
                     parameters.addAll(sql.data.getParameters());
                 }
             }
             return Strings.hasValue(sqltext) ? new Receipt<SqlText>().setData(new SqlText(Strings.rightLess(sqltext,7),parameters)) : new Receipt<SqlText>(false);
         }
-        if (data instanceof ReCall)
-        {
+        if (data instanceof ReCall){
             ReCall recall = (ReCall) data;
             record =new Record("tableName", recall.TableName)
                     .put("columns", recall.Columns)
@@ -749,13 +698,17 @@ public class Cnd {
         return ret == null ? new Receipt<SqlText>(false) : new Receipt<SqlText>(true).setData(ret);
     }
 
-    private Tuple2<ArrayList<String>,Boolean> ToArrayText(Object obj)
-    {
+    /**
+     * 整理数据数组
+     * @param obj 数据对象
+     * @return
+     */
+    private Tuple2<ArrayList<String>,Boolean> toArrayText(Object obj){
         final boolean[] isnumber = {true};
+        if(obj==null)return new Tuple2(new ArrayList<String>(Arrays.asList(obj.toString())),false);
         List array = new ArrayList();
-        if (obj instanceof List)
-        {
-            List list = (List)obj;
+        if(obj instanceof Collection){
+            Collection list = (Collection)obj;
             isnumber[0] = true;
             for (Object o : list)
             {
@@ -767,26 +720,22 @@ public class Cnd {
                 }
                 array.add(data);
             }
-
             return new Tuple2(array, isnumber[0]);
         }
-//        if (obj instanceof Collection<String>)
-//        {
-//            (obj as IEnumerable<string>).ForEach(x =>
-//                {
-//            if (isnumber && !Regex.IsMatch(x, "^-?\\d*\\.?\\d*$")) isnumber = false;
-//            array.Add(x);
-//                });
-//            return (array, isnumber);
-//        }
-//        if (obj is IEnumerable<int>)
-//        {
-//            (obj as IEnumerable<int>).ForEach(x => array.Add(x));
-//            return (array, true);
-//        }
-
-        if (obj instanceof String)
-        {
+        if (obj instanceof List){
+            List list = (List)obj;
+            isnumber[0] = true;
+            for (Object o : list){
+                if (o == null) continue;
+                String data = o.toString();
+                if (isnumber[0] && !Regex.isMatch(data, "^-?\\d*\\.?\\d*$")){
+                    isnumber[0] = false;
+                }
+                array.add(data);
+            }
+            return new Tuple2(array, isnumber[0]);
+        }
+        if (obj instanceof String){
             String str = (String)obj;
             if (Strings.isBlank(str)) return new Tuple2(new ArrayList(), false);
             str = Regex.replace(str, "^\\s*[,\\[\\(]?", "");
@@ -797,12 +746,25 @@ public class Cnd {
                 if (isnumber[0] && !Regex.isMatch(x, "^-?\\d*\\.?\\d*$")) isnumber[0] = false;
                 array.add(x);
             });
-
+            return new Tuple2(array, isnumber[0]);
+        }
+        //数组时
+        if(obj.getClass().isArray()){
+            List<Object> list = Json.toObject(Json.toJson(obj),List.class);
+            isnumber[0] = true;
+            for (Object o : list){
+                if (o == null) continue;
+                String data = o.toString();
+                if (isnumber[0] && !Regex.isMatch(data, "^-?\\d*\\.?\\d*$")){
+                    isnumber[0] = false;
+                }
+                array.add(data);
+            }
             return new Tuple2(array, isnumber[0]);
         }
         return new Tuple2(new ArrayList<String>(Arrays.asList(obj.toString())),false);
     }
-    private void PushWhereString(String sqlStr, int option)
+    private void pushWhereString(String sqlStr, int option)
     {
         if (Strings.isBlank(sqlStr)) return;
         sqlStr = Regex.replace(sqlStr, "^\\s*(where)[\\s]*", "");
@@ -849,74 +811,62 @@ public class Cnd {
         Cnd result= Cnd.parse(cnd, dm.parseColumsList(),dm.getDialect()!=null ? dm.getDialect() : DbDialectType.Default);
         return result;
     }
-    public boolean hasValue()
-    {
+    public boolean hasValue() {
         return Strings.hasValue(whereText);
     }
-
-
-    /// <summary>
-    /// 解析条件
-    /// </summary>
-    /// <param name="cnd">原数据对象</param>
-    /// <param name="fullcolumn">全字段</param>
-    /// <param name="dialect">数据库方言</param>
-    /// <returns></returns>
+    /**
+     * 解析条件
+     * @param cnd 原数据对象
+     * @param fullcolumn 全字段
+     * @param dialect 数据库方言
+     * @return
+     */
     public static Cnd parse(Object cnd, List<Map<String, Object>> fullcolumn,DbDialectType dialect)
     {
 
         if (cnd == null || Strings.isBlank(cnd.toString())) return null;
-        if (cnd instanceof String)
-        {
+        if (cnd instanceof String) {
             return new Cnd(fullcolumn, dialect).put(cnd.toString());
         }
         //是record类型
-        if (cnd instanceof Record)
-        {
+        if (cnd instanceof Record) {
             return new Cnd(fullcolumn,dialect).put((Record)cnd);
         }
         //是字典类型
-        if ( (new HashMap<String,Object>()).getClass().isAssignableFrom(cnd.getClass()))
-        {
+        if ( (new HashMap<String,Object>()).getClass().isAssignableFrom(cnd.getClass())){
             return new Cnd(fullcolumn, dialect).put((Map<String, Object>)cnd);
         }
         //是条件类型
-        if (cnd instanceof Cnd)
-        {
+        if (cnd instanceof Cnd){
             Cnd ret = (Cnd)cnd;
             if(dialect!=DbDialectType.Default)ret.dialect =dialect;
             if(fullcolumn!=null)ret.initFieldMapping(fullcolumn);
             return ret;
         }
         //是条件列表
-        if ((new ArrayList<Cnd>()).getClass().isAssignableFrom(cnd.getClass()))
-        {
+        if ((new ArrayList<Cnd>()).getClass().isAssignableFrom(cnd.getClass())) {
             List<Cnd> cnds = (List<Cnd>)cnd;
             if (cnds.size() < 1) return null;
             Cnd _cnd = cnds.get(0);
             if (cnds.size() < 2) return _cnd;
-            for (int i = 1; i < cnds.size(); i++)
-            {
+            for (int i = 1; i < cnds.size(); i++){
                 _cnd.or(cnds.get(i));
             }
             return _cnd;
         }
         //是字典列表
-        if (new  ArrayList<Map<String, Object>>().getClass().isAssignableFrom(cnd.getClass()))
-        {
+        if (new  ArrayList<Map<String, Object>>().getClass().isAssignableFrom(cnd.getClass())){
             List<Map<String, Object>> cnds = (List<Map<String, Object>>)cnd;
             if (cnds.size() < 1) return null;
             Cnd _cnd = new Cnd(fullcolumn,dialect).put(cnds.get(0));
             if (cnds.size() < 2) return _cnd;
-            for (int i = 1; i < cnds.size(); i++)
-            {
+            for (int i = 1; i < cnds.size(); i++){
                 _cnd.or(new Cnd(fullcolumn, dialect).put(cnds.get(i)));
             }
             return _cnd;
         }
         //是记录列表
-        if ((new ArrayList<Record>().getClass().isAssignableFrom(cnd.getClass())))
-        {
+        if ((new ArrayList<Record>().getClass().isAssignableFrom(cnd.getClass()))) {
             List<Record> cnds = ((List<Record>)cnd);
             if (cnds.size() < 1) return null;
             Cnd _cnd = new Cnd(fullcolumn, dialect).put(cnds.get(0));
@@ -928,8 +878,7 @@ public class Cnd {
             return _cnd;
         }
 
-        if (cnd instanceof SqlText)
-        {
+        if (cnd instanceof SqlText){
             Cnd _cud = new Cnd(fullcolumn,dialect);
             SqlText sqltex = (SqlText)cnd;
             _cud.whereText = sqltex.getCmd();
@@ -946,8 +895,7 @@ public class Cnd {
      * @param isFill
      * @return
      */
-    public String getWhere(boolean hasWhere,boolean isFill)
-    {
+    public String getWhere(boolean hasWhere,boolean isFill){
         final String[] sqlcmd = {Strings.isBlank(whereText) ? "" : (hasWhere ? " where " : "") + Regex.replace(this.whereText, "^\\s*where\\s*", "")};
         if (!isFill || Strings.isBlank(sqlcmd[0])) return sqlcmd[0];
         if(parameters!=null){
@@ -966,8 +914,7 @@ public class Cnd {
         if (cnds == null || cnds.length < 1) return this;
         final String[] wstr = {this.getWhere(false, false)};
         AtomicBoolean ishaswstr = new AtomicBoolean(false);
-        if (Strings.hasValue(wstr[0]))
-        {
+        if (Strings.hasValue(wstr[0])){
             ishaswstr.set(true);
             if(!wstr[0].startsWith("(") || !wstr[0].endsWith(")"))wstr[0] = "(" + wstr[0] + ")";
         }
@@ -978,24 +925,19 @@ public class Cnd {
             ishaswstr.set(true);
         });
         this.whereText = wstr[0];
-        if (Most.size() < 1)
-        {
+        if (Most.size() < 1){
             if(Most.size()>0){
                 Most.add(cnds[0].Most.get(0));
                 for(int i=1;i<cnds.length;i++){
-                    for (List<CndStruct> cndStructs : cnds[i].Most)
-                    {
+                    for (List<CndStruct> cndStructs : cnds[i].Most){
                         Most.get(0).addAll(cndStructs);
                     }
                 }
             }
         }
-        else
-        {
-            for (Cnd cnd1 : cnds)
-            {
-                for (List<CndStruct> cndStructs : cnd1.Most)
-                {
+        else{
+            for (Cnd cnd1 : cnds){
+                for (List<CndStruct> cndStructs : cnd1.Most){
                     Most.forEach(x -> x.addAll(cndStructs));
                 }
             }
@@ -1012,13 +954,11 @@ public class Cnd {
      * @param fullcolumn 列模型
      */
     public void initFieldMapping(List<Map<String, Object>> fullcolumn) {
-
         if (fullcolumn == null || fullcolumn.size() < 1) return;
-        for (Map<String, Object> dic : fullcolumn)
-        {
-            String fieldval = com.jladder.lang.Collections.getString(dic,fieldnameKey);
+        for (Map<String, Object> dic : fullcolumn){
+            String fieldval = com.jladder.lang.Collections.getString(dic,fieldnameKey,null);
             if (Strings.isBlank(fieldval)) continue;
-            String asval = Collections.getString(dic,asKey);
+            String asval = Collections.getString(dic,asKey,null);
             mapping.put(fieldval.toLowerCase(), dic);
             if (Strings.hasValue(asval)) mapping.put(asval.toLowerCase(), dic);
         }

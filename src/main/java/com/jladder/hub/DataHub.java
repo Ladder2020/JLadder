@@ -1,18 +1,17 @@
 package com.jladder.hub;
 
 import com.jladder.actions.impl.LatchAction;
-import com.jladder.configs.Configs;
-import com.jladder.configs.SourceDirection;
 import com.jladder.data.Record;
 import com.jladder.datamodel.DataModelForMap;
 import com.jladder.datamodel.DataModelInfo;
 import com.jladder.lang.*;
 import com.jladder.lang.func.Tuple2;
-import com.jladder.logger.LogOption;
-import org.springframework.core.io.ClassPathResource;
+import com.jladder.logger.LogWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,81 +28,13 @@ public class DataHub {
     public static DataHub Instance = new DataHub();
     public static IWorkCache WorkCache = new WorkCache();
 
+    private static final Map<String,Tuple2<DataSource,JdbcTemplate>> jdbcs=new HashMap<String,Tuple2<DataSource,JdbcTemplate>>();
     /// <summary>
     /// 实例化
     /// </summary>
-    private DataHub()
-    {
+    private DataHub(){}
 
 
-    }
-
-    /// <summary>
-    /// 数据库模版的
-    /// </summary>
-    public static String TemplateConn="defaultDatabase";//= Configs.GetString("_TemplateDbName") ?? "defaultDatabase";
-    /// <summary>
-    /// 表名
-    /// </summary>
-    public static String TemplateTableName="sys_data";//= Configs.GetString("_TemplateTableName") ?? "ladder.sys_data";
-    /// <summary>
-    /// 自定义表单的表名
-    /// </summary>
-    public static String MagicTableName="sys_magic";;// = Configs.GetString("_MagicTableName") ?? "ladder.sys_magic";
-    /// <summary>
-    /// 代理服务的数据库
-    /// </summary>
-    public static String ProxyConn="defaultDatabase";// = Configs.GetString("_ProxyDbName") ?? "defaultDatabase";
-    /// <summary>
-    /// 代理服务的数据库表名
-    /// </summary>
-    public static String ProxyTableName= "sys_service";// = Configs.GetString("_ProxyTableName") ?? "ladder.sys_service";
-
-
-
-
-    /// <summary>
-    /// 输出日志级别
-    /// </summary>
-    public static LogOption OutLogLevel = LogOption.Debug;
-    /// <summary>
-    /// 数据分析开关
-    /// </summary>
-    public static Boolean Analyz = true;
-
-    /// <summary>
-    /// 输出日志路径，支持${yyyy-MM-dd}格式
-    /// </summary>
-    public static String OutLogPath = "~/log/{yyyy-MM-dd}";
-    //        /// <summary>
-    //        /// 输出日志文件类型
-    //        /// </summary>
-    //        public static string OutLogFileName { get; set; } = "0.log";
-
-    /// <summary>
-    /// 日志上传的服务器
-    /// </summary>
-    public static String LogServer;
-
-    /// <summary>
-    /// 主模式
-    /// </summary>
-    public static String MainScheme = "db";
-
-    /// <summary>
-    /// sqlbug
-    /// </summary>
-    public static boolean SqlDebug;
-
-    /// <summary>
-    /// Sql超出毫秒数
-    /// </summary>
-    public static int SqlWarnTime= 60000;
-
-    /// <summary>
-    /// sqlbug
-    /// </summary>
-    public static String SqlDebugItem = "update,delete,insert,create";
 
     /// <summary>
     /// Json文件列表
@@ -120,20 +51,21 @@ public class DataHub {
     /// </summary>
     private static Map<String, DataModelInfo> DataModelConfigs =  new HashMap<String, DataModelInfo>();
 
+    public static LogWriter LogWriter=null;
 
-//    public static WorkCache WorkCache = new WorkCache();
 
     /// <summary>
     /// 加载从配置的变量
     /// </summary>
-    public static void SetFromConfig()
+    public static void setFromConfig()
     {
-        SqlDebug = Core.is(Configs.getString("sqldebug"), "True") ;
-        int time = Configs.getInt("SqlWarnTime");
-        if (time > 0) SqlWarnTime = time;
-        if (Strings.hasValue(Configs.getString("sqldebugitem"))) SqlDebugItem = Configs.getString("sqldebugitem");
-        LogServer = Configs.getString("logserver");
-        OutLogPath = Strings.hasValue(Configs.getString("log")) ? Configs.getString("log") : "~/log/{yyyy-MM-dd}";
+//        throw Core.makeThrow("未实现");
+////        SqlDebug = Core.is(Configs.getString("sqldebug"), "True") ;
+////        int time = Configs.getInt("SqlWarnTime");
+////        if (time > 0) SqlWarnTime = time;
+////        if (Strings.hasValue(Configs.getString("sqldebugitem"))) SqlDebugItem = Configs.getString("sqldebugitem");
+////        LogServer = Configs.getString("logserver");
+////        OutLogPath = Strings.hasValue(Configs.getString("log")) ? Configs.getString("log") : "~/log/{yyyy-MM-dd}";
 
     }
 
@@ -143,12 +75,7 @@ public class DataHub {
     /// </summary>
     /// <param name="paths">文件路径</param>
 
-    public static void Init(String ... paths)
-    {
-        TemplateConn = Core.or(Configs.getString("_TemplateDbName"),"defaultDatabase");
-        TemplateTableName = Core.or(Configs.getString("_TemplateTableName") , "sys_data");
-        Configs.put("_TemplateDbName", TemplateConn, SourceDirection.Application);
-        Configs.put("_TemplateTableName", TemplateTableName, SourceDirection.Application);
+    public static void Init(String ... paths){
         DataModelConfigs.clear();
         if (paths != null && paths.length > 0)
         {
@@ -167,7 +94,7 @@ public class DataHub {
                 }
             }
         }
-        XmlFiles = Core.or(XmlFiles ,Configs.getValue("xmltemplates",List.class)) ;
+        //XmlFiles = Core.or(XmlFiles ,Configs.getValue("xmltemplates",List.class)) ;
         if (XmlFiles != null && XmlFiles.size() > 0)
         {
             for (String xmlFile : XmlFiles)
@@ -182,8 +109,7 @@ public class DataHub {
     /// 初始化方法
     /// </summary>
     /// <param name="paths">文件路径</param>
-    public static void Init(List<String> paths)
-    {
+    public static void Init(List<String> paths){
 //        if (paths == null || !paths.Any()) return;
 //        Init(paths.ToArray());
     }
@@ -288,8 +214,7 @@ public class DataHub {
     /// 加载xml文件
     /// </summary>
     /// <param name="path"></param>
-    public static void LoadXmlFile(String path)
-    {
+    public static void LoadXmlFile(String path){
         File file = Files.getFile(path);
         if (!Files.exist(file)) return;
         long lasttime = file.lastModified();
@@ -321,13 +246,12 @@ public class DataHub {
         }
     }
 
-    /// <summary>
-    /// 加载json文件
-    /// </summary>
-    /// <param name="path"></param>
 
-    public static void LoadJsonFile(String path)
-    {
+    /**
+     * 加载json文件
+     * @param path json文件路径
+     */
+    public static void LoadJsonFile(String path){
         File file = Files.getFile(path);
         if (!Files.exist(file)) return;
         long lasttime = file.lastModified();
@@ -347,13 +271,12 @@ public class DataHub {
             DataHub.WorkCache.removeDataModelCache(name);
         });
     }
-    /// <summary>
-    /// 通过配置信息加载
-    /// </summary>
-    /// <param name="info"></param>
 
-    public static void Load(DataModelInfo info)
-    {
+    /**
+     * 通过配置信息加载
+     * @param info
+     */
+    public static void load(DataModelInfo info){
         if (info == null) return;
         switch (info.type)
         {
@@ -366,24 +289,23 @@ public class DataHub {
                 break;
         }
     }
-    /// <summary>
-    /// 添加xml文件
-    /// </summary>
-    /// <param name="path">文件路径</param>
 
-    public static void addXmlFile(String path)
-    {
+    /**
+     * 添加xml文件
+     * @param path 文件路径
+     */
+    public static void addXmlFile(String path){
         if (Strings.isBlank(path)) return;
         if (XmlFiles == null) XmlFiles = new ArrayList<String>();
         XmlFiles.add(path);
     }
-    /// <summary>
-    /// 获取数据模型的信息
-    /// </summary>
-    /// <param name="key">键名</param>
-    /// <param name="ignore">是否忽略大小写</param>
-    /// <returns></returns>
 
+    /**
+     * 获取数据模型的信息
+     * @param key 键名
+     * @param ignore 是否忽略大小写
+     * @return
+     */
     public static DataModelInfo Get(String key, boolean ignore) {
         if (ignore)
         {
@@ -398,15 +320,13 @@ public class DataHub {
             else return null;
         }
     }
-    /// <summary>
-    /// 生成以Map为媒介的数据模型实例
-    /// </summary>
-    /// <param name="key"></param>
-    /// <param name="ignore"></param>
-    /// <returns></returns>
-
-    public static DataModelForMap gen(String key, boolean ignore)
-    {
+    /**
+     * 生成以Map为媒介的数据模型实例
+     * @param key
+     * @param ignore
+     * @return
+     */
+    public static DataModelForMap gen(String key, boolean ignore){
         DataModelInfo info = Get(key, ignore);
         if (info == null) return null;
         String path = info.path;;
@@ -415,9 +335,7 @@ public class DataHub {
         {
             case "xml":
                 if (!Files.exist(path)) return null;
-
                 Document doc = Xmls.readXML(new File(path));
-
                 List<Element> elements = Xmls.getElements(doc.getDocumentElement(), "mapping");
                 Tuple2<Boolean, Element> rett = Collections.first(elements, x -> info.node.equals(x.getAttribute("name")));
 
@@ -431,12 +349,12 @@ public class DataHub {
         }
         return ret;
     }
-    /// <summary>
-    /// 检测模板文件是否已经改变
-    /// </summary>
-    /// <param name="key">键名</param>
-    /// <param name="dminfo">模板信息</param>
-    /// <returns></returns>
+    /**
+     * 检测模板文件是否已经改变
+     * @param key 键名
+     * @param dminfo 模板信息
+     * @return
+     */
     public static int IsChangeed(String key, DataModelInfo dminfo)
     {
         throw Core.makeThrow("未实现");
@@ -453,4 +371,43 @@ public class DataHub {
 //        return 0;
     }
 
+    public static void setDataSource(JdbcTemplate template){
+        setDataSource("defaultDatabase",template);
+    }
+    public static void setDataSource(DataSource datasource){
+        setDataSource("defaultDatabase",datasource);
+    }
+    public static void setDataSource(String name,JdbcTemplate template){
+        if(Strings.isBlank(name))name="defaultDatabase";
+        Tuple2<DataSource, JdbcTemplate> old = jdbcs.get(name);
+        if(old==null)old = new Tuple2<DataSource, JdbcTemplate>();
+        old.setItem2(template);
+        jdbcs.put(name,old);
+    }
+    public static void setDataSource(String name,DataSource datasource){
+        if(Strings.isBlank(name))name="defaultDatabase";
+        Tuple2<DataSource, JdbcTemplate> old = jdbcs.get(name);
+        if(old==null)old = new Tuple2<DataSource, JdbcTemplate>();
+        old.setItem1(datasource);
+        jdbcs.put(name,old);
+    }
+
+    public static JdbcTemplate getJdbcTemplate(){
+        return getJdbcTemplate("defaultDatabase");
+    }
+    public static JdbcTemplate getJdbcTemplate(String name) {
+        if(Strings.isBlank(name))name="defaultDatabase";
+        Tuple2<DataSource, JdbcTemplate> old = jdbcs.get(name);
+        if(old==null)return null;
+        return old.item2;
+    }
+    public static DataSource getDataSource() {
+        return getDataSource("defaultDatabase");
+    }
+    public static DataSource getDataSource(String name) {
+        if(Strings.isBlank(name))name="defaultDatabase";
+        Tuple2<DataSource, JdbcTemplate> old = jdbcs.get(name);
+        if(old==null)return null;
+        return old.item1;
+    }
 }

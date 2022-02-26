@@ -1,7 +1,4 @@
 package com.jladder.datamodel;
-
-import java.util.Date;
-
 /// <summary>
 /// 数据模型信息
 /// </summary>

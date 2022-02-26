@@ -1,10 +1,11 @@
 package com.jladder.lang;
 import com.jladder.actions.impl.EnvAction;
 import com.jladder.actions.impl.QueryAction;
-import com.jladder.configs.Configs;
+import com.jladder.configs.Configure;
 import com.jladder.data.AjaxResult;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
+import com.jladder.proxy.ProxyService;
 
 import java.io.StringReader;
 import java.util.*;
@@ -440,7 +441,7 @@ public class Strings {
             for (int i = 1; i <= match.groupCount(); i++)
             {
                 String keyword = match.group(i);
-                String value = EnvAction.GetEnvValue(keyword);
+                String value = EnvAction.getEnvValue(keyword);
                 if(isBlank(value))value = "";
                 if (ispadding || Strings.hasValue(value)) oldStr = oldStr.replace("##" + keyword + "##", value);
             }
@@ -450,7 +451,7 @@ public class Strings {
         while (match.find()){
             String key1 = match.group(1);
             String key2 = match.group(2);
-            String value = EnvAction.GetEnvValue(key1, key2);
+            String value = EnvAction.getEnvValue(key1, key2);
             if(isBlank(value))value = "";
             if (ispadding || Strings.hasValue(value))oldStr = oldStr.replace("@@" + key1 + "&&" + key2 + "@@", value);
         }
@@ -461,7 +462,7 @@ public class Strings {
             for (int i = 1; i <= match.groupCount(); i++)
             {
                 String keyword = match.group(1);
-                String value = EnvAction.GetEnvValue(keyword);
+                String value = EnvAction.getEnvValue(keyword);
                 if(isBlank(value))value = "";
                 if (ispadding || Strings.hasValue(value))oldStr = oldStr.replace("${$env." + keyword + "}", value);
             }
@@ -471,7 +472,7 @@ public class Strings {
         match = Regex.match(oldStr,"\\$\\{\\$config\\.(\\w+)\\}");
         while (match.find()){
             String keyword = match.group(1);
-            String value =  Configs.getString(keyword);
+            String value =  Configure.getString(keyword);
             if(isBlank(value))value = "";
             if (ispadding || Strings.hasValue(value))oldStr = oldStr.replace("${$config." + keyword + "}", value);
         }
@@ -571,16 +572,16 @@ public class Strings {
             if (Strings.isBlank(k)) continue;
             String value = record.getString(k, true);
             if(value==null)value="";
-            if (ispaading || Strings.hasValue(value)) oldStr = oldStr.replace("@@" + key1 + "." + key2 + "@@", value);
+            if (ispaading || Strings.hasValue(value)) oldStr = oldStr.replace(match.group(0), value);
         }
         //${name}
         match = Regex.match(oldStr, "\\$\\{(\\w*)}");
         while (match.find())
         {
             String keyword = match.group(1);
-            String value = Collections.getString(dic,keyword,true);
+            String value = Collections.getString(dic,keyword,"",true);
             if(value==null)value="";
-            if (ispaading || Strings.hasValue(value))oldStr = oldStr.replace("${" + keyword + "}", value);
+            if (ispaading || Strings.hasValue(value))oldStr = oldStr.replace(match.group(0), value);
         }
         //以对象型替换 形式：${dd.name}
         match = Regex.match(oldStr, "\\$\\{(\\$?\\w*)\\.(\\w*)\\}");
@@ -603,7 +604,7 @@ public class Strings {
             if (Strings.isBlank(k)) continue;
             String value = record.getString(k, true);
             if(value==null)value="";
-            if (ispaading || Strings.hasValue(value)) oldStr = oldStr.replace("${" + key1 + "." + key2 + "}", value);
+            if (ispaading || Strings.hasValue(value)) oldStr = oldStr.replace(match.group(0), value);
         }
 
         //${$data#&tablename#&columns#&condition#&param}模版数据
@@ -626,14 +627,27 @@ public class Strings {
         while (match.find()){
             String key = match.group(1);
             String data = match.group(2);
-//            var re = ProxyService.execute(key, Record.Parse(data));
-//            if (re.Success) oldStr = oldStr.Replace(elmatch.Groups[0].Value, re.data.ToString());
-//            else
-//            {
-//                if (ispaading) oldStr = oldStr.Replace(elmatch.Groups[0].Value, "");
-//            }
+            AjaxResult re = ProxyService.execute(key, Record.parse(data));
+            if (re.success) oldStr = oldStr.replace(key,Json.toJson(re.data));
+            else
+            {
+                if (ispaading) oldStr = oldStr.replace(match.group(0), "");
+            }
         }
 
+
+        match = Regex.match(oldStr, "\\$\\{\\{([\\w\\,]*?)}\\}");
+        while (match.find()){
+            String key = match.group(1);
+            String[] keys = key.split("\\,");
+            Map<String,String> newObject = new HashMap<String,String>();
+            for (String s : keys) {
+                String value = Collections.getString(dic,s,"",true);
+                if (ispaading || Strings.hasValue(value))newObject.put(s,value);
+            }
+
+            oldStr = oldStr.replace(match.group(0), Json.toJson(newObject));
+        }
         return oldStr;
     }
     /***

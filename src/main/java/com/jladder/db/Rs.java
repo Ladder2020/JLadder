@@ -1,11 +1,9 @@
 package com.jladder.db;
-
 import com.jladder.data.Record;
 import com.jladder.lang.Collections;
 import com.jladder.lang.Core;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,18 +28,6 @@ public class Rs {
     }
 
 
-    public static <V> Map<String,Map<String,V>> rever(Collection<Map<String,V>> dlist,String propName){
-        if (dlist == null) return null;
-        if (propName == null) return null;
-        Map<String, Map<String, V>> re_map = new HashMap<String, Map<String, V>>();
-        for (Map<String, V> cmap : dlist)
-        {
-            V v = cmap.get(propName);
-            String str_fn = v!=null ? v.toString():"";
-            if (!Strings.isBlank(str_fn)) re_map.put(str_fn, cmap);
-        }
-        return re_map.size() < 1 ? null : re_map;
-    }
 
 
     public static Record turn(List<Record> rs,String propName){
@@ -51,10 +37,9 @@ public class Rs {
         if (rs == null || rs.size()<1) return null;
         Record record=new Record();
         if (Strings.isBlank(propName)) propName = "id";
-        for (T re : rs)
-        {
+        for (T re : rs){
             Record current  = Record.parse(re);
-            String key = Collections.getString(current,propName);
+            String key = Collections.getString(current,propName,"");
             if(append){
                 List<Record> old = (List<Record>) record.get(key);
                 if(old==null)old = new ArrayList<Record>();
@@ -68,7 +53,38 @@ public class Rs {
         if (record.size() < 1) return null;
         return record;
     }
-
+    /**
+     * 按某个数组排序
+     * @author 徐洪昌
+     * @date 2021/12/6 10:24
+     * @param a
+     * @param b 按照这个数组排序
+     * @param fieldname 排序字段
+     * @return java.util.List<com.jladder.data.Record>
+     */
+    public static List<Record> orderByList(List<Record> a,List<String> b,String fieldname) {
+        List<Record> list = new ArrayList<>();
+        if (a == null) return list;
+        else if (b == null) return list;
+        b.forEach(x-> {
+            List<Record> rec = Collections.where(a,xx -> xx.getString(fieldname).equals(x));
+            if (!Rs.isBlank(rec)) {
+                list.addAll(rec);
+            }
+        });
+        return list;
+    }
+    public static List<Record> distinct(List<Record> a, String name) {
+        List<Record> list = new ArrayList<>();
+        if (Rs.isBlank(a)) a = new ArrayList<>();
+        Map<String, List<Record>> map = Collections.groupBy(a, x -> x.getString(name));
+        Set<String> keys = map.keySet();
+        if (keys.size() == 0) return list;
+        keys.forEach(x -> {
+            list.add(map.get(x).get(0));
+        });
+        return list;
+    }
 
     /// <summary>
     /// 过滤符合条件的记录
@@ -76,20 +92,17 @@ public class Rs {
     /// <param name="rs">记录集</param>
     /// <param name="cndss">条件组合</param>
     /// <returns></returns>
-    public static List<Record> find(List<Record> rs, List<List<CndStruct>> cndss)
-    {
+    public static List<Record> find(List<Record> rs, List<List<CndStruct>> cndss){
         if (Rs.isBlank(rs)) return null;
         if (isBlank(cndss)) return rs;
-        try
-        {
+        try{
             return rs.stream().filter(x->{
                 boolean ret = true;
 
                 for (List<CndStruct> cndStructs : cndss)
                 {
                     boolean dret = false;
-                    for (CndStruct cndStruct : cndStructs)
-                    {
+                    for (CndStruct cndStruct : cndStructs){
                         if (cndStruct.Value == null || Strings.isBlank(cndStruct.Value.toString())) continue;
                         switch (cndStruct.Op.trim())
                         {
@@ -123,8 +136,7 @@ public class Rs {
 
                         if (dret) break;
                     }
-                    if (!dret)
-                    {
+                    if (!dret){
                         ret = false;
                         break;
                     }
@@ -132,14 +144,11 @@ public class Rs {
                 return ret;
             }).collect(Collectors.toList());
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return null;
         }
-
     }
-    public static List<Record> find(List<Record> rs, Cnd condition)
-    {
+    public static List<Record> find(List<Record> rs, Cnd condition){
         if (condition == null) return rs;
         return find(rs, condition.Most);
     }

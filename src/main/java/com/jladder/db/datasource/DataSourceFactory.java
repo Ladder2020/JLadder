@@ -1,10 +1,11 @@
 package com.jladder.db.datasource;
 
-import com.jladder.configs.Configs;
+import com.jladder.Ladder;
 import com.jladder.db.DbInfo;
 import com.jladder.db.datasource.impl.DataSourceByDruid;
 import com.jladder.db.datasource.impl.DataSourceByEmpty;
 import com.jladder.db.datasource.impl.DataSourceByHikari;
+import com.jladder.lang.Collections;
 import com.jladder.lang.Core;
 
 import javax.sql.DataSource;
@@ -128,7 +129,8 @@ public abstract class DataSourceFactory  implements Closeable, Serializable {
     }
 
     public static DataSourceFactory create() {
-        DbInfo config = Configs.getValue(DataSourceFactory.DefaultDatabase,DbInfo.class);
+//        DbInfo config = Configs.getValue(DataSourceFactory.DefaultDatabase,DbInfo.class);
+        DbInfo config = (DbInfo) Collections.get(Ladder.Settings().getDatabase(),"DefaultDatabase",true);
         if(config!=null){
             config.setName(DataSourceFactory.DefaultDatabase);
             final DataSourceFactory dsFactory = doCreate(config);
@@ -165,14 +167,11 @@ public abstract class DataSourceFactory  implements Closeable, Serializable {
      * @since 4.1.3
      */
     private static DataSourceFactory doCreate(DbInfo info) {
-
-
         try {
             return new DataSourceByHikari(info);
         } catch (NoClassDefFoundError e) {
             // ignore
         }
-
         try {
             return new DataSourceByDruid(info);
         } catch (NoClassDefFoundError e) {

@@ -70,5 +70,6 @@ public class ProxyRunning {
         this.config=config;
         this.envcode=env;
         this.follow=follow;
+        if(this.header==null)this.header=new Record();
     }
 }

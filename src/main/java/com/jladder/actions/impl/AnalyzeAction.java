@@ -1,119 +1,102 @@
 package com.jladder.actions.impl;
-
-import com.jladder.configs.Configs;
+import com.jladder.Ladder;
 import com.jladder.actions.AnalyzeOption;
 import com.jladder.data.Record;
 import com.jladder.datamodel.IDataModel;
 import com.jladder.db.Rs;
 import com.jladder.db.enums.DbSqlDataType;
-import com.jladder.hub.DataHub;
 import com.jladder.lang.Collections;
+import com.jladder.lang.*;
 import com.jladder.lang.func.Func1;
-import com.jladder.logger.LogForDataModelByCompare;
-import com.jladder.logger.LogForDataModelByKeep;
-import com.jladder.logger.LogForDataModelByRate;
-import com.jladder.logger.LogForDataModelByVisit;
+import com.jladder.logger.*;
 import com.jladder.net.http.HttpHelper;
-import com.jladder.lang.Core;
-import com.jladder.lang.Regex;
-import com.jladder.lang.Strings;
-import com.jladder.lang.Times;
-
+import com.jladder.web.WebScope;
+import com.jladder.web.WebScopeOption;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/// <summary>
-/// 数据应用分析
-/// </summary>
-public  class AnalyzeAction
-{
-    /// <summary>
-    /// 是否使用缓存
-    /// </summary>
-    public boolean IsCache;
-    /// <summary>
-    /// 是否已经终点
-    /// </summary>
-    public boolean IsEnd ;
-    /// <summary>
-    /// 数据模型
-    /// </summary>
+/**
+ * 数据应用分析
+ */
+public  class AnalyzeAction{
+    /**
+     * 是否使用缓存
+     */
+    public boolean isCache;
+    /**
+     * 是否已经终点
+     */
+    public boolean isEnd ;
+    /**
+     * 数据模型
+     */
     public IDataModel DataModel;
-    /// <summary>
-    /// 实际本次统计科目
-    /// </summary>
-    public List<AnalyzeOption> Subjects=new ArrayList<>();
+    /**
+     * 实际本次统计科目
+     */
+    public List<AnalyzeOption> subjects=new ArrayList<>();
 
-    /// <summary>
-    /// 日志集
-    /// </summary>
+    /**
+     * 日志集
+     */
     private final Map<AnalyzeOption,Object> logs=new HashMap<AnalyzeOption, Object>();
 
-    /// <summary>
-    /// 执行动作
-    /// </summary>
-    public DbSqlDataType Action = DbSqlDataType.Query;
-    /// <summary>
-    /// 是否检查数据过期
-    /// </summary>
-    public boolean CheckDataOutDate;
+    /**
+     * 执行动作
+     */
+    public DbSqlDataType action = DbSqlDataType.Query;
+    /**
+     * 是否检查数据过期
+     */
+    public boolean checkDataOutDate;
+    /**
+     * 实例化
+     * @param dm 数据模型
+     */
+    public AnalyzeAction(IDataModel dm){
+        DataModel = dm;
+        init();
+    }
+    /**
+     * 实例化
+     * @param dm 数据模型
+     * @param action 操作动作
+     */
+    public AnalyzeAction(IDataModel dm,DbSqlDataType action){
+        DataModel = dm;
+        action = action;
+        init();
+    }
 
-    /// <summary>
-    /// 实例化
-    /// </summary>
-    /// <param name="dm">数据模型</param>
-    public AnalyzeAction(IDataModel dm)
-    {
-        DataModel = dm;
-        Init();
-    }
-    /// <summary>
-    /// 实例化
-    /// </summary>
-    /// <param name="dm">数据模型</param>
-    /// <param name="action">执行动作</param>
-    public AnalyzeAction(IDataModel dm,DbSqlDataType action)
-    {
-        DataModel = dm;
-        Action = action;
-        Init();
-    }
-    /// <summary>
-    /// Init方法
-    /// </summary>
-    private void Init()
-    {
-        if (!DataHub.Analyz) return;
+    /**
+     * Init方法
+     */
+    private void init(){
+        if (!Ladder.Settings().isAnalyz()) return;
         String items = "," + DataModel.getRaw().AnalyzeItems + ",";
         //访问统计
-        if (items.indexOf(",visit,") > -1)
-        {
-            String userinfo = EnvAction.GetEnvValue("username")+"<"+ HttpHelper.getIp()+">";
-            Subjects.add(AnalyzeOption.Visit);
+        if (items.indexOf(",visit,") > -1){
+            String userinfo = EnvAction.getEnvValue("username")+"<"+ HttpHelper.getIp()+">";
+            subjects.add(AnalyzeOption.Visit);
             logs.put(AnalyzeOption.Visit, new LogForDataModelByVisit(DataModel.getName(),userinfo,"模版访问"));
         }
         //记录比对
-        if (items.indexOf(",compare,") > -1)
-        {
-            logs.put(AnalyzeOption.Compare, new LogForDataModelByCompare(DataModel.getName(),EnvAction.GetEnvValue("userinfo")));
+        if (items.indexOf(",compare,") > -1){
+            logs.put(AnalyzeOption.Compare, new LogForDataModelByCompare(DataModel.getName(),EnvAction.getEnvValue("userinfo")));
         }
         //数据持久化
-        if (items.indexOf(",keep,") > -1)
-        {
-            logs.put(AnalyzeOption.Keep, new LogForDataModelByKeep(DataModel.getName(),EnvAction.GetEnvValue("userinfo")));
+        if (items.indexOf(",keep,") > -1){
+            logs.put(AnalyzeOption.Keep, new LogForDataModelByKeep(DataModel.getName(),EnvAction.getEnvValue("userinfo")));
         }
         //数据吞吐率
-        if (items.indexOf(",rate,") > -1)
-        {
+        if (items.indexOf(",rate,") > -1){
             logs.put(AnalyzeOption.Rate, new LogForDataModelByRate(DataModel.getName()));
         }
         //检查数据过期
-        if (items.indexOf(",outdate,") > -1)
-        {
-            CheckDataOutDate = true;
+        if (items.indexOf(",outdate,") > -1){
+            checkDataOutDate = true;
         }
-        if (logs.containsKey(AnalyzeOption.Visit))
-        {
+        if (logs.containsKey(AnalyzeOption.Visit)){
 //            Task.Factory.StartNew(() =>
 //                    {
 //                            var dao = DaoSeesion.NewDao(DataHub.TemplateConn);
@@ -135,163 +118,143 @@ public  class AnalyzeAction
     }
 
 
-
-    /// <summary>
-    /// 分析结束点
-    /// </summary>
-
-    public  void EndPoint()
-    {
-        if (IsEnd) return;
-        IsEnd = true;
-        if (!DataHub.Analyz) return;
-//        if(WebScope.Configs!=null && !WebScope.Configs.IsAnalyz)return;
-        if (logs.containsKey(AnalyzeOption.Visit))
-        {
+    /**
+     * 分析结束点
+     */
+    public void endPoint(){
+        if (isEnd) return;
+        isEnd = true;
+        if (!Ladder.Settings().isAnalyz()) return;
+        Object isAnalyz = WebScope.getValue(WebScopeOption.Analyz);
+        if(isAnalyz != null && isAnalyz.equals(false))return;
+        if (logs.containsKey(AnalyzeOption.Visit)) {
             LogForDataModelByVisit visit = (LogForDataModelByVisit) logs.get(AnalyzeOption.Visit);
-            visit.SetEnd();
+            visit.setEnd();
+            Logs.write(visit,LogOption.Analysis);
         }
-        if (logs.containsKey(AnalyzeOption.Rate)&&Subjects.contains(AnalyzeOption.Rate))
-        {
+        if (logs.containsKey(AnalyzeOption.Rate)&&subjects.contains(AnalyzeOption.Rate)){
             LogForDataModelByRate rate = (LogForDataModelByRate) logs.get(AnalyzeOption.Rate);
-            rate.SetEnd();
+            rate.setEnd();
+            Logs.write(rate,LogOption.Analysis);
         }
-        if (logs.containsKey(AnalyzeOption.Compare) && Action != DbSqlDataType.Update)
-        {
+        if (logs.containsKey(AnalyzeOption.Compare) && action != DbSqlDataType.Update){
             logs.remove(AnalyzeOption.Compare);
         }
-        if (logs.containsKey(AnalyzeOption.Keep) && (Action!=DbSqlDataType.Delete&&Action!=DbSqlDataType.Insert&&Action!=DbSqlDataType.Truncate))
-        {
+        if (logs.containsKey(AnalyzeOption.Keep) && (action!=DbSqlDataType.Delete&&action!=DbSqlDataType.Insert&&action!=DbSqlDataType.Truncate)){
             logs.remove(AnalyzeOption.Keep);
         }
-        if (logs.containsKey(AnalyzeOption.Keep))
-        {
-            LogForDataModelByKeep keep = (LogForDataModelByKeep) logs.get(AnalyzeOption.Keep);
-            keep.IsAdd = (DbSqlDataType.Insert.equals(Action));
+        if(logs.containsKey(AnalyzeOption.Compare)){
+            Logs.write((LogForDataModelByCompare) logs.get(AnalyzeOption.Compare),LogOption.Analysis);
         }
-
-
-//        var logdata = Collections.first(logs,(x,y) -> Subjects.contains(x)).ToDictionary(x => x.Key, y => y.Value);
-//        if (logdata.Any())
-//        {
-//            Logs.Write(logdata, LogOption.Analysis);
-//        }
-
+        if (logs.containsKey(AnalyzeOption.Keep)){
+            LogForDataModelByKeep keep = (LogForDataModelByKeep) logs.get(AnalyzeOption.Keep);
+            keep.isAdd = (DbSqlDataType.Insert.equals(action));
+            Logs.write((LogForDataModelByKeep) logs.get(AnalyzeOption.Keep),LogOption.Analysis);
+        }
     }
-    /// <summary>
-    /// 统计缓存数据量
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="rs"></param>
-    /// <returns></returns>
-    public <T> AnalyzeAction CountCacheData(List<T> rs)
-    {
-        if (logs.containsKey(AnalyzeOption.Rate))
-        {
-            Subjects.add(AnalyzeOption.Rate);
+    /**
+     * 统计缓存数据量
+     * @param rs
+     * @param <T>
+     * @return
+     */
+    public <T> AnalyzeAction countCacheData(List<T> rs){
+        if (logs.containsKey(AnalyzeOption.Rate)) {
+            subjects.add(AnalyzeOption.Rate);
             LogForDataModelByRate rate = (LogForDataModelByRate) logs.get(AnalyzeOption.Rate);
             rate.IsCache = true;
-            rate.RecordCount = Core.isEmpty(rs) ? 0 : rs.size();
+            rate.recordcount = Core.isEmpty(rs) ? 0 : rs.size();
         }
         return this;
     }
-    /// <summary>
-    /// 统计缓存数据量并进入结束点
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="rs"></param>
-    /// <returns></returns>
-    public <T> List<T> CountCacheDataEnd(List<T> rs)
-    {
-        if (logs.containsKey(AnalyzeOption.Rate))
-        {
-            Subjects.add(AnalyzeOption.Rate);
+    /**
+     * 统计缓存数据量并进入结束点
+     * @param rs
+     * @param <T>
+     * @return
+     */
+    public <T> List<T> countCacheDataEnd(List<T> rs){
+        if (logs.containsKey(AnalyzeOption.Rate)){
+            subjects.add(AnalyzeOption.Rate);
             LogForDataModelByRate rate = (LogForDataModelByRate) logs.get(AnalyzeOption.Rate);
             rate.IsCache = true;
-            rate.RecordCount = Rs.isBlank(rs)?0:rs.size();
-            rate.SetEnd();
+            rate.recordcount = Rs.isBlank(rs)?0:rs.size();
+            rate.setEnd();
         }
-        EndPoint();
+        endPoint();
         return rs;
     }
-    /// <summary>
-    /// 统计查询数据量并进入结束点
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="rs"></param>
-    /// <returns></returns>
-    public <T> List<T> CountDataEnd(List<T> rs)
-    {
-        if (logs.containsKey(AnalyzeOption.Rate))
-        {
-            Subjects.add(AnalyzeOption.Rate);
+    /**
+     * 统计查询数据量并进入结束点
+     * @param rs
+     * @param <T>
+     * @return
+     */
+    public <T> List<T> countDataEnd(List<T> rs) {
+        if (logs.containsKey(AnalyzeOption.Rate)){
+            subjects.add(AnalyzeOption.Rate);
             LogForDataModelByRate rate = (LogForDataModelByRate) logs.get(AnalyzeOption.Rate);
-            rate.RecordCount = Rs.isBlank(rs) ? 0 : rs.size();
-            rate.SetEnd();
+            rate.recordcount = Rs.isBlank(rs) ? 0 : rs.size();
+            rate.setEnd();
         }
-        EndPoint();
+        endPoint();
         return rs;
     }
-    /// <summary>
-    /// 统计单数据查询结束
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="rs"></param>
-    /// <returns></returns>
-    public <T> T CountDataEnd(T rs)
-    {
-        if (logs.containsKey(AnalyzeOption.Rate))
-        {
-            Subjects.add(AnalyzeOption.Rate);
+
+    /**
+     * 统计单数据查询结束
+     * @param rs
+     * @param <T>
+     * @return
+     */
+    public <T> T countDataEnd(T rs){
+        if (logs.containsKey(AnalyzeOption.Rate)){
+            subjects.add(AnalyzeOption.Rate);
             LogForDataModelByRate rate = (LogForDataModelByRate) logs.get(AnalyzeOption.Rate);
-            rate.RecordCount = 1;
-            rate.SetEnd();
+            rate.recordcount = 1;
+            rate.setEnd();
         }
-        EndPoint();
+        endPoint();
         return rs;
     }
-    /// <summary>
-    /// 设置修改前期数据
-    /// </summary>
-    /// <param name="fun">前期数据回调方法</param>
-    public void SetDataForUpdateBefore(Func1<List<Record>> fun)
-    {
-        if (logs.containsKey(AnalyzeOption.Compare))
-        {
-            Subjects.add(AnalyzeOption.Compare);
+
+    /**
+     * 设置修改前期数据
+     * @param fun 前期数据回调方法
+     */
+    public void setDataForUpdateBefore(Func1<List<Record>> fun){
+        if (logs.containsKey(AnalyzeOption.Compare)){
+            subjects.add(AnalyzeOption.Compare);
             LogForDataModelByCompare compare = (LogForDataModelByCompare) logs.get(AnalyzeOption.Compare);
             try {
-                compare.OldRawData = fun.invoke();
+                compare.oldrawdata = fun.invoke();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
-    /// <summary>
-    /// 获取记录集的不同之处
-    /// </summary>
-    /// <param name="fun"></param>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public List<Record> DifferentChange(Object data, Func1<List<Record>> fun )
-    {
-        if (logs.containsKey(AnalyzeOption.Compare))
-        {
-            try
-            {
-                Subjects.add(AnalyzeOption.Compare);
+
+    /**
+     * 获取记录集的不同之处
+     * @param data 数据
+     * @param fun 处理回调
+     * @return
+     */
+    public List<Record> differentChange(Object data, Func1<List<Record>> fun){
+        if (logs.containsKey(AnalyzeOption.Compare)){
+            try{
+                subjects.add(AnalyzeOption.Compare);
                 LogForDataModelByCompare compare = (LogForDataModelByCompare) logs.get(AnalyzeOption.Compare);
-                if (data == null && fun == null && compare != null && compare.Different != null)
-                {
-                    return compare.Different;
+                if (data == null && fun == null && compare != null && compare.different != null){
+                    return compare.different;
                 }
                 if (compare == null) return null;
-                if (fun != null) compare.OldRawData = fun.invoke();
-                if (compare.OldRawData == null) return null;
-                if (data != null) compare.Data = data;
-                if (compare.Data == null) return null;
-                List<Record> rs = (List<Record>) compare.OldRawData;
-                Record bean = Record.parse(compare.Data);
+                if (fun != null) compare.oldrawdata = fun.invoke();
+                if (compare.oldrawdata == null) return null;
+                if (data != null) compare.data = data;
+                if (compare.data == null) return null;
+                List<Record> rs = (List<Record>) compare.oldrawdata;
+                Record bean = Record.parse(compare.data);
                 List<Record> ret = new ArrayList<Record>();
                 AtomicInteger index = new AtomicInteger();
                 rs.forEach(raw ->{
@@ -302,47 +265,39 @@ public  class AnalyzeAction
                         String oldvalue = raw.getString(key);
                         String newValue="";
                         if (v instanceof Date) newValue =  Times.sDT ((Date)v);
-                        else
-                        {
+                        else{
                             if(v !=null)newValue = v.toString();
                         }
-                        if (Strings.isBlank(key) || (oldvalue != newValue && Strings.hasValue((oldvalue + newValue))))
-                        {
+                        if (Strings.isBlank(key) || (oldvalue != newValue && Strings.hasValue((oldvalue + newValue)))){
                             Map<String, Object> config = DataModel.getFieldConfig(k);
                             if(config==null)config = new HashMap<String, Object>();
-                            diff.put("fieldname", key).put("old", raw.get(key)).put("current", v).put("title", com.jladder.lang.Collections.getString(config,"title")).put("$rn", index);
+                            diff.put("fieldname", key).put("old", raw.get(key)).put("current", v).put("title", com.jladder.lang.Collections.getString(config,"title","")).put("$rn", index);
                             ret.add(diff);
                         }
                     });
                     index.getAndIncrement();
                 });
-                compare.Different = ret;
+                compare.different = ret;
                 return ret;
             }
             catch (Exception e)
             {
                 //Logs.Write(e, "Ladder.Actions.AnalyzeAction.DifferentChange");
             }
-
-
-
         }
         return null;
     }
-
-    /// <summary>
-    /// 获取更新报告
-    /// </summary>
-    public String GetDifferentReport(String template)
-    {
-        if (Strings.isBlank(template)) template = Configs.getString("differentreport") ;
+    /**
+     * 获取更新报告
+     * @param template 模型
+     * @return
+     */
+    public String getDifferentReport(String template){
+        if (Strings.isBlank(template)) template = Ladder.Settings().getDataDifferentReport();
         if (Strings.isBlank(template)) template = "${title}[${fieldname}]:${old}=>${current}";
-
-        List<Record> list = DifferentChange(null, null);
-
+        List<Record> list = differentChange(null, null);
         StringBuilder outtext=new StringBuilder();
-        if (list != null)
-        {
+        if (list != null){
             if (list.size() == 0) return "未有数据变化";
             String finalTemplate = template;
             list.forEach(x->outtext.append(Strings.mapping(finalTemplate,x) + "\n"));
@@ -351,67 +306,55 @@ public  class AnalyzeAction
         return "";
 
     }
-
-
-    /// <summary>
-    /// 设置删除前期数据
-    /// </summary>
-    /// <param name="fun">前期数据回调方法</param>
-    public void SetDataForDeleteBefore(Func1<List<Record>> fun)
-    {
-        if (logs.containsKey(AnalyzeOption.Keep))
-        {
-            Subjects.add(AnalyzeOption.Keep);
+    /**
+     * 设置删除前期数据
+     * @param fun 前期数据回调方法
+     */
+    public void setDataForDeleteBefore(Func1<List<Record>> fun){
+        if (logs.containsKey(AnalyzeOption.Keep)){
+            subjects.add(AnalyzeOption.Keep);
             LogForDataModelByKeep compare = (LogForDataModelByKeep) logs.get(AnalyzeOption.Keep);
             try {
-                compare.Data = fun.invoke();
+                compare.data = fun.invoke();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
-    /// <summary>
-    /// 设置后期数据
-    /// </summary>
-    /// <param name="data">数据</param>
-    public void SetDataForAfter(Object data)
-    {
-        if (logs.containsKey(AnalyzeOption.Compare))
-        {
-            Subjects.add(AnalyzeOption.Compare);
+    /**
+     * 设置后期数据
+     * @param data 数据
+     */
+    public void setDataForAfter(Object data){
+        if (logs.containsKey(AnalyzeOption.Compare)){
+            subjects.add(AnalyzeOption.Compare);
             LogForDataModelByCompare compare = (LogForDataModelByCompare) logs.get(AnalyzeOption.Compare);
-            compare.Data = data;
+            compare.data = data;
         }
-        if (logs.containsKey(AnalyzeOption.Keep))
-        {
-            Subjects.add(AnalyzeOption.Keep);
+        if (logs.containsKey(AnalyzeOption.Keep)){
+            subjects.add(AnalyzeOption.Keep);
             LogForDataModelByKeep compare = (LogForDataModelByKeep) logs.get(AnalyzeOption.Keep);
-            compare.Data = data;
+            compare.data = data;
         }
     }
-    /// <summary>
-    /// 检查过期时间
-    /// </summary>
-    /// <param name="fun">获取记录集过程</param>
-    /// <param name="current">当前记录</param>
-    /// <returns></returns>
-    public boolean CheckOutDate(Func1<List<Record>> fun,Record current)
-    {
-        if (CheckDataOutDate)
-        {
-            List<String> fieldnames = DataModel.getFields("sign", "updatetime");
 
+    /**
+     * 检查过期时间
+     * @param fun 获取记录集过程
+     * @param current 当前记录
+     * @return
+     */
+    public boolean checkOutDate(Func1<List<Record>> fun,Record current){
+        if (checkDataOutDate){
+            List<String> fieldnames = DataModel.getFields("sign", "updatetime");
             long easydate = Times.getTS();
             String easyfieldname = "";
-            for (String fieldname : fieldnames)
-            {
+            for (String fieldname : fieldnames){
                 String f = Collections.haveKey(current,"!" + fieldname,fieldname);
                 if(Strings.isBlank(f))continue;
                 String old = current.getString(f);
-
                 long d = Times.ams(old);
-                if (easydate > d)
-                {
+                if (easydate > d){
                     easydate = d;
                     easyfieldname = f;
                 }

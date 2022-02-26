@@ -19,25 +19,46 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * 实体基类
+ */
 public class BaseEntity {
-
     private IDao _mdao = null;
     private FieldInfo _pk = null;
 
     public BaseEntity() { }
 
-
-    public void SetDao(IDao dao)
+    /**
+     * 设置数据库操作对象
+     * @param dao
+     */
+    public void setDao(IDao dao)
     {
         this._mdao = dao;
     }
+
+    /**
+     * 更新操作
+     * @return
+     */
     public int update(){
         return update(null,null);
     }
+
+    /**
+     * 更新操作
+     * @param columns 列选
+     * @return
+     */
     public int update(String columns){
        return update(null,columns);
     }
+
+    /**
+     * 更新操作
+     * @param dao 数据库操作对象
+     * @return
+     */
     public int update(IDao dao){
         return update(dao,null);
     }
@@ -47,59 +68,62 @@ public class BaseEntity {
      * @param columns 列选
      * @return
      */
-    public int update(IDao dao, String columns)
-    {
+    public int update(IDao dao, String columns){
         String tableName = getTableName();
         if(Strings.isBlank(tableName))return -1;
         FieldInfo field = _pk ;
         if(field==null)field = getPk();
         if (field == null) return -1;
-        Record bean = GenBean(DbSqlDataType.Update);
+        Record bean = genBean(DbSqlDataType.Update);
         if (Strings.isBlank(Collections.haveKey(bean,field.fieldname))|| bean.get(field.fieldname) == null) return -1;
         boolean iscreate = false;//自创建
-        if (dao == null)
-        {
-            if (_mdao == null)
-            {
+        if (dao == null){
+            if (_mdao == null){
                 iscreate = true;
                 dao = new Dao();
             }
             else dao = _mdao;
         }
         if (dao == null) return -1;
-        int count = dao.update(tableName, SaveColumn.Clip(bean, columns), new Cnd(field.fieldname, field.value));
+        int count = dao.update(tableName, SaveColumn.clip(bean, columns), new Cnd(field.fieldname, field.value));
         if (iscreate) dao.close();
         return count;
     }
 
+    /**
+     * 保存操作
+     * @param dao 数据库操作对象
+     * @param columns 列选
+     * @return
+     */
     public int save(IDao dao,String columns){
         FieldInfo field = getPk();
         if(field==null) return -1;
         return Core.isEmpty(field.value) ? insert(dao,columns):update(dao,columns);
     }
 
+    /**
+     * 删除操作
+     * @return
+     */
     public int delete(){
         return delete(null);
     }
 
-    /// <summary>
-    /// 删除本对象
-    /// </summary>
-    /// <param name="dao">可以为空,当成员mdao和参数dao同时存在，以参数为准</param>
-    /// <returns></returns>
-
-    public int delete(IDao dao)
-    {
+    /**
+     * 删除本对象
+     * @param dao 可以为空,当成员mdao和参数dao同时存在，以参数为准
+     * @return
+     */
+    public int delete(IDao dao){
         String tableName = getTableName();
         if(Strings.isBlank(tableName))return -1;
         FieldInfo field = _pk ;
         if(field==null)field = getPk();
         if (field == null) return -1;
         boolean iscreate = false;
-        if (dao == null)
-        {
-            if (_mdao == null)
-            {
+        if (dao == null){
+            if (_mdao == null){
                 iscreate = true;
                 dao = new Dao();
             }
@@ -113,12 +137,13 @@ public class BaseEntity {
     public int insert(){return insert(null,null);}
     public int insert(String columns){return insert(null,columns);}
     public int insert(IDao dao){return insert(dao,null);}
-    /// <summary>
-    /// 新增实体对象
-    /// </summary>
-    /// <returns></returns>
-    public int insert(IDao dao , String columns )
-    {
+    /**
+     * 新增实体对象
+     * @param dao 数据库操作对象
+     * @param columns 列选
+     * @return
+     */
+    public int insert(IDao dao , String columns){
         String  tableName = getTableName();
         if (Strings.isBlank(tableName)) return -1;
         boolean iscreate = false;
@@ -132,7 +157,7 @@ public class BaseEntity {
             else dao = _mdao;
         }
         if (dao == null) return -1;
-        int count = dao.insert(tableName, SaveColumn.Clip(GenBean(DbSqlDataType.Insert), columns));
+        int count = dao.insert(tableName, SaveColumn.clip(genBean(DbSqlDataType.Insert), columns));
         if (iscreate) dao.close();
         return count;
     }
@@ -140,27 +165,40 @@ public class BaseEntity {
     /**
      * 级联单条记录
      */
-    public <T extends BaseEntity> T LinkOne(Class<T> clazz,String ... fieldNames)
+    public <T extends BaseEntity> T linkOne(Class<T> clazz,String ... fieldNames)
     {
-        List<T> bean = Link(clazz, fieldNames);
+        List<T> bean = link(clazz, fieldNames);
         return bean == null || bean.size() < 1 ? null : bean.get(0);
     }
-    public <T extends BaseEntity> List<T> Link(Class<T> clazz,String ... fieldNames)
-    {
-        return Link(clazz,null,fieldNames);
+
+    /**
+     * 级联操作
+     * @param clazz 类型
+     * @param fieldNames 关联字段
+     * @param <T> 泛型
+     * @return
+     */
+    public <T extends BaseEntity> List<T> link(Class<T> clazz,String ... fieldNames){
+        return link(clazz,null,fieldNames);
     }
-    public <T extends BaseEntity> List<T> Link(Class<T> clazz,IDao dao,String ... fieldNames)
-    {
+
+    /**
+     * 级联操作
+     * @param clazz 类型
+     * @param dao 数据库操作对象
+     * @param fieldNames 字段
+     * @param <T> 泛型
+     * @return
+     */
+    public <T extends BaseEntity> List<T> link(Class<T> clazz,IDao dao,String ... fieldNames){
         if (fieldNames == null || fieldNames.length < 1) return null;
         Record record = Record.parse(this);
         Cnd cnd=new Cnd();
         Collections.forEach(fieldNames,x->cnd.put(x.toString(),record.get(x)));
         boolean iscreate = false;
         //置dao
-        if (dao == null)
-        {
-            if (_mdao == null)
-            {
+        if (dao == null){
+            if (_mdao == null){
                 iscreate = true;
                 dao = new Dao();
             }
@@ -173,8 +211,15 @@ public class BaseEntity {
         if (iscreate) dao.close();
         return result;
     }
-    public <T extends BaseEntity> List<T> select(IDao dao,Cnd cnd)
-    {
+
+    /**
+     * 查询操作
+     * @param dao 数据库操作对象
+     * @param cnd 查询条件
+     * @param <T> 泛型
+     * @return
+     */
+    public <T extends BaseEntity> List<T> select(IDao dao,Cnd cnd){
         String table = getTableName();
         if (Strings.isBlank(table)) return null;
         if(cnd==null) cnd = new Cnd();
@@ -197,12 +242,11 @@ public class BaseEntity {
         if(iscreate)dao.close();
         return rs;
     }
-    /// <summary>
-    /// 获取列文本数组
-    /// </summary>
-    /// <returns></returns>
-    public List<String> getColumns()
-    {
+    /**
+     * 获取列文本数组
+     * @return
+     */
+    public List<String> getColumns(){
         List<String> columns = new ArrayList<String>();
         Field[] fs = this.getClass().getFields();
         for (Field field : fs)
@@ -219,26 +263,38 @@ public class BaseEntity {
         return columns;
     }
 
-    public void SetPk(String propertyName){
-        SetPk(propertyName,null,null);
+    /**
+     * 设置主键
+     * @param property 类的属性名
+     */
+    public void setPk(String property){
+        setPk(property,null,null);
     }
-    public void SetPk(String propertyName, DbGenType gen){
-        SetPk(propertyName,null,gen);
+
+    /**
+     * 设置主键
+     * @param property 类的属性名
+     * @param gen 主键生成类型
+     */
+    public void setPk(String property, DbGenType gen){
+        setPk(property,null,gen);
     }
-    /// <summary>
-    /// 设置主键
-    /// </summary>
-    /// <param name="propertyName">类的属性名</param>
-    /// <param name="fieldName">表单字段名</param>
-    public void SetPk(String propertyName, String fieldName,DbGenType gen){
-        if (Strings.isBlank(fieldName)) fieldName = propertyName;
+
+    /**
+     * 设置主键
+     * @param property 类的属性名
+     * @param fieldname 表单字段名
+     * @param gen 主键生成类型
+     */
+    public void setPk(String property, String fieldname,DbGenType gen){
+        if (Strings.isBlank(fieldname)) fieldname = property;
         try {
-            Field field = this.getClass().getField(propertyName);
+            Field field = this.getClass().getField(property);
             if(field==null)throw Core.makeThrow("字段类型不存在");
             _pk = new FieldInfo();
-            _pk.name= Strings.isBlank(fieldName) ? propertyName : fieldName;
+            _pk.name= Strings.isBlank(fieldname) ? property : fieldname;
             _pk.fieldname = _pk.name;
-            _pk.oldname = propertyName;
+            _pk.oldname = property;
             _pk.value = field.get(this);
             if(gen!=null){
                 _pk.gen=gen.getIndex();
@@ -246,7 +302,7 @@ public class BaseEntity {
             Column config = field.getAnnotation(Column.class);
             if (config == null) return;
             if(!DbGenType.NoGen.equals(config.gen()) && gen==null)_pk.gen = config.gen().getIndex();
-            if(Strings.isBlank(fieldName) && Strings.hasValue(config.fieldname())){
+            if(Strings.isBlank(fieldname) && Strings.hasValue(config.fieldname())){
                 _pk.name = config.fieldname();
                 _pk.fieldname = _pk.name;
             }
@@ -255,26 +311,24 @@ public class BaseEntity {
         }
 
     }
-    /// <summary>
-    /// 获取表名
-    /// </summary>
-    /// <returns></returns>
-    public String getTableName()
-    {
+
+    /**
+     * 获取表名
+     * @return
+     */
+    public String getTableName(){
         Table attr = getClass().getAnnotation(Table.class);
         return attr==null?"":attr.value();
     }
-    /// <summary>
-    /// 生成填充bean对象
-    /// </summary>
-    /// <param name="action">动作类型</param>
-    /// <returns></returns>
-    public Record GenBean(DbSqlDataType action)
-    {
+    /**
+     * 生成填充bean对象
+     * @param action 操作选项
+     * @return
+     */
+    public Record genBean(DbSqlDataType action){
         Record record=new Record();
         Field[] pi = this.getClass().getFields();
-        for (Field field : pi)
-        {
+        for (Field field : pi){
             boolean noignore = true;
             String key = field.getName();
             Object value = null;
@@ -313,27 +367,22 @@ public class BaseEntity {
         }
         return record;
     }
-    /// <summary>
-    /// 获取主键信息
-    /// </summary>
-    /// <returns></returns>
-    public FieldInfo getPk()
-    {
+    /**
+     * 获取主键信息
+     * @return
+     */
+    public FieldInfo getPk(){
         String tableName = getTableName();
         if(Strings.isBlank(tableName))return null;
-
         FieldInfo reField = new FieldInfo();
         Field[] ps = this.getClass().getFields();
-        for (Field field : ps)
-        {
+        for (Field field : ps){
             String key = field.getName();
             String dbname =field.getName();
             Column config = field.getAnnotation(Column.class);
-            if (config != null)
-            {
+            if (config != null){
                 if (Strings.hasValue(config.fieldname())) dbname = config.fieldname();
-                if (config.pk())
-                {
+                if (config.pk()){
                     reField.name = dbname;//数据库字段名
                     reField.fieldname = dbname;//数据库字段名
                     reField.oldname = key;//键名
@@ -346,8 +395,7 @@ public class BaseEntity {
                     return reField;
                 }
             }
-            if ("id".equals(key.toLowerCase()))
-            {
+            if ("id".equalsIgnoreCase(key)){
                 reField.oldname = key;
                 reField.name = dbname;
                 reField.fieldname = dbname;
