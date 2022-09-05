@@ -49,6 +49,21 @@ public class ConverterRegistry {
                 return Strings.toInt(ret);
             }
         });
+        IConvert long_convert=new IConvert<Long>() {
+            @Override
+            public Long convert(Object value, Long defaultValue) {
+                if(value==null)return defaultValue==null?0L:defaultValue;
+                String ret = value.toString();
+                if(Strings.isNumber(ret)){
+                    return Long.parseLong(ret);
+                }else{
+                    return 0L;
+                }
+            }
+        };
+
+        registry.put(long.class,long_convert);
+        registry.put(Long.class,long_convert);
         registry.put(Integer.class, new IConvert<Integer>() {
             @Override
             public Integer convert(Object value, Integer defaultValue) {

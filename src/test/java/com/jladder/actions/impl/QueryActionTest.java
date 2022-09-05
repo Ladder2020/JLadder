@@ -41,7 +41,7 @@ public class QueryActionTest extends TestCase {
         Cnd cnd = new Cnd();
 
         PageResult pageResult = QueryAction.getPageData("unionpay_coupon_setting_view", Integer.parseInt(start),
-                Integer.parseInt(pageNum), Integer.parseInt(pageSize), cnd, "创建时间:desc", "", 0);
+                Integer.parseInt(pageNum), Integer.parseInt(pageSize), cnd, "创建时间:desc", "", "0");
 
 
 

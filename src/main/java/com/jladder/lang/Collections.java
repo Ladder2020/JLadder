@@ -302,9 +302,17 @@ public  class Collections {
         }
         return ret;
     }
+    /**
+     * 字段重构
+     * @param source 源数据
+     * @param func 重构函数
+     * @return java.util.List<T>
+     * @author YiFeng
+     */
 
     public static <E,T> List<T> select(Collection<E> source,Func2<E,T> func){
         List<T> ret = new ArrayList<T>();
+        if(source==null)return null;
         source.forEach(x->{
             try {
                 ret.add(func.invoke(x));
@@ -314,8 +322,16 @@ public  class Collections {
         });
         return ret;
     }
+    /**
+     * 字段重构
+     * @param source 源数据
+     * @param func 重构函数
+     * @return java.util.List<T>
+     * @author YiFeng
+     */
     public static <T,K,V> List<T> select(Map<K,V> source,Func3<K,V,T> func){
         List<T> ret = new ArrayList<T>();
+        if(source==null)return null;
         source.forEach((x,y)->{
             try {
                 ret.add(func.invoke(x,y));
@@ -534,7 +550,7 @@ public  class Collections {
      * @return
      */
     @SuppressWarnings("unchecked")
-    public static List<?> sort(List<?> list, final String field){
+    public static <T> List<T> sort(List<T> list, final String field){
         return sort(list,field,true);
     }
     /**

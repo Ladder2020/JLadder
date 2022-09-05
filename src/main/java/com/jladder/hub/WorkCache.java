@@ -3,13 +3,12 @@ package com.jladder.hub;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.jladder.datamodel.DataModelForMapRaw;
-import com.jladder.lang.Times;
 import com.jladder.lang.func.Func1;
-import com.jladder.lang.script.Script;
+import com.jladder.script.FunctionBody;
+import com.jladder.script.Script;
 import com.jladder.proxy.ProxyConfig;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +21,9 @@ public class WorkCache implements IWorkCache{
     private final int moduletime=20;
 
     private Cache<String, DataModelForMapRaw> DataModelcache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
-
     private Cache<String, ProxyConfig> ProxyCache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(proxytime, TimeUnit.MINUTES).build();
-
     private Cache<String, Script> ScriptCache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
+    private Cache<String, FunctionBody> FunctionCache = Caffeine.newBuilder().maximumSize(200).expireAfterAccess(dmtime, TimeUnit.MINUTES).build();
     private Map<String,Cache<String,Object>> timedCache = new ConcurrentHashMap<String,Cache<String,Object>>();
 
     public WorkCache(){
@@ -74,6 +72,31 @@ public class WorkCache implements IWorkCache{
     public void removeAllScriptCache() {
         ScriptCache.invalidateAll();
     }
+
+
+
+    @Override
+    public void addFunctionCache(String name, FunctionBody body) {
+        FunctionCache.put("_Function_"+name,body);
+    }
+
+    @Override
+    public FunctionBody getFunctionCache(String name) {
+        return FunctionCache.getIfPresent("_Function_"+name);
+    }
+
+    @Override
+    public void removeFunctionCache(String name) {
+        FunctionCache.invalidate("_Function_"+name);
+    }
+
+    @Override
+    public void removeAllFunctionCache() {
+        FunctionCache.invalidateAll();
+    }
+
+
+
 
     @Override
     public void addProxyCache(String key, ProxyConfig raw) {

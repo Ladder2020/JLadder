@@ -17,19 +17,43 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 参数映射管理
+ */
 public class ArgumentMapping {
 
-
+    /**
+     * 获取请求参数
+     * @return
+     */
     public static Record getRequestParams(){
         return getRequestParams(WebContext.getRequest(),FileFormat.None);
     }
+
+    /**
+     * 获取请求参数
+     * @param request 请求头
+     * @return
+     */
     public static Record getRequestParams(HttpServletRequest request){
         return getRequestParams(request,FileFormat.None);
     }
+
+    /**
+     * 获取请求参数
+     * @param format 上传文件组装模式
+     * @return
+     */
     public static Record getRequestParams(FileFormat format){
         return getRequestParams(WebContext.getRequest(),format);
     }
 
+    /**
+     * 获取请求参数
+     * @param request 请求头
+     * @param format 上传文件组装模式
+     * @return
+     */
     public static Record getRequestParams(HttpServletRequest request,FileFormat format){
         try{
             Record ret = (Record) request.getAttribute("___ArgumentMapping_GetRequestParams____");
@@ -84,7 +108,12 @@ public class ArgumentMapping {
     }
 
 
-
+    /**
+     * 获取post请求的字节集数据
+     * @param request 请求头
+     * @return
+     * @throws IOException
+     */
     public static byte[] getRequestPostBytes(HttpServletRequest request) throws IOException {
         int contentLength = request.getContentLength();
         if(contentLength<0){
@@ -102,6 +131,13 @@ public class ArgumentMapping {
         }
         return buffer;
     }
+
+    /**
+     * 获取Post请求的文本数据
+     * @param request 请求头
+     * @return
+     * @throws IOException
+     */
     public static String getRequestPostStr(HttpServletRequest request) throws IOException {
         byte buffer[] = getRequestPostBytes(request);
         String charEncoding = request.getCharacterEncoding();
@@ -110,9 +146,20 @@ public class ArgumentMapping {
         }
         return new String(buffer, charEncoding);
     }
+
+    /**
+     * 获取请求头参数
+     * @return
+     */
     public static Record GetHeadParam(){
         return GetHeadParam(WebContext.getRequest());
     }
+
+    /**
+     * 获取请求头参数
+     * @param request 请求头
+     * @return
+     */
     public static Record GetHeadParam(HttpServletRequest request) {
 
         Record record = new Record();

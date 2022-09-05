@@ -1,15 +1,10 @@
 package com.jladder.lang;
-
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
 import javax.crypto.spec.IvParameterSpec;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -129,7 +124,7 @@ public class Security {
     }
 
     public static String encryptByBase64(byte[] data){
-        return (new BASE64Encoder()).encode(data);
+        return new String(Base64.getEncoder().encode(data));
     }
 
     public static String encryptByBase2(String source)

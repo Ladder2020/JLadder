@@ -66,7 +66,7 @@ public class GenBeanTool {
                 if (Strings.isBlank(com.jladder.lang.Collections.getString(map,"dvalue,defaultvalue,default",null))) {
                     switch (gen){
                         case "autonum":
-                            if(source.containsKey(fieldname))saveEntity.put(fieldname,source.get(fieldname));
+                            if(source!=null&&Strings.hasValue(source.getString(fieldname)))saveEntity.put(fieldname,source.get(fieldname));
                             break;
                         case "id":
                             //如果id为整数型，一般由数据库自增

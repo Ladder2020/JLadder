@@ -1,15 +1,17 @@
 package com.jladder.lang;
+
 import com.jladder.data.ReStruct;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
-import com.sun.xml.internal.ws.util.UtilException;
-import org.springframework.util.Assert;
 
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
+/**
+ * 反射操作类
+ */
 public class Refs {
 
 
@@ -21,6 +23,12 @@ public class Refs {
         }
     }
 
+    /**
+     * 获取方法对象
+     * @param clazz 类型
+     * @param methodName 方法名
+     * @return
+     */
     public static Method getMethod(Class clazz,String methodName){
         if(clazz==null)return null;
         if(Strings.isBlank(methodName))return null;
@@ -74,15 +82,24 @@ public class Refs {
         }
         return null;
     }
-
+    /**
+     * 获取方法信息
+     * @param methodPath 方法路径
+     * @return
+     */
     public static ReStruct<Class, Method> getMethod(String methodPath){
         return getMethod(methodPath,null);
     }
 
+    /**
+     * 获取方法信息
+     * @param className 类名称
+     * @param methodName 方法名
+     * @return
+     */
     public static ReStruct<Class, Method> getMethod(String className,String methodName){
         if (Strings.isBlank(className)) return new ReStruct<Class, Method>("类名不能为空");
-        if (Strings.isBlank(methodName))
-        {
+        if (Strings.isBlank(methodName)){
             String[] cms = className.split("\\.");
             methodName = cms[cms.length-1];
             className = Strings.rightLess(className,methodName.length() + 1);
@@ -102,6 +119,7 @@ public class Refs {
                     {
                         case "string":
                             ts.add(String.class);
+                            break;
                         case "charsequence":
                         case "chars":
                             ts.add(CharSequence.class);
@@ -148,13 +166,13 @@ public class Refs {
     }
 
 
-    public static Receipt invoke(Object obj,String methodName, Object... args){
-        if (null == obj || Strings.isBlank(methodName)) {
+    public static Receipt call(Object instance,String methodName, Object... args){
+        if (null == instance || Strings.isBlank(methodName)) {
             return new Receipt(false);
         }
         try {
-            Method method = obj.getClass().getMethod(methodName);
-            Object ret = method.invoke(obj,args);
+            Method method = instance.getClass().getMethod(methodName);
+            Object ret = method.invoke(instance,args);
             return new Receipt().setData(ret);
         } catch (Exception e) {
             e.printStackTrace();
@@ -185,8 +203,27 @@ public class Refs {
         return new Receipt(false,"未有效执行");
     }
 
-    public static Receipt invoke (String className, Object data,String methodName){
+    /**
+     * 调用反射
+     * @param path 调用方法路径
+     * @param data 执行参数[键值数据]
+     * @return com.jladder.data.Receipt
+     * @author YiFeng
+     */
 
+    public static Receipt invoke (String path,Object data){
+        return invoke(path,"",data);
+    }
+    /**
+     * 调用反射
+     * @param className  类名称
+     * @param data 执行参数[键值数据]
+     * @param methodName 方法名称
+     * @return com.jladder.data.Receipt
+     * @author YiFeng
+     */
+
+    public static Receipt invoke (String className,String methodName, Object data){
         boolean canNull = false;//返回值是否为void类型
         ReStruct<Class, Method> re = getMethod(className, methodName);
         if (!re.isSuccess())return new Receipt(false);
@@ -198,7 +235,6 @@ public class Refs {
             if(Modifier.isStatic(modify)){
                 ret = re.getB().invoke(null,param);
             }else{
-
                 ret = re.getB().invoke( re.getA().newInstance(),param);
             }
             if (ret == null && !canNull)
@@ -214,6 +250,14 @@ public class Refs {
 
     }
 
+    /***
+     * 匹配映射方法参数数据
+     * @param method 方法
+     * @param data 原始数据
+     * @return java.lang.Object[]
+     * @author YiFeng
+     */
+
     public static Object[] mappingMethodParam(Method method, Object data){
         Record record = Record.parse(data);
         int count = method.getParameters().length;
@@ -222,20 +266,25 @@ public class Refs {
         for(int i=0;i<count;i++){
             Class<?> type = ps[i].getType();
             String name = ps[i].getName();
+            int index = Regex.isMatch(name,"arg\\d+") ? Convert.toInt(name.replace("arg","")):-1;
+            if(Object.class.equals(type)){
+                ret[i] = index > -1 ? record.get(index,Object.class):  record.get(name);
+                continue;
+            }
             if (String.class.equals(type)) {
-                ret[i] = Regex.isMatch(name,"arg\\d+") ? record.getString(Integer.parseInt(name.replace("arg",""))) :  record.getString(name,true);
+                ret[i] = index > -1 ? record.getString(index) :  record.getString(name,true);
                 continue;
             }
             if(CharSequence.class.equals(type)){
-                ret[i] = (CharSequence)(Regex.isMatch(name,"arg\\d+") ? record.getString(Integer.parseInt(name.replace("arg",""))) :  record.getString(name,true));
+                ret[i] = (CharSequence)(index > -1 ? record.getString(index) :  record.getString(name,true));
                 continue;
             }
             if (Integer.class.equals(type) || int.class.equals(type)) {
-                ret[i] = Regex.isMatch(name,"arg\\d+") ? record.getInt(Integer.parseInt(name.replace("arg",""))) :  record.getInt(name,true);
+                ret[i] = index > -1 ? record.getInt(index) :  record.getInt(name,true);
                 continue;
             }
             if(String[].class.equals(type)){
-                Object v = record.get(name);
+                Object v = index > -1 ? record.get(index,Object.class): record.get(name);
                 if(v instanceof List){
                     ret[i] = ((List)v).toArray(new String[]{});
                 }
@@ -248,7 +297,7 @@ public class Refs {
                 continue;
             }
             if(Core.isBaseType(type,false)){
-                ret[i] =  Convert.convert(type, Regex.isMatch(name,"arg\\d+") ? record.get(Integer.parseInt(name.replace("arg","")),Object.class) :  record.getObject(name,true));
+                ret[i] =  Convert.convert(type,index>-1 ? record.get(index,Object.class) :  record.getObject(name,true));
                 continue;
             }else{
                 ret[i] = Json.toObject(record.getString(name,true),type);
@@ -287,7 +336,7 @@ public class Refs {
         final Class<?>[] paramTypes = Clazz.getClasses(params);
         final Constructor<T> constructor = getConstructor(clazz, paramTypes);
         if (null == constructor) {
-            throw new UtilException("No Constructor matched for parameter types: [{}]", new Object[]{paramTypes});
+            throw Core.makeThrow("No Constructor matched for parameter types: [{}]", new Object[]{paramTypes});
         }
         try {
             return constructor.newInstance(params);
@@ -314,7 +363,6 @@ public class Refs {
         return null;
     }
     public static <T> Constructor<T>[] getConstructors(Class<T> beanClass) throws SecurityException {
-        Assert.notNull(beanClass);
         Constructor<?>[] constructors = null;
         if (null != constructors) {
             return (Constructor<T>[]) constructors;
@@ -331,7 +379,6 @@ public class Refs {
      * @throws SecurityException 安全检查异常
      */
     public static Constructor<?>[] getConstructorsDirectly(Class<?> beanClass) throws SecurityException {
-        Assert.notNull(beanClass);
         return beanClass.getDeclaredConstructors();
     }
 

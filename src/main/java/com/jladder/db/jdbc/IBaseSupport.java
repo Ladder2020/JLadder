@@ -1,6 +1,7 @@
 package com.jladder.db.jdbc;
 
 import com.jladder.data.Record;
+import com.jladder.db.Cnd;
 import com.jladder.db.DbParameter;
 import com.jladder.db.SqlText;
 import com.jladder.db.enums.DbDialectType;
@@ -74,7 +75,24 @@ public abstract class IBaseSupport {
      * @param tableName 表名
      * @return
      */
-    abstract public boolean exists(String tableName);
+    abstract public boolean exist(String tableName);
+
+    /**
+     * 是否存在数据
+     * @param tableName 表名
+     * @param cnd 条件
+     * @return
+     */
+    abstract public boolean exist(String tableName, Cnd cnd);
+    /**
+     * 是否存在数据
+     * @param tableName 表名
+     * @param where 条件
+     * @return
+     */
+
+    abstract public boolean exist(String tableName, SqlText where);
+
     abstract public int exec(SqlText sqltext);
     /**
      * 执行语句
@@ -109,7 +127,7 @@ public abstract class IBaseSupport {
     public abstract List<Object> pro(String name,List<DbParameter> parameters);
 
 
-    public abstract boolean isTraning();
+    public abstract boolean isTransacting();
 
     public abstract void close();
 

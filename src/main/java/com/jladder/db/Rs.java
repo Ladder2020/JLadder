@@ -153,5 +153,21 @@ public class Rs {
         return find(rs, condition.Most);
     }
 
+    /**
+     * 行数据转列数据
+     * @param rs 记录集
+     * @param nameKey 字段的键名
+     * @param valueKey 数据值的键名
+     * @return com.jladder.data.Record
+     * @author YiFeng
+     */
 
+    public static Record toRecord(List<Record> rs, String nameKey, String valueKey) {
+        if(rs==null)return null;
+        Record ret = new Record();
+        rs.forEach(x->{
+            ret.put(x.getString(nameKey),x.get(valueKey));
+        });
+        return ret;
+    }
 }

@@ -101,7 +101,7 @@ public class Core {
 
         if(obj==null)return obj;
         if(obj instanceof Cloneable){
-            return (T)Refs.invoke(obj,"clone").data;
+            return (T)Refs.call(obj,"clone").data;
         }
         T cloneObj = null;
         //写入字节流

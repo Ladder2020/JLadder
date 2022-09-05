@@ -4,17 +4,16 @@ import com.jladder.lang.Core;
 import com.jladder.lang.Strings;
 import com.jladder.lang.func.Func1;
 import org.redisson.Redisson;
-import org.redisson.api.RBucket;
-import org.redisson.api.RCountDownLatch;
-import org.redisson.api.RReadWriteLock;
-import org.redisson.api.RedissonClient;
+import org.redisson.api.*;
 import org.redisson.config.Config;
 import org.redisson.config.SingleServerConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Repository
 public class RedisHelper {
@@ -34,6 +33,11 @@ public class RedisHelper {
     public void setRedissonClient(RedissonClient client){
         Instance.Client.put(-1,client);
         //redissonClient = ;
+    }
+    public boolean isConfigured(){
+        if(Client!=null && Client.size()>0)return true;
+        if(Strings.hasValue(host))return true;
+        return false;
     }
     public void setConn(String conn){
         throw Core.makeThrow("未实现");
@@ -142,6 +146,29 @@ public class RedisHelper {
     }
     public Receipt<String> getString(String key){
         return getCache(key,-1);
+    }
+
+
+
+
+    /***
+     * 获取全部的键
+     * @param index
+     * @return com.jladder.data.Receipt<java.util.List<java.lang.String>>
+     * @author YiFeng
+     */
+    public Receipt<List<String>> getKeys(int index){
+        RedissonClient client = getClient(index);
+        if(null == client)return new Receipt(false,"Redis连接对象不存在[149]");
+        try{
+            RKeys result = client.getKeys();
+            if(result==null)return new Receipt(false,"键集合不存在[152]");
+            List<String> list = result.getKeysStream().collect(Collectors.toList());
+            return new Receipt().setData(list);
+        }catch (Exception e){
+            e.printStackTrace();
+            return new Receipt(false,e.getMessage());
+        }
     }
 
     /**
@@ -302,5 +329,55 @@ public class RedisHelper {
         }
     }
 
+    ///region 操作 Map
+
+    public <T> Receipt<RMapCache<String, T>> getMapCache(String map,int index){
+        try {
+            RedissonClient client = getClient(index);
+            if(null == client)return new Receipt(false,"Redis连接对象不存在[332]");
+            return new Receipt<RMapCache<String, T>>().setData(client.getMapCache(map));
+        }catch (Exception e){
+            return new Receipt(false,e.getMessage());
+        }
+    }
+
+    public <T> void setMapObject(String token, T object,String mapName,Long minutes,int index) {
+        try{
+            RMapCache<String, T> map = getClient(index).getMapCache(mapName);
+            map.put(token, object, minutes, TimeUnit.MINUTES);
+            map.clearExpireAsync();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
+    public Object getMapObject(String key, String mapName,int index) {
+        RMapCache<String, Object> map = getClient(index).getMapCache(mapName);
+        return map.get(key);
+    }
+    public boolean updateExpire(String mapName, String key, long ttl, TimeUnit ttlUnit,int index) {
+        RMapCache<String, Object> map = getClient(index).getMapCache(mapName);
+        return map.updateEntryExpiration(key, ttl, ttlUnit, 0, ttlUnit);
+    }
+
+    //操作 Map
+    public void delMapObject(String mapName, String key,int index) {
+        RMapCache<String, Object> map = getClient(index).getMapCache(mapName);
+        map.remove(key);
+    }
+
+    public void delMapObjects(String mapName, List<String> keys,int index) {
+        RMapCache<String, Object> map = getClient(index).getMapCache(mapName);
+        keys.stream().forEach(key -> {
+            map.remove(key);
+        });
+    }
+    public void setMapObject(String token, Object object, String mapName, long ttl,TimeUnit unit,int index) {
+        RMapCache<String, Object> map = getClient(index).getMapCache(mapName);
+        map.put(token, object,ttl, unit);
+
+    }
+
+    ///endregion
 
 }

@@ -1,14 +1,15 @@
 package com.jladder.db.jdbc.impl;
+
 import com.jladder.Ladder;
 import com.jladder.data.KeyValue;
 import com.jladder.data.Record;
+import com.jladder.db.Cnd;
 import com.jladder.db.DbDifferentcs;
 import com.jladder.db.DbParameter;
 import com.jladder.db.SqlText;
 import com.jladder.db.datasource.DataSourceFactory;
 import com.jladder.db.datasource.Database;
 import com.jladder.db.datasource.Global;
-import com.jladder.db.enums.DbDialectType;
 import com.jladder.db.jdbc.DbDriver;
 import com.jladder.db.jdbc.IBaseSupport;
 import com.jladder.hub.DataHub;
@@ -19,7 +20,6 @@ import com.jladder.lang.func.Func2;
 import com.jladder.lang.func.Func3;
 import com.jladder.lang.func.Tuple2;
 import com.jladder.logger.LogForSql;
-import com.jladder.logger.LogWriter;
 import com.jladder.logger.Logs;
 import com.jladder.web.WebScope;
 import com.jladder.web.WebScopeOption;
@@ -32,8 +32,8 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
 import java.util.Date;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 
@@ -45,18 +45,19 @@ public class BaseSupportByJDBC extends IBaseSupport {
         DataSource datasource = DataHub.getDataSource();
         if(datasource!=null){
             db = new Database(datasource,null,null);
-            dialect= DbDialectType.MYSQL;
+            dialect= Database.getDialect(datasource);
         }else{
             db = Global.get().getDataBase();
             dialect = DbDriver.getDialect(db.getInfo().getDialect());
         }
+
     }
     public BaseSupportByJDBC(String name){
         isWriteLog= Ladder.Settings().isSqlDebug();
         DataSource datasource = DataHub.getDataSource(name);
         if(datasource!=null){
             db = new Database(datasource,null,null);
-            dialect= DbDialectType.MYSQL;
+            dialect= Database.getDialect(datasource);
         }else{
             DataSourceFactory factory = Global.get();
             if(factory==null){
@@ -82,11 +83,12 @@ public class BaseSupportByJDBC extends IBaseSupport {
         try{
             ResultSetMetaData md = null;
             KeyValue<String, Object[]> sql = sqltext.getSql();
-            if(isTraning()){
+            if(isTransacting()){
                 conn=transaction;
                 createConn=false;
             }else{
                 conn = db.getConnection();
+                if(dialect==null)dialect=db.getDialect();
             }
             if(conn==null)throw Core.makeThrow("获取数据库连接失败");
             List<Record> records = new ArrayList<>();
@@ -173,11 +175,12 @@ public class BaseSupportByJDBC extends IBaseSupport {
             }
             ResultSetMetaData md = null;
             KeyValue<String, Object[]> sql = sqltext.getSql();
-            if(isTraning()){
+            if(isTransacting()){
                 createautoconn=false;
                 conn=transaction;
             }else{
                 conn = db.getConnection();
+                if(dialect==null)dialect=db.getDialect();
             }
             List<T> records = new ArrayList<T>();
             ps = conn.prepareStatement(sql.key);
@@ -200,7 +203,9 @@ public class BaseSupportByJDBC extends IBaseSupport {
                         Object fieldValue = null;
                         switch (field.getType().getName()){
                             case "java.util.Date":
-                                fieldValue = new Date(rs.getTimestamp(fieldname).getTime());
+                                if(rs.getTimestamp(fieldname)!=null){
+                                    fieldValue = new Date(rs.getTimestamp(fieldname).getTime());
+                                }
                                 break;
                             default:
                                 fieldValue = rs.getObject(fieldname,field.getType());
@@ -222,6 +227,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
         }
         catch (Exception e){
             error=e.getMessage();
+            e.printStackTrace();
             log.setException(e);
             return null;
         }
@@ -239,11 +245,12 @@ public class BaseSupportByJDBC extends IBaseSupport {
         boolean createautoconn=true;
         try{
             KeyValue<String, Object[]> sql = sqltext.getSql();
-            if(isTraning()){
+            if(isTransacting()){
                 conn=transaction;
                 createautoconn=false;
             }else{
                 conn = db.getConnection();
+                if(dialect==null)dialect=db.getDialect();
             }
             if(conn==null){
                 return null;
@@ -256,11 +263,11 @@ public class BaseSupportByJDBC extends IBaseSupport {
             }
             rs = ps.executeQuery();
             if (rs.next()){
+                log.setEnd();
                 if(String.class.equals(clazz))return (T)rs.getString(1);
                 if(Integer.class.equals(clazz))return (T)Integer.valueOf(rs.getInt(1));
                 if(Long.class.equals(clazz))return (T)Long.valueOf(rs.getLong(1));
                 else {
-                    log.setEnd();
                     return rs.getObject(1,clazz);
                 }
             }
@@ -291,11 +298,12 @@ public class BaseSupportByJDBC extends IBaseSupport {
         boolean createConn=true;
         try{
             KeyValue<String, Object[]> sql = sqltext.getSql();
-            if(isTraning()){
+            if(isTransacting()){
                 createConn=false;
                 conn=transaction;
             }else{
                 conn = db.getConnection();
+                if(dialect==null)dialect=db.getDialect();
             }
             ps = conn.prepareStatement(sql.key);
             if(sql.value!=null){
@@ -327,10 +335,58 @@ public class BaseSupportByJDBC extends IBaseSupport {
     }
 
     @Override
-    public boolean exists(String tableName) {
+    public boolean exist(String tableName) {
         String  sql = "SELECT COUNT(1) FROM " + tableName + " where 1!=1";
         int count = getValue(new SqlText(sql),int.class);
         return count >= 0;
+    }
+
+    @Override
+    public boolean exist(String tableName, Cnd cnd) {
+        Integer ret=-1;
+        switch (dialect){
+            case MYSQL:
+            case SQLITE:
+                ret = getValue(new SqlText("select 1 from "+tableName+cnd.getWhere(true,false)+" limit 1",cnd.parameters),Integer.class);
+                break;
+            case ORACLE:
+                ret = getValue(new SqlText("select 1 from "+tableName+cnd.getWhere(true,false)+" rownum < 2",cnd.parameters),Integer.class);
+                break;
+            case Mssql2000:
+            case Mssql2005:
+            case Mssql2008:
+            case SQLSERVER:
+                ret = getValue(new SqlText("select top 1 1 from "+tableName+cnd.getWhere(true,false),cnd.parameters),Integer.class);
+                break;
+            default:
+                throw Core.makeThrow("未实现");
+        }
+        return ret>0?true:false;
+    }
+
+    @Override
+    public boolean exist(String tableName, SqlText where) {
+        Integer ret=-1;
+        String whereText = where.getCmd();
+        boolean has = Strings.hasValue(whereText) && (!Regex.isMatch(whereText,"^\\s*where\\s*"));
+        switch (dialect){
+            case MYSQL:
+            case SQLITE:
+                ret = getValue(new SqlText("select 1 from "+tableName+(has?" where ":" ")+where.getCmd()+" limit 1",where.getParameters()),Integer.class);
+                break;
+            case ORACLE:
+                ret = getValue(new SqlText("select 1 from "+tableName+(has?" where ":" ")+where.getCmd()+" rownum < 2",where.parameters),Integer.class);
+                break;
+            case Mssql2000:
+            case Mssql2005:
+            case Mssql2008:
+            case SQLSERVER:
+                ret = getValue(new SqlText("select top 1 1 from "+tableName+(has?" where ":" ")+where.getCmd(),where.parameters),Integer.class);
+                break;
+            default:
+                throw Core.makeThrow("未实现");
+        }
+        return ret>0?true:false;
     }
 
     @Override
@@ -340,7 +396,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
 
     @Override
     public int exec(SqlText sqltext, Func3<Integer, Connection, Integer> callback) {
-        LogForSql log = new LogForSql(sqltext).setTag(tag).setConn(maskcode);
+        LogForSql log = isWriteLog ? new LogForSql(sqltext).setTag(tag).setConn(maskcode):null;
         KeyValue<String, Object[]> sql = sqltext.getSql();
         Connection conn = null;
         PreparedStatement ps = null;
@@ -352,6 +408,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 conn=transaction;
             }else{
                 conn = db.getConnection();
+                if(dialect==null)dialect=db.getDialect();
             }
             if(conn==null)throw Core.makeThrow("获取数据库连接失败[324]");
             //conn = db.getConnection();
@@ -369,16 +426,16 @@ public class BaseSupportByJDBC extends IBaseSupport {
                 } catch (Exception e) {
                     e.printStackTrace();
                     error=e.getMessage();
-                    log.setEnd(true).setCause(error);
+                    if(log!=null)log.setEnd(true).setCause(error);
                 }
             }else{
-                log.setEnd();
+                if(log!=null)log.setEnd();
             }
             return rows;
 
         }catch (Exception e){
             error=e.getMessage();
-            log.setException(e);
+            if(log!=null)log.setException(e);
             return -1;
         }
         finally {
@@ -393,6 +450,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
         if(transaction!=null)return true;
         try {
             transaction = db.getConnection();
+            if(dialect==null)dialect=db.getDialect();
             if(transaction==null)return false;
             transaction.setAutoCommit(false);
         } catch (SQLException e) {
@@ -442,8 +500,8 @@ public class BaseSupportByJDBC extends IBaseSupport {
         ResultSet rs=null;
         PreparedStatement pre=null;
         try{
-
             conn =  db.getConnection();
+            if(dialect==null)dialect=db.getDialect();
             pre = conn.prepareStatement(Regex.isMatch(tableName, "^\\s*select\\b")?
                     tableName :"select * from "+tableName+" where 1<>1");
             rs = pre.executeQuery();
@@ -510,6 +568,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
         CallableStatement stmt=null;
         try {
             conn =  db.getConnection();
+            if(dialect==null)dialect=db.getDialect();
             //int count = Collections.count(parameters,x->!x.out);
             stmt = conn.prepareCall("call " + name + "("+String.join(",", java.util.Collections.nCopies(parameters.size(), "?"))+")");
             int index = 1;
@@ -567,7 +626,7 @@ public class BaseSupportByJDBC extends IBaseSupport {
     }
 
     @Override
-    public boolean isTraning() {
+    public boolean isTransacting() {
         return this.transaction!=null;
     }
 

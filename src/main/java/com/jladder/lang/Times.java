@@ -1,5 +1,5 @@
 package com.jladder.lang;
-import com.jladder.lang.func.Tuple3;
+
 import com.jladder.lang.func.Tuple4;
 
 import java.text.DateFormat;
@@ -12,8 +12,6 @@ import java.util.regex.Pattern;
 
 /**
  * 一些时间相关的帮助函数
- * 
- * @author zozoh(zozohtnt@gmail.com)
  */
 public abstract class Times {
 

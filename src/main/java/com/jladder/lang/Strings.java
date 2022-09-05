@@ -14,6 +14,7 @@ import java.util.regex.Matcher;
 public class Strings {
     protected Strings() {}
 
+
     public static List<String> list(String ...str){
         if(str==null)return null;
         List<String> array = new ArrayList<>();
@@ -29,7 +30,7 @@ public class Strings {
     }
     public static int toInt(CharSequence source){
         if(isBlank(source))return 0;
-        String data = source.toString().trim();
+        String data = source.toString().trim().split("\\.")[0];
         if(Regex.isMatch(data, "^-?\\d*$"))return Integer.parseInt(data);
         return 0;
     }
@@ -192,7 +193,64 @@ public class Strings {
         String s = obj.toString();
         return Strings.isBlank(s) ? davlue : s;
     }
+    /**
+     * 寻找文本块
+     * @param source 源文本
+     * @param startText 开始文本
+     */
+    public static String findBlock(String source, String startText){
+        return findBlock(source,startText,null);
+    }
+    /**
+     * 寻找文本块
+     * @param source 源文本
+     * @param startText 开始文本
+     * @param endText 结束文本
+     * @return java.lang.String
+     * @author YiFeng
+     */
 
+    public static String findBlock(String source, String startText, String endText){
+        if (Strings.isBlank(source) || Strings.isBlank(startText)) return "";
+        int startIndex = source.indexOf(startText);
+        if (startIndex < 0) return "";
+        if (Strings.isBlank(endText)) return source.substring(startIndex);
+        int endIndex = source.indexOf(endText, startIndex);
+        if (endIndex < 0) return "";
+        return source.substring(startIndex + startText.length(), endIndex - startIndex - startText.length());
+    }
+    public static String removeBlock(String source, String startText){
+        return removeBlock(source,startText,null);
+    }
+    /**
+     *寻找文本块
+     * @param source 源文本
+     * @param startText 开始文本
+     * @param endText 结束文本
+     * @return java.lang.String
+     * @author YiFeng
+     */
+    public static String removeBlock(String source, String startText, String endText)
+    {
+        if (Strings.isBlank(source) || Strings.isBlank(startText)) return source;
+        int startIndex = source.indexOf(startText);
+        if (startIndex < 0) return source;
+        if (Strings.isBlank(endText)) return source.substring(0, startIndex);
+        int endIndex = source.indexOf(endText, startIndex);
+        if (endIndex < 0) return source;
+        return source.substring(0, startIndex) + source.substring(endIndex + endText.length());
+    }
+    /**
+     * 寻找文本
+     * @param source 源文本
+     * @param text 寻找文本
+     * @return boolean
+     * @author YiFeng
+     */
+    public static boolean find(String source, String text){
+        if (Strings.isBlank(source)) return false;
+        return source.indexOf(text) > -1;
+    }
 
     /**
      * 将字符串按半角逗号，拆分成数组，空元素将被忽略

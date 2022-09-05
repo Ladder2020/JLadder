@@ -1,5 +1,12 @@
 package com.jladder.db;
 
+import com.jladder.actions.impl.QueryAction;
+import com.jladder.datamodel.IDataModel;
+import com.jladder.lang.Core;
+import com.jladder.lang.Strings;
+
+import java.util.List;
+
 public class ReCall
 {
     /// <summary>
@@ -59,7 +66,7 @@ public class ReCall
     /// </summary>
     /// <param name="query"></param>
     /// <returns></returns>
-    public ReCall SetQuery(boolean query)
+    public ReCall setQuery(boolean query)
     {
         Query = query;
         return this;
@@ -69,7 +76,7 @@ public class ReCall
     /// </summary>
     /// <param name="condition">条件对象</param>
     /// <returns></returns>
-    public ReCall SetCondition(Object condition)
+    public ReCall setCondition(Object condition)
     {
         Condition = condition;
         return this;
@@ -79,9 +86,32 @@ public class ReCall
     /// </summary>
     /// <param name="param">扩展参数</param>
     /// <returns></returns>
-    public ReCall SetParam(String param)
+    public ReCall setParam(String param)
     {
         Param = param;
         return this;
+    }
+    public List<String> getValues(){
+        return QueryAction.getValues(TableName,Columns,Condition,Param);
+    }
+    public String getSql(){
+        IDataModel dm = DaoSeesion.getDataModel(TableName, Param);
+        if (dm == null || dm.isNull()) throw Core.makeThrow("回溯数据查询异常[0101]");
+        dm.matchColumns(Columns);
+        dm.setCondition(Cnd.parse(Condition,dm));
+        return dm.getSqlText().toString();
+    }
+    public SqlText toSqlText(){
+        if(Query){
+            List<String> rst = QueryAction.getValues(TableName,Columns,Condition,Param);
+            if (rst == null) throw Core.makeThrow("回溯数据查询异常[097]");
+            return new SqlText(Strings.arraytext(rst));
+        }else{
+            IDataModel dm = DaoSeesion.getDataModel(TableName, Param);
+            if (dm == null || dm.isNull()) throw Core.makeThrow("回溯数据查询异常[0101]");
+            dm.matchColumns(Columns);
+            dm.setCondition(Cnd.parse(Condition,dm));
+            return dm.getSqlText();
+        }
     }
 }

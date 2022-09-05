@@ -1,7 +1,6 @@
 package com.jladder.actions.impl;
-
-
 import com.jladder.Ladder;
+import com.jladder.data.Record;
 import com.jladder.data.*;
 import com.jladder.datamodel.IDataModel;
 import com.jladder.db.Cnd;
@@ -9,31 +8,60 @@ import com.jladder.db.DaoSeesion;
 import com.jladder.hub.DataHub;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
+import com.jladder.logger.LogFoRequest;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.utils.RedisHelper;
 import com.jladder.utils.VCodeGenerator;
 import com.jladder.web.WebContext;
-
 import javax.imageio.ImageIO;
 import javax.servlet.http.Cookie;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 用户权限类
  */
 public class UpmsAction {
 
-    public static String DataModelForUser = "sys_user";
-    public static String DataModelForGroup= "sys_usergroup";
-    public static String Key_UserName= "username";
-    public static String Key_UUID= "logininfo";
+    private static final Record My_Cache=new Record();
+    public static final String Developer="developer";
+    public static final String Org="org";
+    private static final Map<String, LogFoRequest> LatestUserRequest = new ConcurrentHashMap<>();
 
-    private static Record Cache=new Record();
+    public static Map<String, LogFoRequest> getUserList(){
+        return LatestUserRequest;
+    }
+    public static void addActivity(String username,LogFoRequest log){
+        if(RedisHelper.Instance.isConfigured()&&false){
+            LogFoRequest old = LatestUserRequest.get(username);
+            if(old==null || (Times.getTime())-old.starttime.getTime()>100*60*5){
+                RedisHelper.Instance.setMapObject(username,log,"UserList_Site_"+Ladder.Settings().getSite(),5L,-1);
+            }
+        }
+        LatestUserRequest.put(username,log);
+    }
 
+    /**
+     * 用户体系本地存储
+     */
+    private static final Map<String,UserStorage> My_UserStorage = new HashMap<String,UserStorage>();
+    public static UserStorage getUserStorage(){
+        return My_UserStorage.get(Developer);
+    }
+    public static UserStorage getUserStorage(String name){
+        return My_UserStorage.get(name);
+    }
+
+    static {
+        My_UserStorage.put(Developer,new UserStorage().setDeveloper());
+        My_UserStorage.put(Org,new UserStorage().setOrg());
+    }
     public static ReStruct<String,String> getCheckCode(){
         VCodeGenerator vcode = new VCodeGenerator();
         String code = vcode.generatorVCode();
@@ -49,15 +77,14 @@ public class UpmsAction {
     }
 
     /***
-     *
-     * @param userinfo
-     * @param token
-     * @param clazz
-     * @param <T>
-     * @return
+     * 活跃
+     * @param userinfo 用户信息
+     * @param token 密钥
+     * @param clazz 用户类
+     * @param <T> 泛型
      */
 
-    public static <T extends BaseUserInfo> AjaxResult active(String userinfo, String token, Class<T> clazz){
+    public static <T extends BaseUserInfo> AjaxResult<T,Object> active(String userinfo, String token, Class<T> clazz){
         if (WebHub.IsDebug){
             if (Strings.hasValue(userinfo) && userinfo != "{}"){
                 return new AjaxResult(Json.toObject(userinfo,clazz)).setStatusCode(111);
@@ -80,10 +107,10 @@ public class UpmsAction {
         else{
             T info = Json.toObject(userinfo,clazz);
             if (info == null || Strings.isBlank(info.getUsername())) return new AjaxResult(-401);
-            Record record = QueryAction.getRecord("sys_user", new Cnd("username", info.getUsername()),null,null);
-
-            if (record.getString("logininfo") != info.uuid && !Regex.isMatch(HttpHelper.getIp(), "(127.0.0.1)|(localhost)"))
-            {
+            UserStorage storage = getUserStorage(info.getStorage());
+            if(storage==null)return new AjaxResult(-401);
+            Record record = QueryAction.getRecord(storage.getTable_user(), new Cnd(storage.getField_username(), info.getUsername()),null,null);
+            if (record.getString(storage.getField_uuid()) != info.uuid && !Regex.isMatch(HttpHelper.getIp(), "(127.0.0.1)|(localhost)")){
                 return new AjaxResult(333, "用户在他处登录").setData(record.getString("ip"));
             }
             setUserInfo(info,false);
@@ -123,7 +150,7 @@ public class UpmsAction {
         return false;
     }
 
-    public static <T extends BaseUserInfo> T  getUserInfo(Class<T> clazz){
+    public static <T extends BaseUserInfo> T getUserInfo(Class<T> clazz){
         return getUserInfo(getUuid(),clazz);
     }
 
@@ -134,25 +161,21 @@ public class UpmsAction {
      * @param <T>
      * @return
      */
-    public static <T extends BaseUserInfo> T  getUserInfo(String uuid,Class<T> clazz){
+    public static <T extends BaseUserInfo> T getUserInfo(String uuid, Class<T> clazz){
         try{
+            if(Strings.isBlank(uuid))return null;
             if (WebContext.getSession() != null){
-                T userInfo = (T)Cache.get(uuid);
+                T userInfo = (T)My_Cache.get(uuid);
                 if(userInfo!=null)return userInfo;
                 userInfo = DataHub.WorkCache.getModuleCache(uuid, "_user_");
-                // if (userInfo == null && HttpContext.Current.Session["AgainLogin"] != null) return null;
                 if (userInfo == null){
-                    //userInfo = RedisHelper.Instance.getCache(uuid,clazz).data;
                     if (userInfo == null && WebContext.getSession().getAttribute("AgainLogin") != null) return null;
                     if (userInfo == null && WebContext.getSession().getAttribute("AgainLogin") == null){
                         WebContext.getSession().setAttribute("AgainLogin","1");
-                        String username="";
-                        //String username = QueryAction.getValue("sys_user", "username", new Cnd("logininfo",uuid),null,String.class);
-                        if(Strings.hasValue(username))userInfo = getUserInfo(username,"username",clazz);
                     }
                     if (userInfo != null){
-                        DataHub.WorkCache.addModuleCache(uuid, userInfo,  "_user_",20);
-                        Cache.put(uuid,userInfo);
+                        DataHub.WorkCache.addModuleCache(uuid, userInfo,  "_user_",60*60*2);
+                        My_Cache.put(uuid,userInfo);
                         WebContext.getSession().removeAttribute("AgainLogin");
                     }
                 }
@@ -179,27 +202,28 @@ public class UpmsAction {
         userinfo.uuid= getUuid();
         userinfo.setSessionid(WebContext.getSession().getId());
         if (firstLogin){
+            UserStorage storage = My_UserStorage.get(userinfo.getStorage());
+            if(storage==null)return;
             WebContext.getSession().removeAttribute("AgainLogin");
-            //Logs.WriteLog($"写入->Uuid:{userinfo.Uuid}  UserName:{userinfo.UserName}  Sesssion:{WebContext.Current.Session.Id}\nRequest:{ArgumentMapping.GetRequestParams()}\nStack:{RunTime.GetStackTraces()}", "UpmsService");
-            String old = QueryAction.getValue("sys_user", "logininfo", new Cnd("username", userinfo.getUsername()), null, String.class);
+            String old = QueryAction.getValue(storage.getTable_user(), storage.getField_uuid(), new Cnd(storage.getField_username(), userinfo.getUsername()), null, String.class);
             if (!userinfo.uuid.equals(old)){
                 DataHub.WorkCache.removeModuleCache(userinfo.uuid,"_user_");
-                SaveAction.update(DataModelForUser,new Record("userinfo",userinfo.uuid), new Cnd("username", userinfo.getUsername()));
+                SaveAction.update(storage.getTable_user(),new Record(storage.getField_uuid(),userinfo.uuid), new Cnd(storage.getField_username(), userinfo.getUsername()));
             }
             try{
                 List<String> keys=new ArrayList<>();
-                Cache.forEach((k,v)->{
+                My_Cache.forEach((k,v)->{
                     if(userinfo.getUsername().equals(((BaseUserInfo)v).getUsername())){
                         keys.add(k);
                     }
                 });
                 if(keys.size()>0){
-                    keys.forEach(x->Cache.remove(x));
+                    keys.forEach(x->My_Cache.remove(x));
                 }
             }catch (Exception e){
                 e.printStackTrace();
             }
-            Cache.put(userinfo.uuid,userinfo);
+            My_Cache.put(userinfo.uuid,userinfo);
         }
         DataHub.WorkCache.addModuleCache(userinfo.uuid, userinfo,  "_user_",20*60);
     }
@@ -211,20 +235,37 @@ public class UpmsAction {
      * @return
      */
     public static <T extends BaseUserInfo> T getUserInfo(Cnd cnd,Class<T> glass){
-        return repair(QueryAction.getObject(DataModelForUser, cnd,null,null,glass));
+        return getUserInfo(Developer,cnd,glass);
     }
-
     /**
      * 获取用户信息
-     * @param username 用户名
+     * @param cnd 用户条件
+     * @param glass 泛型类型
+     * @param <T> 泛型
+     * @return
+     */
+    public static <T extends BaseUserInfo> T getUserInfo(String storage,Cnd cnd,Class<T> glass){
+        if(Strings.isBlank(storage))storage=Developer;
+        UserStorage userstorage = getUserStorage(storage);
+        if(userstorage==null)return null;
+        return repair(QueryAction.getObject(userstorage.getTable_user(), cnd,null,null,glass),userstorage);
+    }
+    public static <T extends BaseUserInfo> T getUserInfo(String value,String propname,Class<T> clazz){
+        return getUserInfo(Developer,value,propname,clazz);
+    }
+    /**
+     * 获取用户信息
+     * @param value 用户名或其他数据值
      * @param propname 属性名称
      * @param clazz 类型
      * @param <T> 泛型
      * @return
      */
-    public static <T extends BaseUserInfo> T getUserInfo(String username,String propname,Class<T> clazz){
-        if (Strings.isBlank(propname)) propname = Key_UserName;
-        return repair(QueryAction.getObject(DataModelForUser, new Cnd(propname, username), null, null, clazz));
+    public static <T extends BaseUserInfo> T getUserInfo(String storage,String value,String propname,Class<T> clazz){
+        UserStorage userstorage = My_UserStorage.get(storage);
+        if(userstorage==null)return null;
+        if (Strings.isBlank(propname)) propname = userstorage.getField_username();
+        return repair(QueryAction.getObject(userstorage.getTable_user(), new Cnd(propname, value), null, null, clazz),userstorage);
     }
 
     /**
@@ -233,11 +274,13 @@ public class UpmsAction {
      * @param <T> 泛型
      * @return
      */
-    private static <T extends BaseUserInfo> T repair(T userinfo){
+    private static <T extends BaseUserInfo> T repair(T userinfo,UserStorage storage){
         if(userinfo==null)return null;
+        if(storage==null)storage=My_UserStorage.get(Developer);
+        if(storage==null)return null;
         if (Strings.hasValue(userinfo.getGroupid())){
             TreeModel tm = new TreeModel();
-            IDataModel dm = DaoSeesion.getDataModel(DataModelForGroup);
+            IDataModel dm = DaoSeesion.getDataModel(storage.getTable_usergroup());
             String tableName = dm.getTableName();
             tm.RecurFromTable(userinfo.getGroupid(), tableName);
             List<String> cids = tm.GetIds();
@@ -261,23 +304,19 @@ public class UpmsAction {
     /***
      * 退出登录
      */
-    public static void loginout(String uuid)
-    {
+    public static void loginout(String uuid){
         if(Strings.isBlank(uuid))uuid=getUuid();
         DataHub.WorkCache.removeModuleCache(uuid, "_user_");
         WebContext.getSession().removeAttribute("UserSessionUUID");
         WebContext.getSession().setAttribute("AgainLogin", 11);
         RedisHelper.Instance.delete(uuid);
-        SaveAction.update(DataModelForUser, new Record(Key_UUID, ""), new Cnd(Key_UUID, uuid));
     }
     /// <summary>
     ///获取用户标题
     /// </summary>
     /// <returns></returns>
-    public static String getUserTitle()
-    {
-        try
-        {
+    public static String getUserTitle(){
+        try{
 /*            if (RunTime.IsWeb && WebContext.Current?.Session != null)
             {
                 var userinfo = GetUserInfo();
@@ -285,8 +324,7 @@ public class UpmsAction {
                 return userinfo.username+"{}[{userinfo.FullName}]";
             }*/
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return "";
         }
         return "";
@@ -295,10 +333,8 @@ public class UpmsAction {
     /// 获取的用户的Token
     /// </summary>
     /// <returns></returns>
-    public static String getUserToken()
-    {
-        try
-        {
+    public static String getUserToken(){
+        try{
 /*            if (RunTime.IsWeb && WebContext.Current?.Session != null)
             {
                 var userinfo = GetUserInfo();
@@ -306,8 +342,7 @@ public class UpmsAction {
                 return userinfo.UserToken;
             }*/
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return "";
         }
         return "";
@@ -317,8 +352,7 @@ public class UpmsAction {
      * @param username 用户名
      * @return
      */
-    public static ReStruct<String, String> genUserToken(String username)
-    {
+    public static ReStruct<String, String> genUserToken(String username){
         String ssoserver = Ladder.Settings().getBusiness().getSso();
         String site = Ladder.Settings().getSite();
         if(site==null)site = Ladder.Settings().getSite();

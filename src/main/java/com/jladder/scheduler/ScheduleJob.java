@@ -11,11 +11,15 @@ import com.jladder.net.http.HttpHelper;
 
 import java.util.Date;
 import java.util.Map;
+/**
+ * 时间计划类
+ * @author YiFeng
+ */
 
 public class ScheduleJob extends BaseEntity {
-    /// <summary>
-    /// 数据库id
-    /// </summary>
+    /**
+     * 编号
+     */
     private String id;
     /// <summary>
     /// 任务名称
@@ -125,6 +129,10 @@ public class ScheduleJob extends BaseEntity {
     /// </summary>
     private int limittimes;
 
+
+
+
+    private String exclude;
 
 
     private int workday;
@@ -441,5 +449,28 @@ public class ScheduleJob extends BaseEntity {
     }
     public boolean offDay(){
         return this.workday==0;
+    }
+    public String getExclude() {
+        return exclude;
+    }
+
+    public void setExclude(String exclude) {
+        this.exclude = exclude;
+    }
+    public boolean canDay(){
+        return canDay(new Date());
+    }
+    /**
+     * 某日期可运行
+     * @param time 日期时间型
+     * @return boolean 是否可运行
+     * @author YiFeng
+     */
+
+    public boolean canDay(Date time){
+        if(Strings.isBlank(exclude))return true;
+        if(time==null)time=new Date();
+        String date = Times.sD(time);
+        return !(","+time+",").contains(","+date+",");
     }
 }

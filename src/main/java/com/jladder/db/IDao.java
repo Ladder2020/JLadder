@@ -12,9 +12,10 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
-public interface IDao
-{
-
+/**
+ * 数据操作接口类
+ */
+public interface IDao{
     DbDialectType getDialect();
 //    /// <summary>
 //    /// 从默认配置初始化
@@ -27,48 +28,61 @@ public interface IDao
 //    /// <param name="dbInfo">数据库连接信息对象</param>
 //    void create(DbInfo dbInfo);
 
-    /// <summary>
-    /// 基本查询接口
-    /// </summary>
-    /// <typeparam name="T">泛型类型</typeparam>
-    /// <param name="tableName">表名</param>
-    /// <param name="cnd">条件对象</param>
-    /// <param name="pager">分页对象</param>
-    /// <returns></returns>
+    ///#region 数据查询
+
+    /**
+     * 基本查询接口
+     * @param tableName 表名
+     * @param cnd 条件对象
+     * @param pager 分页对象
+     * @param clazz 泛型类型
+     * @param <T> 泛型类型
+     * @return
+     */
     <T> List<T> query(String tableName, Cnd cnd, Pager pager, Class<T> clazz);
 
 
-    /// <summary>
-    /// 查询数据(Record)
-    /// </summary>
-    /// <param name="sqltext"></param>
-    /// <returns></returns>
+    /**
+     * 查询数据
+     * @param sqltext Sql语句
+     * @return
+     */
     List<Record> query(SqlText sqltext);
 
-//    /// <summary>
-//    /// 查询数据(Record)
-//    /// </summary>
-//    /// <param name="sqltext"></param>
-//    /// <param name="callback"></param>
-//    /// <returns></returns>
-     List<Record> query(SqlText sqltext, Func2<Record, Boolean> callback);
-
-//    /// <summary>
-//    /// 查询数据
-//    /// </summary>
-//    /// <param name="sqltext">sql语句</param>
-//    /// <param name="serialize"> 是否序列化</param>
-//    /// <param name="callback">回调处理委托</param>
-//    /// <returns></returns>
+    /**
+     * 查询数据
+     * @param sqltext Sql命令
+     * @param callback 回调处理
+     * @return
+     */
+    List<Record> query(SqlText sqltext, Func2<Record, Boolean> callback);
+    /**
+     * 查询数据
+     * @param sqltext Sql命令
+     * @param serialize 是否序列化
+     * @param callback 回调处理委托
+     * @return
+     */
     List<Record> query(SqlText sqltext, Boolean serialize, Func2<Record, Boolean> callback);
 
-    /// <summary>
-    /// 查询数据(实体对象)
-    /// </summary>
-    /// <typeparam name="T">实体类型</typeparam>
-    /// <param name="sqltext">查询语句</param>
-    /// <returns></returns>
+    /**
+     * 查询数据(实体对象)
+     * @param sqltext Sql命令
+     * @param clazz 实体类型
+     * @param <T> 实体类型
+     * @return
+     */
     <T> List<T> query(SqlText sqltext,Class<T> clazz);
+
+    ///#endregion
+
+
+
+
+
+
+
+
 
 //    /// <summary>
 //    /// 查询数据(实体对象)
@@ -175,14 +189,7 @@ public interface IDao
     /// <returns>对象</returns>
     <T> T fetch(String id,Class<T> clazz);
 
-//    /// <summary>
-//    /// 获取实体对象
-//    /// </summary>
-//    /// <typeparam name="T">实体类型</typeparam>
-//    /// <param name="value">索引值</param>
-//    /// <param name="propName">属性名</param>
-//    /// <returns></returns>
-//    <T> T fetch(String value, String propName);
+
 
     /// <summary>
     /// 获取记录数
@@ -200,47 +207,74 @@ public interface IDao
     /// <returns>记录数</returns>
     int count(String tableName, SqlText where);
 
-    /// <summary>
-    /// 删除记录
-    /// </summary>
-    /// <param name="tableName">表名</param>
-    /// <param name="wherestr">条件文本</param>
-    /// <returns>影响数量</returns>
-    int delete(String tableName, SqlText wherestr);
-    /// <summary>
-    /// 删除数据
-    /// </summary>
-    /// <param name="tableName"></param>
-    /// <param name="cnd"></param>
-    /// <returns></returns>
-    int delete(String tableName, Cnd cnd);
-    /// <summary>
-    /// 删除对象
-    /// </summary>
-    /// <typeparam name="T">泛型类型</typeparam>
-    /// <param name="bean">实体类</param>
-    /// <returns></returns>
+    /**
+     * 是否存在数据
+     * @param tableName 表名
+     * @param cnd 条件
+     * @return
+     */
+    boolean exist(String tableName, Cnd cnd);
+    /**
+     * 是否存在数据
+     * @param tableName 表名
+     * @param where 条件
+     * @return
+     */
+    boolean exist(String tableName, SqlText where);
 
+    ///#region 数据操作
+
+    /**
+     * 删除记录
+     * @param tableName 表名
+     * @param where 条件文本
+     * @return
+     */
+    int delete(String tableName, SqlText where);
+
+    /**
+     * 删除数据
+     * @param tableName 表名
+     * @param cnd 条件
+     * @return
+     */
+    int delete(String tableName, Cnd cnd);
+
+    /**
+     * 删除对象
+     * @param bean 实体对象
+     * @param <T> 泛型类型
+     * @return
+     */
     <T extends BaseEntity> int delete(T bean);
 
-    /// <summary>
-    /// 更新数据
-    /// </summary>
-    /// <param name="tableName">表名</param>
-    /// <param name="data">数据</param>
-    /// <param name="cnd">条件</param>
-    /// <param name="columns">列填充</param>
-    /// <param name="adjust">自动纠正</param>
-    /// <returns></returns>
+    /**
+     * 更新数据
+     * @param tableName 表名
+     * @param data 数据
+     * @param cnd 条件
+     * @param columns 列选
+     * @param adjust 自动纠正
+     * @return
+     */
     int update(String tableName, Object data, Object cnd,String columns, boolean adjust);
-    /// <summary>
-    /// 更新数据
-    /// </summary>
-    /// <param name="tableName">表名</param>
-    /// <param name="record">记录</param>
-    /// <param name="cnd">条件对象</param>
-    /// <returns></returns>
+
+    /**
+     * 更新数据
+     * @param tableName 表名
+     * @param record 记录
+     * @param cnd 条件对象
+     * @return
+     */
     int update(String tableName, Map<String, Object> record, Cnd cnd);
+
+    ///endregion
+
+
+
+
+
+
     /// <summary>
     /// 更新实体
     /// </summary>
@@ -326,28 +360,6 @@ public interface IDao
 
 
 
-//    /// <summary>
-//    /// 保存数据记录
-//    /// </summary>
-//    /// <param name="tableName">表名</param>
-//    /// <param name="record">记录数据</param>
-//    /// <param name="keyName">主键名</param>
-//    /// <param name="gentype">主键生成类型</param>
-//    /// <returns></returns>
-//    int save(String tableName, Dictionary<String, Object> record, String keyName, GenType gentype);
-
-    ///// <summary>
-    ///// 保存对象
-    ///// </summary>
-    ///// <typeparam name="T">泛型类型</typeparam>
-    ///// <param name="tableName">表名</param>
-    ///// <param name="bean">记录数据</param>
-    ///// <param name="keyName">主键名</param>
-    ///// <param name="genid">主键生成类型</param>
-    ///// <returns></returns>
-    //int save<T>(String tableName, T bean, String keyName, String genid) where T : BaseEntity, new();
-
-
     <T> int save(String tableName, T bean, String keyName, DbGenType gen);
 
     /// <summary>
@@ -366,49 +378,10 @@ public interface IDao
     /// <returns></returns>
     boolean isDefaultDataBase();
 
-    /// <summary>
-    ///  是否有数据库事物
-    /// </summary>
-    /// <returns></returns>
-
-
-    //        void SetBaseSupport(string connStr,DbProviderFactory factory);
-
-//        IDataReader CreateReader(string sqltext, DbParameter[] parameters);
-
-//    /// <summary>
-//    /// 创建sql参数
-//    /// </summary>
-//    /// <param name="key"></param>
-//    /// <param name="val"></param>
-//    /// <returns></returns>
-//    DbParameter CreateParameter(String key, Object val);
-
-//    /// <summary>
-//    /// 创建sql命令
-//    /// </summary>
-//    /// <param name="sqltext"></param>
-//    /// <param name="parameter"></param>
-//    /// <returns></returns>
-//    DbCommand CreateCommand(string cmd, IEnumerable<DbParameter> parameter);
-
-//    /// <summary>
-//    /// 创建sql命令
-//    /// </summary>
-//    /// <param name="cmd"></param>
-//    /// <returns></returns>
-//    DbCommand CreateCommand(string cmd);
 
     int exec(SqlText sqltext, Func3<Integer, Connection, Integer> callback);
 
-    //    /// <summary>
-//    /// 创建sql命令，这是基本方法
-//    /// </summary>
-//    /// <param name="cmd"></param>
-//    /// <param name="parameter"></param>
-//    /// <param name="transaction"></param>
-//    /// <returns></returns>
-//    PreparedStatement CreateCommand(String cmd, IEnumerable<DbParameter> parameter, DbTransaction transaction);
+
     /// <summary>
     /// 执行Sql
     /// </summary>
@@ -424,18 +397,7 @@ public interface IDao
      */
     List<Object> pro(String name,List<DbParameter> parameters);
 
-//    /// <summary>
-//    /// 执行存储过程
-//    /// </summary>
-//    /// <param name="proName">过程名</param>
-//    /// <param name="parameters">过程的参数</param>
-//    /// <returns>
-//    /// <para>0，false:执行失败</para>
-//    /// <para>1，true:执行成功，没有无输出和返回值</para>
-//    /// <para>2，单对象:一个输出和返回值对象</para>
-//    /// <para>2，List，多个返回值</para>
-//    /// </returns>
-//    Object Pro(String proName, params DbParameter[] parameters);
+
 
     /// <summary>
     /// 开始数据库事务
@@ -505,29 +467,34 @@ public interface IDao
     /// <returns>sqlText</returns>
     SqlText pagingSqlText(SqlText sqltext, Pager pager);
 
-    ///<summary>处理分页
-    /// sqltext 是原sql语句 pager是分页对象 filterRn 是否过滤行号 DBtype是数据库类型
-    /// </summary>
-    /// <param name="sqltext">原语句</param>
-    /// <param name="pager">pager对象</param>
-    /// <param name="filterRn">是否过滤行号</param>
-    /// <param name="type">数据库类型</param>
-    /// 
-    SqlText pagingSqlText(SqlText sqltext, Pager pager,DbDialectType type);
+
+
+    /**
+     * 分页语句
+     * @param sqltext 源Sql命令
+     * @param pager 分页对象
+     * @param dialect 数据库方言
+     * @return
+     */
+    SqlText pagingSqlText(SqlText sqltext, Pager pager,DbDialectType dialect);
 
     /// <summary>
     /// 数据库表是否存在
     /// </summary>
     /// <param name="tableName">表名</param>
     /// <returns>逻辑型</returns>
-    boolean exists(String tableName);
+    boolean exist(String tableName);
 
     /// <summary>
     /// 关闭数据库连接
     /// </summary>
     void close();
 
-    boolean isTraning();
+    /**
+     * 是否处于事务中
+     * @return
+     */
+    boolean isTransacting();
 
     String getMarkCode();
 
@@ -539,25 +506,7 @@ public interface IDao
     <T extends BaseEntity> boolean create(Class<T> clazz);
 
 
-//    <T extends BaseEntity> List<T> query(SqlText sqltext, Class<? extends BaseEntity> aClass);
 
-//    /// <summary>
-//    /// 执行Sql
-//    /// </summary>
-//    /// <param name="sqlcmd">SQL命令</param>
-//    /// <param name="parameters">参数</param>
-//    /// <param name="callback">执行回调函数</param>
-//    /// <returns></returns>
-//    int Exec(String sqlcmd, IEnumerable<DbParameter> parameters,Func<int,DbConnection,int> callback);
-//
-//    /// <summary>
-//    /// 获取表的字段信息
-//    /// </summary>
-//    /// <param name="tableName">表名或记录集</param>
-//    /// <param name="split">是否sql拆分</param>
-//    /// <returns></returns>
-//    List<Dictionary<String, Object>> GetFieldInfo(String tableName,bool split=true);
-//
 //    /// <summary>
 //    /// 获取当前数据库下的所有数据库表
 //    /// </summary>
@@ -569,12 +518,12 @@ public interface IDao
 //    /// 添加回滚事件
 //    /// </summary>
 //    /// <param name="action"></param>
-    void AddRollbackEvent(Action0 action);
+    void addRollbackEvent(Action0 action);
 //    /// <summary>
 //    /// 添加提交事件
 //    /// </summary>
 //    /// <param name="action"></param>
-    void AddCommitEvent(Action0 action);
+    void addCommitEvent(Action0 action);
 
 
 

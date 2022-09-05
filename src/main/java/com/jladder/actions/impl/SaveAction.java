@@ -1,10 +1,7 @@
 package com.jladder.actions.impl;
 
 import com.jladder.actions.Curd;
-import com.jladder.data.AjaxResult;
-import com.jladder.data.ReStruct;
-import com.jladder.data.Receipt;
-import com.jladder.data.Record;
+import com.jladder.data.*;
 import com.jladder.datamodel.DataModelType;
 import com.jladder.datamodel.GenBeanTool;
 import com.jladder.datamodel.IDataModel;
@@ -13,15 +10,14 @@ import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.db.jdbc.impl.Dao;
 import com.jladder.hub.DataHub;
 import com.jladder.lang.*;
+import com.jladder.lang.Collections;
 import com.jladder.lang.func.Func1;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.web.WebContext;
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * 增删改的执行处理服务类
@@ -237,9 +233,11 @@ public class SaveAction{
         if (Strings.isBlank(beans)) return new AjaxResult(444);
         boolean isHaveContext = Regex.isMatch(beans, "(@@)|(\\$\\{)");
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
-        Record results = new Record();
+        Record context = new Record();
+
         //以对象的形式访问
         if (beans.startsWith("{") && beans.endsWith("}")) {
+            Map<String,AjaxResult> results=new LinkedHashMap<String,AjaxResult>();
             Record record = Json.toObject(beans, Record.class);
             if (record == null || record.size() < 1) return new AjaxResult(444);
             //以普通savebean的方式保存
@@ -254,23 +252,25 @@ public class SaveAction{
                     //具体执行代码-->数据绑定+
                     for (String key : record.keySet()) {
                         Record dic = Record.parse(record.get(key));
-                        AjaxResult ajaxJson = action(dic, keepDaoPool, results,isHaveContext);
-                        results.put(key,ajaxJson.data);
-                        if (ajaxJson.statusCode != 200) {
+                        AjaxResult result = action(dic, keepDaoPool, context,isHaveContext);
+                        context.put(key,result.data);
+                        results.put(key,result);
+                        if (result.statusCode != 200) {
                             keepDaoPool.AllRollBack();
-                            return ajaxJson.setData(results);
+                            return result.setData(results).setDataType(AjaxResultDataType.AJaxResultMap);
                         }
                     }
                 } catch (Exception e) {
                     keepDaoPool.AllRollBack();
-                    return new AjaxResult(500, "执行过程发生异常").setData(results.put("ErrorString", e.getMessage()));
+                    return new AjaxResult(500, "执行过程发生异常").setData(results.put("ErrorString",new AjaxResult(500,e.getMessage())));
                 }
                 keepDaoPool.end();
-                return new AjaxResult(200, "访问成功").setData(results);
+                return new AjaxResult(200, "访问成功").setData(results).setDataType(AjaxResultDataType.AJaxResultMap);
             }
         }
         //以数组的形式多bean的形式，无回调和数据绑定
         if (beans.startsWith("[") && beans.endsWith("]")) {
+            List<AjaxResult> results=new ArrayList<AjaxResult>();
             List<Record> records = Json.toObject(beans, new TypeReference<List<Record>>(){});
             if (records == null || records.size() < 1) return new AjaxResult(444);
             if (records.size() == 1) {
@@ -285,13 +285,14 @@ public class SaveAction{
             AjaxResult re_t = new AjaxResult();
             try {
                 for (int i=0;i<records.size();i++) {
-                    AjaxResult result = action(records.get(i), keepDaoPool, results, isHaveContext);
+                    AjaxResult result = action(records.get(i), keepDaoPool, context, isHaveContext);
+                    results.add(result);
                     if(result.statusCode!=200){
                         re_t.set(result.statusCode,result.message);
                         keepDaoPool.AllRollBack();
-                        return re_t;
+                        return re_t.setData(results).setDataType(AjaxResultDataType.AJaxResultArray);
                     }
-                    results.put(i+"",result.data);
+                    context.put(i+"",result.data);
                     re_t.pushData(result);
                 }
             } catch (Exception e) {
@@ -303,20 +304,30 @@ public class SaveAction{
         }
         return new AjaxResult(400, "请求格式未识别");
     }
+    /**
+     * 多保存
+     * @param curds 增删改集合
+     * @return
+     */
     public static Receipt saveBeans(Collection<Curd> curds){
         return saveBeans(curds,true);
     }
 
+    /**
+     * 多保存
+     * @param curds 增删改集合
+     * @param supportTran 是否支持事务
+     * @return
+     */
     public static Receipt saveBeans(Collection<Curd> curds,boolean supportTran){
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
         List<AjaxResult> results = new ArrayList<AjaxResult>();
-        for (Curd curd : curds)
-        {
+        for (Curd curd : curds){
             AjaxResult receipt = saveBean(keepDaoPool, curd.TableName, curd.Bean, curd.Option, curd.Condition, curd.Rel);
             results.add(receipt);
-            if (!receipt.success)
-            {
+            if (!receipt.success){
                 keepDaoPool.AllClose();
+                receipt.setXData(curd);
                 return new Receipt(false, receipt.message).setData(results);
             }
         }
@@ -740,24 +751,22 @@ public class SaveAction{
     public static AjaxResult saveBean(KeepDaoPool keepDaoPool, String tableName, String bean, int option, String condition, String rel)
     {
         IDataModel dm = DaoSeesion.getDataModel(tableName);
-        if (dm.isNull()) return new AjaxResult(700);
-        if (option == 3)
-        {
+        if (dm.isNull()) return new AjaxResult(700).setDataType(AjaxResultDataType.Error).setDataName(tableName);
+        if (option == 3){
             KeepDao keyDao = keepDaoPool.createKeepDao(dm.getConn());
             dm.setDialect(keyDao.Dao.getDialect());
             dm.setCondition(Cnd.parse(condition, dm));
-            long count = 0;
-            if (DataModelType.Data.equals(dm.Type ))
-            {
-                Receipt latch = LatchAction.getData(dm);
-                if (latch.isSuccess())
-                {
-                    count = ((List<Record>) latch.data).size();
-                }
-            }
-            count = keyDao.Dao.getValue(new SqlText("select count(1) from " + dm.getTableName() + dm.getWhere().cmd + dm.getGroup(),dm.getCondition().parameters),Long.class);
-            if(count==-1)return new AjaxResult(404,"获取条件数据失败");
-            option = count > 0 ? 2 : 1;
+            //long count = 0;
+//            if (DataModelType.Data.equals(dm.Type )){
+//                Receipt latch = LatchAction.getData(dm);
+//                if (latch.isSuccess()){
+//                    count = ((List<Record>) latch.data).size();
+//                }
+//            }
+            boolean has = keyDao.Dao.exist(dm.getTableName(), dm.getWhere());
+            //count = keyDao.Dao.getValue(new SqlText("select count(1) from " + dm.getTableName() + dm.getWhere().cmd + dm.getGroup(),dm.getCondition().parameters),Long.class);
+            if(!has && Strings.hasValue(keyDao.Dao.getErrorMessage()))return new AjaxResult(404,"获取条件数据失败");
+            option = has ? 2 : 1;
         }
         Record entityBean = GenBeanTool.gen(dm, bean, option);
         return saveBean(keepDaoPool, dm, entityBean, option, condition, rel);
@@ -870,7 +879,10 @@ public class SaveAction{
                     //var beanjson = UrlEncoder.Default.Encode(r.ToString());
                     String beanjson = r.toString();
                     String tableName = act.getString("tableName", true);
-                    String beans = Strings.mapping(Json.toJson(act.getObject("bean", true)),r.put("_bean", beanjson));
+                    //String beans = Strings.mapping(Json.toJson(act.getObject("bean", true)),r.put("_bean", beanjson));
+                    Record beans = Record.parse(act.getObject("bean", true));
+                    if(beans==null)beans=new Record();
+                    beans.mapping(r.put("_bean", beanjson),false);
                     String condition = Json.toJson(act.getObject("condition", true));
                     if (Strings.isBlank(tableName) || Strings.isBlank(option)) continue;
                     if (Strings.hasValue(condition)) condition = Strings.mapping(condition,r);
@@ -906,9 +918,9 @@ public class SaveAction{
                         condition = "{" + fieldname + ":'" + r.getString(fieldname, true) + "'}";
                     }
                     IDataModel daoHelp = DaoSeesion.getDataModel(tableName);
-                    beans = Strings.mapping(beans,retData);
-                    beans = Strings.mapping(beans,context);
-                    AjaxResult ajaxJson = saveBean(keepDaoPool, daoHelp, GenBeanTool.gen(daoHelp, beans, Integer.parseInt(option)), Integer.parseInt(option), condition, null);
+                    beans = beans.mapping(retData,false);
+                    beans = beans.mapping(context,true);
+                    AjaxResult ajaxJson = saveBean(keepDaoPool, daoHelp, GenBeanTool.gen(daoHelp, beans, DbSqlDataType.get(Convert.toInt(option))), Integer.parseInt(option), condition, null);
                     if (ajaxJson.statusCode != 200) return new Receipt(false).setData(ajaxJson.message).setData(ajaxJson.data);
                     else if (Strings.hasValue(actionName)) retData.put(actionName, ajaxJson.data);
                 }
@@ -956,7 +968,15 @@ public class SaveAction{
         return new Receipt().setData(retData);
     }
 
-    public static AjaxResult action(Record act,KeepDaoPool pool,Record results,boolean context){
+    /**
+     *
+     * @param act
+     * @param pool
+     * @param data
+     * @param context
+     * @return
+     */
+    public static AjaxResult action(Record act,KeepDaoPool pool,Record data,boolean context){
         String option = act.getString("option");
         if(Strings.isBlank(option))return new AjaxResult(400,"操作选项不能为空[1175]");
         AjaxResult result;
@@ -982,11 +1002,11 @@ public class SaveAction{
             case "11":
             case "22":
                 String tableName=act.getString("tablename",true);
-                if(Strings.isBlank(tableName))return new AjaxResult(404,"数据模型不存在[1098]");
-                result = new AjaxResult(444,"未处理[1103]");
+                if(Strings.isBlank(tableName))return new AjaxResult(404,"数据模型不存在[1098]").setDataName(tableName).setDataType(AjaxResultDataType.Error);
+                result = new AjaxResult(444,"未处理[1103]").setDataName(tableName);
                 IDataModel dm = DaoSeesion.getDataModel(tableName);
                 if (dm.isNull()) {
-                    return new AjaxResult(700, "[" + tableName + "]动态数据模版未找到").setData(results);
+                    return new AjaxResult(700, "[" + tableName + "]动态数据模版未找到").setDataName(tableName).setDataType(AjaxResultDataType.Error);
                 }
                 String rel = act.getString("rel");
                 String param = Json.toJson(act.get("param"));
@@ -997,7 +1017,7 @@ public class SaveAction{
                 if ("1".equals(option)  || "2".equals(option) || "3".equals(option)) {
                     Object bean = act.get("bean");
                     if (bean == null) {
-                        return new AjaxResult(500, "新增数据未组装").setData(results).setDataName(tableName);
+                        return new AjaxResult(500, "新增数据未组装").setDataType(AjaxResultDataType.Error).setDataName(tableName);
                     }
                     if (bean instanceof String) {
                         //转化bean的类型
@@ -1011,9 +1031,9 @@ public class SaveAction{
                         //bean = Record.Parse(bean);
                         StringBuilder message = new StringBuilder();
                         if (context) {
-                            Receipt<Record> re_t = GenBeanTool.match(results, (Record) bean);
+                            Receipt<Record> re_t = GenBeanTool.match(data, (Record) bean);
                             if (!re_t.result) {
-                                return new AjaxResult(400, re_t.message).setData((Record) bean).setDataName(tableName);
+                                return new AjaxResult(400, re_t.message).setData(bean).setDataType(AjaxResultDataType.Record).setDataName(tableName);
                             }
                             entrybean = GenBeanTool.gen(dm, re_t.data, DbSqlDataType.get(Convert.toInt(option)), message);
                             //entrybean =  re_t.data;
@@ -1022,21 +1042,21 @@ public class SaveAction{
                             //entrybean = (Record) bean;
                         }
                         if (message.length() > 0) {
-                            return new AjaxResult(400, message.toString()).setData(results).setDataName(tableName);
+                            return new AjaxResult(400, message.toString()).setDataType(AjaxResultDataType.Error).setDataName(tableName);
                         }
                         if (entrybean == null || entrybean.size() < 1) {
-                            return new AjaxResult(400, "保存对象未有效数据").setData(results).setDataName(tableName);
+                            return new AjaxResult(400, "保存对象未有效数据").setDataType(AjaxResultDataType.Error).setDataName(tableName);
                         }
                     }
                 }
                 if ("-1".equals(option) || "0".equals(option)  || "2".equals(option) || "3".equals(option)   ) {
                     if (Strings.isBlank(condition)) {
-                        return new AjaxResult(500, "未有修改条件").setData(results).setDataName(tableName);
+                        return new AjaxResult(500, "未有修改条件").setDataType(AjaxResultDataType.Error).setDataName(tableName);
                     }
                 }
                 //动态联想数据
                 if (Convert.toInt(option) != 1 && context) {
-                    condition = Strings.mapping(condition, results);
+                    condition = Strings.mapping(condition, data);
                 }
                 if(pool==null){
                     pool = new KeepDaoPool(true);
@@ -1157,7 +1177,7 @@ public class SaveAction{
             if (saveEntity == null) return new AjaxResult(500, message.toString());
         }
         boolean meCreateTran = false;
-        if (!dao.isTraning()){
+        if (!dao.isTransacting()){
             meCreateTran = true;
             dao.beginTran();
         }
@@ -1200,7 +1220,7 @@ public class SaveAction{
             if (record == null) return new AjaxResult(500, message.toString());
         }
         boolean meCreateTran = false;
-        if (!dao.isTraning()) {
+        if (!dao.isTransacting()) {
             meCreateTran = true;
             dao.beginTran();
         }

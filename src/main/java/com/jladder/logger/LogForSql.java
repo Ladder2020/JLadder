@@ -2,15 +2,18 @@ package com.jladder.logger;
 
 import com.jladder.Ladder;
 import com.jladder.actions.impl.EnvAction;
+import com.jladder.configs.Configure;
 import com.jladder.data.Record;
 import com.jladder.db.DbParameter;
 import com.jladder.db.Rs;
 import com.jladder.db.SqlText;
 import com.jladder.lang.Json;
+import com.jladder.lang.Machine;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
 import com.jladder.web.WebContext;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -18,6 +21,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class LogForSql {
+    private String site;
+    private String watchpoint;
     /**
      * 执行类型
      */
@@ -163,9 +168,6 @@ public class LogForSql {
     /// 实例化
     /// </summary>
     public LogForSql(){}
-    /// <summary>
-    ///
-    /// </summary>
 
     /**
      * 实例化
@@ -176,10 +178,15 @@ public class LogForSql {
         this.sqltext = sqltext.cmd;
         if (Rs.isBlank(sqltext.parameters)) return;
         Record dic = new Record();
-        sqltext.parameters.forEach(x -> dic.put(x.name, x.value));
+        sqltext.parameters.forEach(x -> {
+            if(x.value instanceof InputStream)return;
+            if(x.value instanceof byte[])return;
+            dic.put(x.name, x.value);
+        });
         this.data = dic.toString();
         this.requestmark = WebContext.getMark();
         setType(sqltext.cmd);
+        if("select".equals(type))this.sqltext=sqltext.toString();
     }
     public LogForSql setEnd(){
         return setEnd(false);
@@ -203,6 +210,12 @@ public class LogForSql {
         requestmark=WebContext.getMark();
         if(Strings.isBlank(this.type))setType(this.sqltext);
         if(Strings.isBlank(visitor))visitor = EnvAction.getEnvValue("username");
+        watchpoint = Configure.getString("_MachineInfo_CPUID_");
+        if(Strings.isBlank(watchpoint)){
+            watchpoint= Machine.getCpuId();
+            Configure.put("_MachineInfo_CPUID_",watchpoint);
+        }
+        site=Ladder.Settings().getSite();
         return this;
     }
     public LogForSql setData(List<DbParameter> data) {
@@ -239,5 +252,13 @@ public class LogForSql {
         List<StackTraceElement> stacks = Arrays.stream(e.getStackTrace()).limit(25).collect(Collectors.toList());
         stacks.forEach(x->this.stacktrace+=x.getClassName()+"$"+x.getMethodName()+"("+x.getLineNumber()+")"+System.lineSeparator());
         setEnd(true).setCause(e.getMessage());
+    }
+
+    public String getSite() {
+        return site;
+    }
+
+    public void setSite(String site) {
+        this.site = site;
     }
 }

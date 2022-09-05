@@ -34,13 +34,24 @@ public class Json {
     }
     public static <T> T toObject(String json,Class<T> clazz){
         if(Strings.isBlank(json))return null;
-        T jsonObject = JSONObject.parseObject(json,clazz);
-        return jsonObject;
+        try{
+            T jsonObject = JSONObject.parseObject(json,clazz);
+            return jsonObject;
+        }catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
+
+
     }
     public static <T> T toObject(CharSequence json, TypeReference<T> type){
         if(Strings.isBlank(json))return null;
-        T jsonObject = JSONObject.parseObject(json.toString(),type.getType());
-        return jsonObject;
+        try{
+            T jsonObject = JSONObject.parseObject(json.toString(),type.getType());
+            return jsonObject;
+        }catch (Exception e){
+            throw e;
+        }
     }
 
 //    public static <T> T toObject(CharSequence json, Type type){

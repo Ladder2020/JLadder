@@ -45,6 +45,18 @@ public class BaseUserInfo implements Serializable {
     /// 密钥
     /// </summary>
     private String secret;
+    /**
+     * 信息存储位置
+     */
+    private String storage;
+
+
+
+    /**
+     * 平台代码,也是租户代码，默认开发着平台
+     */
+    public String company;
+
 
     public BaseUserInfo() {
     }
@@ -111,5 +123,30 @@ public class BaseUserInfo implements Serializable {
 
     public void setSign(String sign) {
         this.sign = sign;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getStorage() {
+        if(storage==null)return "";
+        return storage;
+    }
+
+    public void setStorage(String storage) {
+        this.storage = storage;
+    }
+
+    public String getCompany() {
+        return company;
+    }
+
+    public void setCompany(String company) {
+        this.company = company;
     }
 }

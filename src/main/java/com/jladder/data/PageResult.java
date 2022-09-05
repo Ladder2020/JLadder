@@ -1,14 +1,15 @@
 package com.jladder.data;
 import java.util.List;
 import java.util.Map;
-/// <summary>
-/// 分页查询结果集类
-/// </summary>
-public class PageResult extends BasicPageResult
-{
-    /// <summary>
-    /// 条件对象文本
-    /// </summary>
+/**
+ * 分页查询结果集类
+ * @author YiFeng
+ */
+
+public class PageResult extends BasicPageResult {
+    /**
+     * 条件对象文本
+     */
     public Record condition= new Record();
     /// <summary>
     /// 全字段
@@ -65,7 +66,7 @@ public class PageResult extends BasicPageResult
         record.put("records", records);
         record.put("columns", columns);
         record.put("fullcolumns", fullcolumns);
-        return new AjaxResult(statusCode).setData(record);
+        return new AjaxResult().set(statusCode,message).setData(record);
     }
 }
 

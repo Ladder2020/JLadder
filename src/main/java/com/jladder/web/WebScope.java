@@ -38,8 +38,7 @@ public class WebScope {
      * @param value 数值
      * @return
      */
-    public static boolean setValue(WebScopeOption option, Object value)
-    {
+    public static boolean setValue(WebScopeOption option, Object value){
         try {
             if(WebContext.isWeb()){
                 WebContext.setAttribute("_webscope_"+option.getName(),value);
@@ -78,6 +77,10 @@ public class WebScope {
             if(v==null)return dvalue;
             else return v;
         }
+    }
+
+    public static boolean ignoreRequestLog(){
+        return setValue(WebScopeOption.IgnoreRequestLog,true);
     }
 
     public static void put(WebScopeOption option,boolean value){

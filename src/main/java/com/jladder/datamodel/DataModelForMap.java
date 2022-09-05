@@ -65,7 +65,7 @@ public class DataModelForMap extends IDataModel{
     /// <summary>
     /// 从数据库sys_data表中获取模版
     /// </summary>
-    public DataModelForMap(String tableName, String param)
+    public DataModelForMap(CharSequence tableName, String param)
     {
         fromDataTable(Dao,tableName, param);
     }
@@ -75,7 +75,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="tableName">键表名</param>
     /// <param name="param">参数</param>
     /// <param name="ispass">是否通过</param>
-    public DataModelForMap(String tableName, String param, int ret)
+    public DataModelForMap(CharSequence tableName, String param, int ret)
     {
         ret = fromDataTable(Dao,tableName, param);
     }
@@ -84,7 +84,7 @@ public class DataModelForMap extends IDataModel{
     /// </summary>
     /// <param name="dao">数据库操作对象</param>
     /// <param name="tableName">键表名</param>
-    public DataModelForMap(IDao dao, String tableName)
+    public DataModelForMap(IDao dao, CharSequence tableName)
     {
         fromDataTable(dao, tableName, null);
     }
@@ -94,7 +94,7 @@ public class DataModelForMap extends IDataModel{
     /// <param name="dao">数据库操作对象</param>
     /// <param name="tableName">键表名</param>
     /// <param name="param">参数文本列表</param>
-    public DataModelForMap(IDao dao, String tableName, String param)
+    public DataModelForMap(IDao dao, CharSequence tableName, String param)
     {
         if (Strings.isBlank(tableName)) return;
         fromDataTable(dao, tableName, param);
@@ -103,7 +103,7 @@ public class DataModelForMap extends IDataModel{
     /// 从数据键名构造
     /// </summary>
     /// <param name="tableName"></param>
-    public DataModelForMap(String tableName)
+    public DataModelForMap(CharSequence tableName)
     {
         fromDataTable(Dao, tableName, null);
     }
@@ -414,12 +414,12 @@ public class DataModelForMap extends IDataModel{
     /**
      * 从模版实体类中获取
      * @param dao 数据库操作对象
-     * @param tableName 键表名
+     * @param table 键表名
      * @param param 参数列表
      * @return
      */
-    public int fromDataTable(IDao dao, String tableName, String param){
-        if(Strings.isBlank(tableName))return -1;
+    public int fromDataTable(IDao dao, CharSequence table, String param){
+        if(Strings.isBlank(table))return -1;
         boolean isuseTemplateConn = false;
         if (dao == null) dao = Dao;
         if (dao == null){
@@ -427,6 +427,7 @@ public class DataModelForMap extends IDataModel{
             dao = DaoSeesion.GetDao(Ladder.Settings().getTemplateConn());
         }
         if (dao != null) Dao = dao;
+        String tableName=table.toString();
         if (tableName.startsWith("{") && tableName.endsWith("}")){
             Record dic = Json.toObject(tableName,Record.class);
             int result = -1;
@@ -525,7 +526,19 @@ public class DataModelForMap extends IDataModel{
             Record re;
             synchronized (lock){
                 dao.setTag("DataModel");
-                re = dao.fetch(new SqlText("select * from " +Ladder.Settings().getTemplateTableName()  + " where name=@name","name",tableName));
+                String wraptext = "";
+                DbDialectType _dialect = dao.getDialect();
+                if(DataModelType.Table.equals(Type) && _dialect!=null){
+                    switch (_dialect){
+                        case MYSQL:
+                            wraptext = "`";
+                            break;
+                        case PostgreSql:
+                            wraptext = "\"";
+                            break;
+                    }
+                }
+                re = dao.fetch(new SqlText("select * from " +Ladder.Settings().getTemplateTableName()  + " where "+wraptext+"name"+wraptext+"=@name","name",tableName));
             }
             if (re == null) return 0;
             Raw.Scheme = "template";
@@ -1373,6 +1386,9 @@ public class DataModelForMap extends IDataModel{
         String wraptext = "";
         if (DataModelType.Table.equals(Type) && DbDialectType.MYSQL.equals(DbDialect)){
             wraptext = "`";
+        }
+        if (DataModelType.Table.equals(Type) && DbDialectType.PostgreSql.equals(DbDialect)){
+            wraptext = "\"";
         }
         String finalWraptext = wraptext;
         columns.forEach((x, y)->{

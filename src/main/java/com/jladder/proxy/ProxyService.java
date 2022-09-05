@@ -1,10 +1,11 @@
 package com.jladder.proxy;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.jladder.web.WebScope;
 import com.jladder.actions.impl.QueryAction;
 import com.jladder.actions.impl.SaveAction;
+import com.jladder.actions.impl.ScriptAction;
 import com.jladder.data.*;
+import com.jladder.data.Record;
 import com.jladder.db.Cnd;
 import com.jladder.db.Rs;
 import com.jladder.db.SqlText;
@@ -13,18 +14,18 @@ import com.jladder.entity.DbProxy;
 import com.jladder.hub.DataHub;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
-import com.jladder.lang.Collections;
-import com.jladder.lang.script.Script;
+import com.jladder.script.Script;
 import com.jladder.logger.LogFoRequest;
-import com.jladder.logger.LogOption;
 import com.jladder.logger.Logs;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.openapi30.Operation;
 import com.jladder.openapi30.PathItem;
 import com.jladder.web.WebContext;
-import org.apache.commons.logging.Log;
-
-import java.util.*;
+import com.jladder.web.WebScope;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 public class ProxyService {
 
@@ -63,14 +64,14 @@ public class ProxyService {
             }
             if (Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Head) || Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Error) || Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Follow))
             {
-                running.trace.put("head", Json.toJson(header));
+                running.trace.put("head", Json.toJson(running.header));
             }
             //是否忽略请求日志
             if (!Maths.isBitEq1(config.raw.logoption,ProxyLogOption.Ignore)) {
                 running.requesting = new LogFoRequest();
                 running.requesting.type=authinfo == null ? "proxy" : authinfo.mode;
                 running.requesting.path=config.raw.name;
-                running.requesting.header= Json.toJson(header.match((x, y) -> x.startsWith("_")));
+                running.requesting.header= Json.toJson(running.header.match((x, y) -> x.startsWith("_")));
                 running.requesting.userinfo =(authinfo == null ? "" : authinfo.username + (Strings.isBlank(authinfo.withwho) ? "" : "|" + authinfo.withwho));
                 running.requesting.withwho = (authinfo == null ? "" :authinfo.withwho);
                 running.requesting.uuid = running.uuid;
@@ -82,7 +83,7 @@ public class ProxyService {
                 running.trace.put("info", "版本号:" + config.raw.version + System.lineSeparator()
                         + "加密方式:" + config.raw.type + System.lineSeparator()
 //                        + "关联请求ID:" + WebScope.getRequestMark() + System.lineSeparator()
-                        + "客户端Ip:" + header.getString("ladder-client-ip")
+                        + "客户端Ip:" + running.header.getString("ladder-client-ip")
 //                        + "请求地址:" + WebContext.Current?.Request.Path.Value
                 );
             }
@@ -91,7 +92,6 @@ public class ProxyService {
             //region 用户参数映射列表,无用户级参数配置，直接把请求数据传递给调用级数据
             String ignoreLogKeys = "";
             if (!Rs.isBlank(config.mappings)){
-                config.mappings.sort(Comparator.comparing(x -> x.level));
                 for (ProxyMapping mapping : config.mappings){
                     String key = data.haveKey(mapping.paramname);
                     if (Strings.isBlank(key) && "0".equals(mapping.ignore)) return end(new AjaxResult(400, "参数不足"+mapping.paramname), running);
@@ -173,7 +173,6 @@ public class ProxyService {
             ignoreLogKeys = "";
             if (!Rs.isBlank(config.params)){
                 Record newparamData = new Record();
-                config.params.sort(Comparator.comparing(x->x.level));
                 //调用环境参数列表
                 for (ProxyParam param : config.params){
                     String key = running.paramdata.haveKey(param.paramname);
@@ -192,8 +191,7 @@ public class ProxyService {
                                 stringvalue = Times.getDate();
                             if (Regex.isMatch(stringvalue, "^\\$((datetime)|(now))$"))
                                 stringvalue = Times.getNow();
-                            if (Regex.isMatch(stringvalue, "^\\d*$"))
-                            {
+                            if (Regex.isMatch(stringvalue, "^\\d*$")){
                                 stringvalue = Times.sD(Times.D(Long.parseLong(stringvalue)));
                             }
                         }
@@ -286,16 +284,16 @@ public class ProxyService {
             //替换参数
             if(funinfo.param!=null)funinfo.param.forEach((k,v) -> running.paramdata.put(k, v));
             //配置调用环境类型直接返回结果
-            if (Strings.isBlank(funinfo.type)) return end(res.Ok().setData(funinfo), running);
+            if (Strings.isBlank(funinfo.type)) return end(res.ok().setData(funinfo), running);
             //region 转换调用环境的数据，包括Data和Head
 
-            ReStruct<Record, Record> tResult = WebHub.CrossAccess.DoTransition(running.paramdata, config, env, header);
+            ReStruct<Record, Record> tResult = WebHub.CrossAccess.doTransition(running.paramdata, config, env, running.header);
             if (!tResult.isSuccess()) return end(res.set(506, "不具备调用执行条件[0300]"), running);
             running.paramdata = tResult.getA();
-            header = tResult.getB();
+            running.header=tResult.getB();;
             //endregion
             //region 处理过程事件
-            AjaxResult callResult = WebHub.CrossAccess.OnCall(config, running.paramdata, header, authinfo);
+            AjaxResult callResult = WebHub.CrossAccess.onCall(config, running.paramdata, running.header, authinfo);
             if (callResult != null) return end(callResult, running);
             //endregion
             switch (funinfo.type.toLowerCase()){
@@ -375,7 +373,7 @@ public class ProxyService {
                             def = ri.funinfo;
                             continue;
                         }
-                        boolean ret = Script.eval(Strings.mapping(Strings.mapping(ri.condition,running.paramdata, false),header),Boolean.class);
+                        boolean ret = Script.eval(Strings.mapping(Strings.mapping(ri.condition,running.paramdata, false),running.header),Boolean.class);
                         if (ret)
                         {
                             funinfo = ri.funinfo;
@@ -420,6 +418,7 @@ public class ProxyService {
             return new AjaxResult(400, "未进行有效处理[0390]");
         }
         catch (Exception e){
+            System.out.println(running.config.name);
             e.printStackTrace();
             //Logs.Write(new LogForError(e.Message) { StackTrace = e.StackTrace, Module = config.Name, Type = "Proxy" }, LogOption.Error);
             AjaxResult result = new AjaxResult(500, e.toString()).setXData(Core.getStackTrace(e));
@@ -447,7 +446,7 @@ public class ProxyService {
             if (!running.config.checkOption(ProxyLogOption.Head) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("head");
             if (!running.config.checkOption(ProxyLogOption.Call) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("call");
             if (!running.config.checkOption(ProxyLogOption.Info) && !running.config.checkOption(ProxyLogOption.Follow)) running.trace.delete("info");
-            if (running.config.checkOption(ProxyLogOption.Result) && !running.config.checkOption(ProxyLogOption.Follow)){
+            if (running.config.checkOption(ProxyLogOption.Result) || running.config.checkOption(ProxyLogOption.Follow)){
                 if (running.requesting != null) running.requesting.result = Json.toJson(result);
                 running.trace.put("result", Json.toJson(result));
             }
@@ -473,7 +472,7 @@ public class ProxyService {
                 if (maxint > 0) DataHub.WorkCache.addModuleCache(running.hashcode, result, "_Proxy_Idempotency_",maxint);
             }
         }
-        result = WebHub.CrossAccess.OnResult(result, running.config, running.paramdata, running.header, running.uuid, running.authinfo);
+        result = WebHub.CrossAccess.onResult(result, running.config, running.paramdata, running.header, running.uuid, running.authinfo);
         try{
             //控制节点路径
             List<ProxyRule> rule_list = running.config.getRules(ProxyRuleOption.NodePath, running.authinfo);
@@ -524,132 +523,124 @@ public class ProxyService {
      */
     private static AjaxResult call(ProxyFunctionInfo funInfo, ProxyRunning running){
         ///region 进行环境方法调用
-        switch (funInfo.type.toLowerCase())
-        {
+        switch (funInfo.type.toLowerCase()){
             ///region 类库方法
             case "lib":
                 AjaxResult ret; //处理的返回结果
                 Object rev = null;
-                switch (funInfo.functionname.toLowerCase())
-            {
-                case "getbean":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    ret = QueryAction.getBean(running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getString("columns", true),
-                            running.paramdata.getString("param", true),
-                            running.paramdata.getString("rel", true)
-                    );
-                    return ret;
-                case "getdata":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    ret = QueryAction.getData(
-                            running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getString("columns", true),
-                            running.paramdata.getString("param", true),
-                            running.paramdata.getString("rel", true)
-                    );
-                    return ret;
-                case "getvalues":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    rev = QueryAction.getValues(
-                            running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("columns", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getString("param", true)
-                            );
-                    return rev == null
-                            ? new AjaxResult(new AjaxResult(404))
-                            : new AjaxResult(new AjaxResult(rev));
-                case "getvalue":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    ret = QueryAction.getValue(
-                            running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("columns", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getString("param", true), ""
-                    );
-                    return ret;
-                case "querydata":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    ret = QueryAction.queryData(
-                            running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getInt("psize", true),
-                            running.paramdata.getString("param", true),
-                            running.paramdata.getString("columns", true)
-                    );
-                    return ret;
-                case "savebean":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),running.paramdata.getString("conn"));
+                switch (funInfo.functionname.toLowerCase()){
+                    case "getbean":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        ret = QueryAction.getBean(running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getString("columns", true),
+                                running.paramdata.getString("param", true),
+                                running.paramdata.getString("rel", true)
+                        );
+                        return ret;
+                    case "getdata":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        ret = QueryAction.getData(
+                                running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getString("columns", true),
+                                running.paramdata.getString("param", true),
+                                running.paramdata.getString("rel", true)
+                        );
+                        return ret;
+                    case "getvalues":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        rev = QueryAction.getValues(
+                                running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("columns", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getString("param", true)
+                                );
+                        return rev == null ? new AjaxResult(new AjaxResult(404)): new AjaxResult(new AjaxResult(rev));
+                    case "getvalue":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        ret = QueryAction.getValue(
+                                running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("columns", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getString("param", true), ""
+                        );
+                        return ret;
+                    case "querydata":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        ret = QueryAction.queryData(
+                                running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getInt("psize", true),
+                                running.paramdata.getString("param", true),
+                                running.paramdata.getString("columns", true)
+                        );
+                        return ret;
+                    case "savebean":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),running.paramdata.getString("conn"));
 
-                    ret = SaveAction.saveBean(
-                            running.paramdata.getString("tableName",true),
-                            running.paramdata.getString("bean", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getInt("option", true),
-                            running.paramdata.getString("rel", true),true);
-                    return ret;
-                case "getcount":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    long count = QueryAction.getCount(running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("condition", true), running.paramdata.getString("param", true));
-                    ret = new AjaxResult().setData(count);
-                    return ret;
-                case "getpagedata":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
-                                running.paramdata.getString("conn"));
-                    ret = QueryAction.getPageData(
-                            running.paramdata.getString("tableName", true),
-                            running.paramdata.getString("condition", true),
-                            running.paramdata.getString("columns", true),
-                            running.paramdata.getString("param", true),
-                            running.paramdata.getInt("start"),
-                            running.paramdata.getInt("pageNumber"),
-                            running.paramdata.getInt("psize"),
-                            running.paramdata.getInt("recordCount", true)
-                    );
-                    return ret;
-                case "savebeans":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.setConn(running.paramdata.getString("conn"));
-                    ret = SaveAction.saveBeans(running.paramdata.getString("settings,beans"),true);
-                    return ret;
-                case "querys":
-                    if (Strings.hasValue(running.paramdata.getString("conn")))
-                        WebScope.setConn(running.paramdata.getString("conn"));
-                    ret = QueryAction.querys(running.paramdata.getString("settings,beans"));
-                    return ret;
-            }
-            break;
+                        ret = SaveAction.saveBean(
+                                running.paramdata.getString("tableName",true),
+                                running.paramdata.getString("bean", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getInt("option", true),
+                                running.paramdata.getString("rel", true),true);
+                        return ret;
+                    case "getcount":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),
+                                    running.paramdata.getString("conn"));
+                        long count = QueryAction.getCount(running.paramdata.getString("tableName", true),running.paramdata.getString("condition", true), running.paramdata.getString("param", true));
+                        ret = new AjaxResult().setData(count);
+                        return ret;
+                    case "getpagedata":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.SetDataModelConn(running.paramdata.getString("tableName", true),running.paramdata.getString("conn"));
+                        ret = QueryAction.getPageData(
+                                running.paramdata.getString("tableName", true),
+                                running.paramdata.getString("condition", true),
+                                running.paramdata.getString("columns", true),
+                                running.paramdata.getString("param", true),
+                                running.paramdata.getInt("start"),
+                                running.paramdata.getInt("pageNumber"),
+                                running.paramdata.getInt("psize"),
+                                running.paramdata.getString("recordCount", true)
+                        );
+                        return ret;
+                    case "savebeans":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.setConn(running.paramdata.getString("conn"));
+                        ret = SaveAction.saveBeans(running.paramdata.getString("settings,beans"),true);
+                        return ret;
+                    case "querys":
+                        if (Strings.hasValue(running.paramdata.getString("conn")))
+                            WebScope.setConn(running.paramdata.getString("conn"));
+                        ret = QueryAction.querys(running.paramdata.getString("settings,beans"));
+                        return ret;
+                }
+                break;
             case "sql":
                 if (Strings.isBlank(funInfo.code)) return new AjaxResult(500, "执行命令不能空");
                 Dao dao = new Dao(funInfo.path);
-                try
-                {
+                try{
                     Object dat = null;
-                    switch (funInfo.functionname.toLowerCase())
-                    {
+                    switch (funInfo.functionname.toLowerCase()){
                         case "getvalue":
                             dat = dao.getValue(new SqlText(Strings.mapping(HttpHelper.decode(funInfo.code),running.paramdata)),String.class);
                             break;
                         case "getvalues":
-                            //dat = dao.getValues(new SqlText(Strings.mapping(HttpHelper.decode(funInfo.code),running.paramdata)));
+                            dat = dao.getValues(new SqlText(Strings.mapping(HttpHelper.decode(funInfo.code),running.paramdata)));
                             break;
                         case "getdata":
                             dat = dao.query(new SqlText(Strings.mapping(HttpHelper.decode(funInfo.code),running.paramdata)));
@@ -663,47 +654,50 @@ public class ProxyService {
                     }
                     return Strings.isBlank(dao.getErrorMessage()) ? new AjaxResult().setData(dat) : new AjaxResult(500, "执行错误").setXData(dao.getErrorMessage());
                 }
-                catch (Exception e)
-                {
+                catch (Exception e){
                     return new AjaxResult(500, "执行错误").setXData(e.getMessage());
                 }
-                finally
-                {
+                finally{
                     dao.close();
                 }
                 ///endregion
                 ///region 内部应用环境
-
             case "controller":
-                Receipt handleresult = Refs.invoke(funInfo.path, running.paramdata,null);
+                Receipt handleresult = Refs.invoke(funInfo.path,Core.or(funInfo.uri,funInfo.functionname),running.paramdata);
                 return handleresult.result ? new AjaxResult(handleresult.data) : new AjaxResult(500).setMessage(handleresult.message);
             case "script":
-
-                break;
+                {
+                    if(Strings.isBlank(funInfo.code))return new AjaxResult(500).setMessage("脚本指令为空[0670]");
+                    String token = Security.md5(funInfo.code);
+                    Receipt<Script> ret_script = ScriptAction.createScript("Proxy_Script_" + token, Security.decryptByBase64(funInfo.code));
+                    if(!ret_script.isSuccess())return ret_script.toResult();
+                    Receipt<Object> ret_rr = ret_script.getData().invoke(funInfo.functionname, running.paramdata.values().toArray());
+                    if(!ret_rr.isSuccess())return ret_rr.toResult();
+                    return new AjaxResult().setData(ret_rr.getData()).setDataType(AjaxResultDataType.Variant);
+                }
             //内部程序
             case "service":
             case "services":
-            {
-                Receipt result = Refs.invoke(funInfo.path, running.paramdata, null);
-                return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
-            }
+                {
+                    Receipt result = Refs.invoke(funInfo.path,Core.or(funInfo.uri,funInfo.functionname), running.paramdata);
+                    return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
+                }
             case "program":
-            {
-                Receipt result = Refs.invoke(funInfo.path, running.paramdata, funInfo.functionname);
-                return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
-            }
+                {
+                    Receipt result = Refs.invoke(funInfo.path,funInfo.functionname, running.paramdata);
+                    return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
+                }
             case "replace":
-            {
-                ProxyConfig rconigs = getProxyConfig(funInfo.functionname, funInfo.uri);
-                return rconigs == null ? new AjaxResult(506, "未找到相应调用环境") : ProxyService.execute(rconigs, running.paramdata, running.envcode, running.header, running.authinfo,null);
-            }
+                {
+                    ProxyConfig rconigs = getProxyConfig(funInfo.functionname, funInfo.uri);
+                    return rconigs == null ? new AjaxResult(506, "未找到相应调用环境") : ProxyService.execute(rconigs, running.paramdata, running.envcode, running.header, running.authinfo,null);
+                }
                 ///endregion
                 ///region 网络请求
-
             case "httpjson":
             case "postjson":{
                 fillLadderHeader(running);
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
+                Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
                 if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
@@ -721,10 +715,10 @@ public class ProxyService {
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
                         //WebReply.SetContentTypeToJson();
-                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
+                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType(AjaxResultDataType.Json) : new AjaxResult().setData(Json.toObject(retText)).setDataType(AjaxResultDataType.Json);
                     }
                     else{
-                        return new AjaxResult().setData(retText).setDataType("html");
+                        return new AjaxResult().setData(retText).setDataType(AjaxResultDataType.Text);
                     }
                 }
             }
@@ -733,7 +727,7 @@ public class ProxyService {
             case "get":
             case "web":{
                 fillLadderHeader(running);
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
+                Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
                 if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
@@ -743,7 +737,7 @@ public class ProxyService {
                     re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
                 }
                 if (!re.isSuccess()){
-                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httpget");
+                    Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httpget");
                     return new AjaxResult(505, re.message+"[0754]").setData(re.data);
                 }
                 else {
@@ -751,47 +745,47 @@ public class ProxyService {
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
 //                        WebReply.SetContentTypeToJson();
-                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
+                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType(AjaxResultDataType.Json) : new AjaxResult().setData(Json.toObject(retText)).setDataType(AjaxResultDataType.Json);
                     }
                     else{
-                        return new AjaxResult().setData(retText).setDataType("html");
+                        return new AjaxResult().setData(retText).setDataType(AjaxResultDataType.Text);
                     }
                 }
             }
             case "httppost":
             case "post":
             case "webpost":
-            {
-                fillLadderHeader(running);
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
-                if (!rpath.result) return new AjaxResult(501, rpath.message);
-                Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
-                    re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
-                }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
-                    re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
-                }
-                if (!re.isSuccess()){
-                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httppost");
-                    return new AjaxResult(505, re.message+"[0791]").setData(re.data);
-                }
-                else{
-                    String  retText = re.data;
-                    boolean isJson = Strings.isJson(retText);
-                    if (isJson){
-//                        WebReply.SetContentTypeToJson();
-                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
+                {
+                    fillLadderHeader(running);
+                    Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
+                    if (!rpath.result) return new AjaxResult(501, rpath.message);
+                    Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
+                    if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
+                        re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
+                    }
+                    if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
+                        re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
+                    }
+                    if (!re.isSuccess()){
+                        Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httppost");
+                        return new AjaxResult(505, re.message+"[0791]").setData(re.data);
                     }
                     else{
-                        return new AjaxResult().setData(retText).setDataType("html");
+                        String  retText = re.data;
+                        boolean isJson = Strings.isJson(retText);
+                        if (isJson){
+    //                        WebReply.SetContentTypeToJson();
+                            return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType(AjaxResultDataType.Json) : new AjaxResult().setData(Json.toObject(retText)).setDataType(AjaxResultDataType.Json);
+                        }
+                        else{
+                            return new AjaxResult().setData(retText).setDataType(AjaxResultDataType.Text);
+                        }
                     }
                 }
-            }
             case "upload":
             case "httpupload":{
                 fillLadderHeader(running);
-                Receipt<String> rpath = WebHub.CrossAccess.DoPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
+                Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
                 if (!rpath.result) return new AjaxResult(501, rpath.message);
                 List<UploadFile> files = new ArrayList<UploadFile>();
                 Record ps = new Record();
@@ -818,7 +812,7 @@ public class ProxyService {
                     re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
                 }
                 if (!re.isSuccess()){
-                    Logs.writeLog("错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_upload");
+                    Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_upload");
                     return new AjaxResult(505, re.message);
                 }
                 else{
@@ -826,8 +820,8 @@ public class ProxyService {
                         StringBuilder uploadlog = new StringBuilder("上传文件个数:" + files.size() + System.lineSeparator());
                         files.forEach(fileinfo ->{
                             if (fileinfo == null) return;
-                            String savefilename = Times.timestamp()+"_" + fileinfo.getFilename();
-                            uploadlog.append("文件名:"+fileinfo.getFilename()+";表单名:"+fileinfo.getFormname()+";文件码:"+fileinfo.getFilecode()+";Md5:"+fileinfo.getMd5() + System.lineSeparator());
+                            String savefilename = Times.timestamp()+"_" + fileinfo.getFileName();
+                            uploadlog.append("文件名:"+fileinfo.getFileName()+";表单名:"+fileinfo.getFormName()+";文件码:"+fileinfo.getFileCode()+";Md5:"+fileinfo.getMd5() + System.lineSeparator());
                             uploadlog.append("文件保存到:"+savefilename + System.lineSeparator());
                             //fileinfo.SaveAs(Logs.GetCatalogDir("Proxy/" + running.config.name + "/Files/") + savefilename);
                         });
@@ -836,10 +830,10 @@ public class ProxyService {
                     String  retText = re.data;
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
-                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType("json") : new AjaxResult().setData(Json.toObject(retText)).setDataType("json");
+                        return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType(AjaxResultDataType.Json) : new AjaxResult().setData(Json.toObject(retText)).setDataType(AjaxResultDataType.Json);
                     }
                     else{
-                        return new AjaxResult().setData(retText).setDataType("html");
+                        return new AjaxResult().setData(retText).setDataType(AjaxResultDataType.Text);
                     }
                 }
             }
@@ -850,26 +844,26 @@ public class ProxyService {
             case "result":
                 return new AjaxResult().setData(funInfo.result);
             case "random":
-            {
-                if (funInfo.result == null) return new AjaxResult(404, "无数据结果");
-                if (funInfo.result instanceof List){
-                    List al = (List)funInfo.result;
-                    return al.size() == 0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
+                {
+                    if (funInfo.result == null) return new AjaxResult(404, "无数据结果");
+                    if (funInfo.result instanceof List){
+                        List al = (List)funInfo.result;
+                        return al.size() == 0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
+                    }
+                    if (funInfo.result instanceof String) {
+                        List al = Json.toObject(funInfo.result.toString(),List.class);
+                        return al.size()==0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
+                    }
+                    String jsontext = Json.toJson(funInfo.result);
+                    if (jsontext.startsWith("{") && jsontext.endsWith("}")){
+                        return new AjaxResult().setData(funInfo.result);
+                    }
+                    else if (jsontext.startsWith("[") && jsontext.endsWith("]")){
+                        List al = Json.toObject(jsontext, List.class);
+                        return al.size()==0? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
+                    }
+                    return new AjaxResult(404, "无数据结果");
                 }
-                if (funInfo.result instanceof String) {
-                    List al = Json.toObject(funInfo.result.toString(),List.class);
-                    return al.size()==0 ? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
-                }
-                String jsontext = Json.toJson(funInfo.result);
-                if (jsontext.startsWith("{") && jsontext.endsWith("}")){
-                    return new AjaxResult().setData(funInfo.result);
-                }
-                else if (jsontext.startsWith("[") && jsontext.endsWith("]")){
-                    List al = Json.toObject(jsontext, List.class);
-                    return al.size()==0? new AjaxResult(404, "无数据结果") : new AjaxResult().setData(al.get(R.random(0, al.size())));
-                }
-                return new AjaxResult(404, "无数据结果");
-            }
             default:
                 return new AjaxResult().setData(funInfo);
                    //endregion
@@ -1216,7 +1210,7 @@ public class ProxyService {
                 DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","",DbProxy.class);
                 if (bean == null) return null;
                 config = new ProxyConfig(bean);
-                if (!WebHub.CrossAccess.OnConfig(config)) return null;
+                if (!WebHub.CrossAccess.onConfig(config)) return null;
                 DataHub.WorkCache.addProxyCache(key, config);
             }
             else{
@@ -1224,7 +1218,7 @@ public class ProxyService {
                     DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","", DbProxy.class);
                     if (bean != null){
                         newest = new ProxyConfig(bean);
-                        if (!WebHub.CrossAccess.OnConfig(newest)) return null;
+                        if (!WebHub.CrossAccess.onConfig(newest)) return null;
                         DataHub.WorkCache.addProxyCache(key, newest);
                     }
                 }
@@ -1234,13 +1228,13 @@ public class ProxyService {
                     DbProxy bean = QueryAction.getObject("sys_service", new Cnd("name", key),"","",DbProxy.class);
                     if (bean == null) return null;
                     config = new ProxyConfig(bean);
-                    if (!WebHub.CrossAccess.OnConfig(config)) return null;
+                    if (!WebHub.CrossAccess.onConfig(config)) return null;
                     DataHub.WorkCache.addProxyCache(key + version, config);
                 }
                 else{
                     data.put("id", data.getString("serviceid"));
                     config = new ProxyConfig(data.toClass(DbProxy.class));
-                    if (!WebHub.CrossAccess.OnConfig(config)) return null;
+                    if (!WebHub.CrossAccess.onConfig(config)) return null;
                     DataHub.WorkCache.addProxyCache(key + version, config);
                 }
             }

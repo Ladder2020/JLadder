@@ -1,7 +1,6 @@
 package com.jladder.datamodel;
 
 
-import com.alibaba.fastjson.annotation.JSONField;
 import com.jladder.actions.Curd;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
@@ -9,8 +8,8 @@ import com.jladder.db.Cnd;
 import com.jladder.db.IDao;
 import com.jladder.db.SqlText;
 import com.jladder.db.enums.DbDialectType;
-import com.jladder.db.jdbc.OrderBy;
 import com.jladder.db.jdbc.GroupBy;
+import com.jladder.db.jdbc.OrderBy;
 import com.jladder.entity.DBMagic;
 import com.jladder.entity.DataModelTable;
 
@@ -152,7 +151,7 @@ public abstract class  IDataModel
     /// <param name="tableName">键表名</param>
     /// <param name="param">参数列表</param>
     /// <returns></returns>
-    public abstract int fromDataTable(IDao dao, String tableName, String param);
+    public abstract int fromDataTable(IDao dao, CharSequence tableName, String param);
 
     /// <summary>
     /// 从模版实体类中获取

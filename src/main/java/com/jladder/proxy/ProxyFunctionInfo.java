@@ -1,6 +1,9 @@
 package com.jladder.proxy;
 
+import com.alibaba.fastjson.JSONObject;
 import com.jladder.data.Record;
+import com.jladder.lang.Json;
+import com.jladder.lang.TypeReference;
 
 import java.util.List;
 
@@ -69,4 +72,27 @@ public class ProxyFunctionInfo {
      * 参数列表[方法的入口参数结构]
      */
     public List<ProxyParam> paramater;
+
+
+    public ProxyFunctionInfo(){
+
+    }
+    public ProxyFunctionInfo(String json){
+        JSONObject dt = Json.toObject(json, JSONObject.class);
+        this.id=dt.getString("id");
+        this.type=dt.getString("type");
+        this.project=dt.getString("project");
+        this.uri=dt.getString("uri");
+        this.path=dt.getString("path");
+        this.functionname=dt.getString("functionname");
+        this.express=dt.getString("express");
+        this.descr=dt.getString("descr");
+        this.updatetime=dt.getString("updatetime");
+        this.createtime=dt.getString("createtime");
+        this.code=dt.getString("code");
+        this.transition=Record.parse(dt.get("transition"));
+        this.result=dt.get("result");
+        this.param=Record.parse(dt.get("param"));
+        this.paramater=Json.toObject(dt.getString("paramater"), new TypeReference<List<ProxyParam>>() {});
+    }
 }

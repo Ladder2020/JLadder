@@ -167,16 +167,19 @@ public abstract class DataSourceFactory  implements Closeable, Serializable {
      * @since 4.1.3
      */
     private static DataSourceFactory doCreate(DbInfo info) {
-        try {
-            return new DataSourceByHikari(info);
-        } catch (NoClassDefFoundError e) {
-            // ignore
-        }
+
         try {
             return new DataSourceByDruid(info);
         } catch (NoClassDefFoundError e) {
             // ignore
         }
+
+        try {
+            return new DataSourceByHikari(info);
+        } catch (NoClassDefFoundError e) {
+            // ignore
+        }
+
         try {
             return new DataSourceByEmpty(info);
         } catch (NoClassDefFoundError e) {

@@ -1,0 +1,40 @@
+{
+  "properties": [
+    {
+      "name": "spring.ladder.ladderSchema",
+      "type": "java.lang.String",
+      "description": "Ladder框架数据库表模式"
+    },
+    {
+      "name": "spring.ladder.magicTableName",
+      "type": "java.lang.String",
+      "description": "自定义表单数据库表"
+    },
+    {
+      "name": "spring.ladder.proxyConn",
+      "type": "java.lang.String",
+      "description": "接口代理的连接器名称"
+    },
+    {
+      "name": "spring.ladder.proxyTableName",
+      "type": "java.lang.String",
+      "description": "接口代理的数据库表名"
+    },
+    {
+      "name": "spring.ladder.templateConn",
+      "type": "java.lang.String",
+      "description": "模版的连接器名称"
+    },
+    {
+      "name": "spring.ladder.sqlWarnTime",
+      "type": "java.lang.Integer",
+      "description": "sql语句的预警时间,以ms为单位"
+    },
+    {
+      "name": "spring.ladder.analyz",
+      "type": "java.lang.Boolean",
+      "description": "数据分析选项"
+    }
+
+  ]
+}

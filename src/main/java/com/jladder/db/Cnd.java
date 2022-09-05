@@ -76,10 +76,11 @@ public class Cnd {
     }
 
     public Cnd(){}
-    /// <summary>
-    /// 基本构造
-    /// </summary>
-    /// <param name="dm"></param>
+
+    /**
+     * 基本构造
+     * @param dm 数据模型
+     */
     public Cnd(IDataModel dm)
     {
         dialect = DaoSeesion.GetDao().getDialect();
@@ -94,11 +95,17 @@ public class Cnd {
     /**
      * 初始化
      * @param fullColumn 全字段列
-     * @param dialect
+     * @param dialect 数据库方言
      */
     public Cnd(List<Map<String, Object>> fullColumn,DbDialectType dialect){
         this.dialect = dialect;
         initFieldMapping(fullColumn);
+    }
+    public Cnd(boolean can,String propnames,Object value){
+        if(can)this.put(propnames,"=",value);
+    }
+    public Cnd(boolean can,String propnames,String op,Object value){
+        if(can)this.put(propnames,op,value);
     }
     public Cnd(String propnames,Object value){
         this.put(propnames,"=",value);
@@ -106,13 +113,12 @@ public class Cnd {
     public Cnd(String propnames,String op,Object value){
         this.put(propnames,op,value);
     }
-    /// <summary>
-    /// 放置条件
-    /// </summary>
-    /// <param name="cndDic">条件键值对象</param>
-    /// <returns></returns>
-    public Cnd put(Map<String, Object> cndDic)
-    {
+    /**
+     * 放置条件
+     * @param cndDic 条件键值对象
+     * @return
+     */
+    public Cnd put(Map<String, Object> cndDic){
         if (cndDic == null) return this;
         for (Map.Entry<String, Object> item : cndDic.entrySet()){
             if (item.getValue() == null&& !Regex.isMatch(item.getKey(), ":is")) continue;
@@ -161,10 +167,13 @@ public class Cnd {
         return this;
     }
 
-
-    public Cnd put(List<Map<String, Object>> cndArea){
-        for (Map<String, Object> dic : cndArea)
-        {
+    /**
+     * 放置条件
+     * @param area 多组条件
+     * @return
+     */
+    public Cnd put(List<Map<String, Object>> area){
+        for (Map<String, Object> dic : area){
             String name = com.jladder.lang.Collections.getString(dic,"fieldname",null);
             if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name",null);
             if (Strings.isBlank(name)) continue;
@@ -177,18 +186,23 @@ public class Cnd {
         }
         return this;
     }
-    public Cnd put(String conditionText){
-        if (Strings.isBlank(conditionText)) return this;
-        conditionText = conditionText.trim();
-        if (conditionText.length() < 1) return this;
-        conditionText = Regex.replace(conditionText, "^\\s*where\\s*", "");
-        if (Strings.isJson(conditionText,1)){
-            Map<String, Object> cmap = Json.toObject(conditionText,new TypeReference<Map<String,Object>>(){});
+    /**
+     * 放置条件
+     * @param condition 条件文本
+     * @return
+     */
+    public Cnd put(String condition){
+        if (Strings.isBlank(condition)) return this;
+        condition = condition.trim();
+        if (condition.length() < 1) return this;
+        condition = Regex.replace(condition, "^\\s*where\\s*", "");
+        if (Strings.isJson(condition,1)){
+            Map<String, Object> cmap = Json.toObject(condition,new TypeReference<Map<String,Object>>(){});
             return this.put(cmap);
         }
-        if (Strings.isJson(conditionText,2)){
-            if (Regex.isMatch(conditionText, "^\\s*\\[\\s*\\[")){
-                List<List<Map<String, Object>>> list = Json.toObject(conditionText, new TypeReference<List<List<Map<String, Object>>>>(){});
+        if (Strings.isJson(condition,2)){
+            if (Regex.isMatch(condition, "^\\s*\\[\\s*\\[")){
+                List<List<Map<String, Object>>> list = Json.toObject(condition, new TypeReference<List<List<Map<String, Object>>>>(){});
                 Cnd list_condition=new Cnd();
                 list.forEach(li ->{
                     Cnd cnd = new Cnd();
@@ -201,7 +215,7 @@ public class Cnd {
                 return this;
             }
             else{
-                List<Map<String, Object>> list = Json.toObject(conditionText,new TypeReference<List<Map<String, Object>>>(){});
+                List<Map<String, Object>> list = Json.toObject(condition,new TypeReference<List<Map<String, Object>>>(){});
                 for (Map<String, Object> dic : list){
                     String name = com.jladder.lang.Collections.getString(dic,"fieldname",null);
                     if (Strings.isBlank(name)) name = com.jladder.lang.Collections.getString(dic,"name",null);
@@ -216,8 +230,8 @@ public class Cnd {
             }
             return this;
         }
-        if (Strings.hasValue(conditionText)){
-            pushWhereString(conditionText, AND);
+        if (Strings.hasValue(condition)){
+            pushWhereString(condition, AND);
         }
         return this;
     }
@@ -448,7 +462,6 @@ public class Cnd {
             {
                 //获取条件回溯
                 Receipt<SqlText> recall = getDataModelSql(val);
-
                 if (recall.result)
                 {
                     _q = "("; _h = ")";
@@ -595,11 +608,10 @@ public class Cnd {
             if (!Strings.isBlank(tableName)){
                 String query = com.jladder.lang.Collections.getString(dic,"query",null, true);
                 if (Strings.hasValue(query)&& Regex.isMatch(query,"^(1)|(true)$")){
-                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param",""));
-                    if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
-                    dm.matchColumns(com.jladder.lang.Collections.getString(dic,"columns,column,columnstring","", true));
-                    dm.setCondition(com.jladder.lang.Collections.getString(dic,"condition,where","", true));
+//                    IDataModel dm = DaoSeesion.getDataModel(tableName, com.jladder.lang.Collections.getString(dic,"param",""));
+//                    if (dm == null || dm.isNull()) throw Core.makeThrow("回置的数据库不存在");
                     List<String> rst = QueryAction.getValues(tableName, com.jladder.lang.Collections.getString(dic, "columns,column,columnstring","", true), com.jladder.lang.Collections.getString(dic, "condition,where","", true), com.jladder.lang.Collections.getString(dic, "param",""), String.class);
+                    if(rst==null)throw Core.makeThrow("回溯的数据查询异常[0601]");
                     return new SqlText(Strings.arraytext(rst));
                 }
                 else{
@@ -890,7 +902,7 @@ public class Cnd {
         return new Cnd(fullcolumn, dialect).put(record);
     }
     /**
-     *
+     * 获取Where串
      * @param hasWhere
      * @param isFill
      * @return
@@ -903,11 +915,19 @@ public class Cnd {
         }
         return sqlcmd[0];
     }
+
+    /***
+     * 获取数据参数列表
+     * @return
+     */
     public List<DbParameter> getParameters(){
         return this.parameters;
     }
 
     public void clear() {
+        this.whereText="";
+        if(this.parameters!=null)this.parameters.clear();
+        if(this.Most!=null)this.Most.clear();
     }
 
     public Cnd or(Cnd ... cnds) {
@@ -945,6 +965,10 @@ public class Cnd {
         return this;
     }
 
+    /**
+     * 条件是否为空
+     * @return
+     */
     public boolean isBlank() {
         return Strings.isBlank(whereText);
     }

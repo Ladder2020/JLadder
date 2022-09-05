@@ -4,6 +4,7 @@ import com.jladder.data.AjaxResult;
 import com.jladder.data.ReStruct;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
+import com.jladder.hub.DataHub;
 import com.jladder.hub.WebHub;
 import com.jladder.lang.Core;
 import com.jladder.lang.Regex;
@@ -35,7 +36,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="header">请求头数据</param>
     /// <param name="mode">入口模式，和type区别是，一个加密验证类型，一个是用户请求的handler</param>
     /// <returns></returns>
-    public AjaxResult<Record, CrossAccessAuthInfo> DoAuth(HttpServletRequest request,ProxyConfig config, Record data, Record header, String type, String mode) {
+    public AjaxResult<Record, CrossAccessAuthInfo> doAuth(HttpServletRequest request,ProxyConfig config, Record data, Record header, String type, String mode) {
         return new AjaxResult<Record, CrossAccessAuthInfo>().setData(data);
     }
 
@@ -47,7 +48,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="env">环境编号</param>
     /// <param name="header">请求头</param>
     /// <returns></returns>
-    public ReStruct<Record, Record> DoTransition(Record data, ProxyConfig config, int env, Record header) {
+    public ReStruct<Record, Record> doTransition(Record data, ProxyConfig config, int env, Record header) {
 
 
 
@@ -63,7 +64,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="data"></param>
     /// <param name="header"></param>
     /// <returns></returns>
-    public Receipt<String> DoPath(String oldPath, ProxyConfig config, Record data, Record header) {
+    public Receipt<String> doPath(String oldPath, ProxyConfig config, Record data, Record header) {
         return new Receipt(true).setData(oldPath);
     }
 
@@ -75,8 +76,8 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="config">配置信息</param>
     /// <param name="key">密钥</param>
     /// <returns></returns>
-    public CrossAccessAuthInfo CheckPermission(String sign, ProxyConfig config) {
-        return CheckPermission(sign,config,null);
+    public CrossAccessAuthInfo checkPermission(String sign, ProxyConfig config) {
+        return checkPermission(sign,config,null);
     }
 
     /// <summary>
@@ -86,7 +87,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="config">配置信息</param>
     /// <param name="key">密钥</param>
     /// <returns></returns>
-    public CrossAccessAuthInfo CheckPermission(String sign, ProxyConfig config, String key) {
+    public CrossAccessAuthInfo checkPermission(String sign, ProxyConfig config, String key) {
         return CrossAccessAuthInfo.Ok();
     }
 
@@ -96,7 +97,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="result">处理原结果</param>
     /// <param name="config">代理配置信息</param>
     /// <returns></returns>
-    public Object AssertResult(AjaxResult result, ProxyConfig config, CrossAccessAuthInfo userinfo) {
+    public Object assertResult(AjaxResult result, ProxyConfig config, CrossAccessAuthInfo userinfo) {
         return result;
     }
 
@@ -117,7 +118,7 @@ public class BaseCrossAccess implements ICrossAccess {
      * @param follow 跟踪码
      * @return
      */
-    public Object DoRequest(HttpServletRequest request, String mode, String option, ProxyConfig config, Record requestData, Record header, boolean asyn, int env, String callback, boolean reply, String follow) {
+    public Object doRequest(HttpServletRequest request, String mode, String option, ProxyConfig config, Record requestData, Record header, boolean asyn, int env, String callback, boolean reply, String follow) {
 
         if(request==null)request= WebContext.getRequest();
         String mothed = request!=null?request.getMethod():"Get";
@@ -125,7 +126,7 @@ public class BaseCrossAccess implements ICrossAccess {
         Object rett = null;
         //判断请求方式
         if (Strings.hasValue(config.raw.method) && !"all".equals(config.raw.method.toLowerCase())  && !config.raw.method.equals(mothed)) {
-            rett = WebHub.CrossAccess.AssertResult(new AjaxResult(456, "请求方式被拒绝[0124]"), config, null);
+            rett = WebHub.CrossAccess.assertResult(new AjaxResult(456, "请求方式被拒绝[0124]"), config, null);
             if (reply) WebReply.reply(rett);
             return rett;
         }
@@ -134,16 +135,16 @@ public class BaseCrossAccess implements ICrossAccess {
         String entype = config.raw.type;
         if (Strings.isBlank(entype) || entype.equals("0")) entype = option;
         if (entype.equals(option) || entype.equals("2")) {
-            auth = WebHub.CrossAccess.DoAuth(request,config, requestData, header, entype, mode);
+            auth = WebHub.CrossAccess.doAuth(request,config, requestData, header, entype, mode);
             if (auth.success) {
                 requestData = auth.data;
             } else {
-                rett = WebHub.CrossAccess.AssertResult(auth, config, null);
+                rett = WebHub.CrossAccess.assertResult(auth, config, null);
                 if (reply) WebReply.reply(rett);
                 return rett;
             }
         } else {
-            rett = WebHub.CrossAccess.AssertResult(new AjaxResult(601, "请求模式不识别[0142]"), config, null);
+            rett = WebHub.CrossAccess.assertResult(new AjaxResult(601, "请求模式不识别[0142]"), config, null);
             if (reply) WebReply.reply(rett);
             return rett;
         }
@@ -158,7 +159,7 @@ public class BaseCrossAccess implements ICrossAccess {
             authinfo.mode = mode;
         }
 
-        OnRequest(config, requestData, authinfo, header, env);
+        onRequest(config, requestData, authinfo, header, env);
 
         if (asyn && Strings.hasValue(callback)) {
             Record finalRequestData = requestData;
@@ -166,7 +167,7 @@ public class BaseCrossAccess implements ICrossAccess {
             pool.execute(()->{
                 try {
                     AjaxResult result = ProxyService.execute(config, finalRequestData, env, header, finalAuthinfo, null);
-                    Object ret = WebHub.CrossAccess.AssertResult(result, config, finalAuthinfo);
+                    Object ret = WebHub.CrossAccess.assertResult(result, config, finalAuthinfo);
                     if (Strings.isJson(callback,1)) {
                         Record cb = Record.parse(callback);
                         switch (cb.getString("type").toLowerCase())
@@ -198,12 +199,12 @@ public class BaseCrossAccess implements ICrossAccess {
                 }
 
         });
-            rett = WebHub.CrossAccess.AssertResult(new AjaxResult(200, "请从回调中获取结果").setData(callback), config, authinfo);
+            rett = WebHub.CrossAccess.assertResult(new AjaxResult(200, "请从回调中获取结果").setData(callback), config, authinfo);
             if (reply) WebReply.reply(rett);
             return rett;
         } else {
             AjaxResult result = ProxyService.execute(config, requestData, env, header, authinfo, follow);
-            rett = WebHub.CrossAccess.AssertResult(result, config, authinfo);
+            rett = WebHub.CrossAccess.assertResult(result, config, authinfo);
             //执行回调的断言处理
             if (reply) WebReply.reply(rett);
             return rett;
@@ -217,15 +218,15 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="polymer">聚合配置</param>
     /// <param name="running">运行时信息</param>
     /// <returns></returns>
-    public Receipt<List<ProxyFunctionInfo>> FetchPolymFunctions(ProxyConfig config, ProxyPolymer polymer, ProxyRunning running) {
+    public Receipt<List<ProxyFunctionInfo>> fetchPolymFunctions(ProxyConfig config, ProxyPolymer polymer, ProxyRunning running) {
         throw Core.makeThrow("未实现");
     }
 
-    public AjaxResult DoPolymer(ProxyConfig config, ProxyPolymer polymer, Record result, ProxyRunning running) {
+    public AjaxResult doPolymer(ProxyConfig config, ProxyPolymer polymer, Record result, ProxyRunning running) {
         throw Core.makeThrow("未实现");
     }
 
-    public void UpdateWhiteList() {
+    public void updateWhiteList() {
 
     }
 
@@ -234,13 +235,13 @@ public class BaseCrossAccess implements ICrossAccess {
     /// </summary>
     /// <param name="config"></param>
     /// <returns></returns>
-    public  boolean IsWhite(ProxyConfig config) {
+    public  boolean isWhite(ProxyConfig config) {
         return true;
     }
 
 
     ///region 各类事件
-    public boolean OnConfig(ProxyConfig config) {
+    public boolean onConfig(ProxyConfig config) {
         return true;
     }
 
@@ -253,7 +254,7 @@ public class BaseCrossAccess implements ICrossAccess {
 /// <param name="requestData"></param>
 /// <param name="header"></param>
 /// <returns></returns>
-    public boolean OnStart(String mode, String tag, Record requestData, Record header, String version) {
+    public boolean onStart(String mode, String tag, Record requestData, Record header, String version) {
         return true;
     }
 
@@ -265,7 +266,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="header">请求头数据</param>
     /// <param name="isdebug">是否为调试模式</param>
     /// <returns></returns>
-    public boolean OnRequest(ProxyConfig config, Record requestData, CrossAccessAuthInfo userinfo, Record header, int env) {
+    public boolean onRequest(ProxyConfig config, Record requestData, CrossAccessAuthInfo userinfo, Record header, int env) {
         return true;
     }
 
@@ -279,7 +280,7 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="userinfo">认证权限</param>
     /// <param name="paramData"></param>
     /// <returns></returns>
-    public AjaxResult OnResult(AjaxResult result, ProxyConfig config, Record paramData, Record header, String uuid, CrossAccessAuthInfo userinfo) {
+    public AjaxResult onResult(AjaxResult result, ProxyConfig config, Record paramData, Record header, String uuid, CrossAccessAuthInfo userinfo) {
         return result;
     }
 
@@ -291,7 +292,20 @@ public class BaseCrossAccess implements ICrossAccess {
     /// <param name="header">请求头</param>
     /// <param name="userinfo">认证信息</param>
     /// <returns></returns>
-    public AjaxResult OnCall(ProxyConfig config, Record requestData, Record header, CrossAccessAuthInfo userinfo) {
+    public AjaxResult onCall(ProxyConfig config, Record requestData, Record header, CrossAccessAuthInfo userinfo) {
         return null;
+    }
+
+    /**
+     * 清理权限的缓存
+     * @param sign 标识
+     * @return void
+     * @author YiFeng
+     */
+
+    public void clearCache(String sign){
+        if (Strings.isBlank(sign)) return;
+        DataHub.WorkCache.removeModuleCache(sign, "_Proxy_UserInfo_Sign");
+        DataHub.WorkCache.removeModuleCache(sign, "_Proxy_Interfaces_Sign");
     }
 }

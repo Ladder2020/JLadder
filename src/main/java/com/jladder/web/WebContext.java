@@ -1,6 +1,5 @@
 package com.jladder.web;
 
-import com.jladder.data.Record;
 import com.jladder.data.UploadFile;
 import com.jladder.lang.Collections;
 import com.jladder.lang.Core;
@@ -13,7 +12,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
-import javax.servlet.http.*;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -68,7 +70,7 @@ public class WebContext {
                     List<UploadFile> ups = new ArrayList<UploadFile>();
                     v.forEach(f->{
                         try{
-                            ups.add(new UploadFile(f.getOriginalFilename(),f.getBytes(),k).SetLength(f.getSize()));
+                            ups.add(new UploadFile(f.getOriginalFilename(),f.getBytes(),k).setLength(f.getSize()));
                         }catch (Exception e) { }
                     });
                     ret.put(k,ups);

@@ -6,14 +6,12 @@ import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.jladder.lang.Core;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
-
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Base64;
 import java.util.Hashtable;
 import java.util.Random;
 
@@ -144,8 +142,8 @@ public class QRCode{
             e.printStackTrace();
         }
         byte[] bytes = baos.toByteArray();//转换成字节
-        BASE64Encoder encoder = new BASE64Encoder();
-        String png_base64 = encoder.encodeBuffer(bytes).trim();//转换成base64串
+        byte[] data = Base64.getEncoder().encode(bytes);
+        String png_base64 = new String(data).trim();//转换成base64串
         png_base64 = png_base64.replaceAll("\n", "").replaceAll("\r", "");//删除 \r\n
         return "data:image/jpg;base64," + png_base64;
     }
@@ -156,9 +154,9 @@ public class QRCode{
      * @return
      */
     private static BufferedImage toBufferedImage(String base64) {
-        BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+        Base64.Decoder decoder = Base64.getDecoder();
         try {
-            byte[] bytes1 = decoder.decodeBuffer(base64);
+            byte[] bytes1 = decoder.decode(base64);
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes1);
             return ImageIO.read(bais);
         } catch (IOException e) {

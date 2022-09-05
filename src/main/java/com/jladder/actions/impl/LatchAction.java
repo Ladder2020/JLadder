@@ -1,4 +1,6 @@
 package com.jladder.actions.impl;
+
+import com.jladder.data.Record;
 import com.jladder.data.*;
 import com.jladder.datamodel.IDataModel;
 import com.jladder.db.DaoSeesion;

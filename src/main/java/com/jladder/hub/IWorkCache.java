@@ -2,7 +2,8 @@ package com.jladder.hub;
 
 import com.jladder.datamodel.DataModelForMapRaw;
 import com.jladder.lang.func.Func1;
-import com.jladder.lang.script.Script;
+import com.jladder.script.FunctionBody;
+import com.jladder.script.Script;
 import com.jladder.proxy.ProxyConfig;
 
 import java.util.Date;
@@ -35,11 +36,11 @@ public interface IWorkCache {
      */
     void removeAllDataModelCache();
     //endregion
-    //region 函数库
+    //region 脚本库
     /**
      * 添加函数库缓存
      * @param lib
-     * @param raw
+     * @param script
      */
     void addScriptCache(String lib, Script script);
 
@@ -61,6 +62,34 @@ public interface IWorkCache {
      * 清除全部函数库缓存
      */
     void removeAllScriptCache();
+
+    // endregion
+    //region 函数库
+    /**
+     * 添加函数库缓存
+     * @param name 函数名
+     * @param body 函数体
+     */
+    void addFunctionCache(String name, FunctionBody body);
+
+    /**
+     * 获取指定函数库缓存
+     * @param name 函数名
+     * @return
+     */
+    FunctionBody getFunctionCache(String name);
+
+    /**
+     * 清除指定函数库缓存
+     * @param name 函数名
+     */
+    void removeFunctionCache(String name);
+
+
+    /**
+     * 清除全部函数库缓存
+     */
+    void removeAllFunctionCache();
 
     // endregion
 

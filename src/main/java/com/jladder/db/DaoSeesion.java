@@ -68,23 +68,25 @@ public class DaoSeesion {
     {
         return Strings.isBlank(key) ? new Dao("defaultDatabase") : new Dao(key);
     }
-    /// <summary>
-    /// 新建一个数据库连接(默认)
-    /// </summary>
-    /// <returns></returns>
+
+    /**
+     * 新建一个数据库连接(默认)
+     * @return
+     */
     public static IDao NewDao()
     {
         return new Dao("defaultDatabase");
     }
-    /// <summary>
-    /// 获取DataModel实例
-    /// </summary>
-    /// <param name="tableName">键名</param>
-    /// <param name="param">参数数据</param>
-    /// <returns></returns>
-    public static IDataModel getDataModel(String tableName, String param)
-    {
-        return getDataModel(null, tableName, param);
+
+    /***
+     * 获取DataModel实例
+     * @param tableName 键名
+     * @param param 扩展参数
+     * @return
+     */
+    public static IDataModel getDataModel(CharSequence tableName, String param){
+        if(Strings.isBlank(tableName))return null;
+        return getDataModel(null, tableName.toString(), param);
     }
 
     /// <summary>

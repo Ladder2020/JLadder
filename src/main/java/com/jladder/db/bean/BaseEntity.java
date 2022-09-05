@@ -69,10 +69,10 @@ public class BaseEntity {
      * @return
      */
     public int update(IDao dao, String columns){
-        String tableName = getTableName();
+        String tableName = table();
         if(Strings.isBlank(tableName))return -1;
         FieldInfo field = _pk ;
-        if(field==null)field = getPk();
+        if(field==null)field = primarykey();
         if (field == null) return -1;
         Record bean = genBean(DbSqlDataType.Update);
         if (Strings.isBlank(Collections.haveKey(bean,field.fieldname))|| bean.get(field.fieldname) == null) return -1;
@@ -97,7 +97,7 @@ public class BaseEntity {
      * @return
      */
     public int save(IDao dao,String columns){
-        FieldInfo field = getPk();
+        FieldInfo field = primarykey();
         if(field==null) return -1;
         return Core.isEmpty(field.value) ? insert(dao,columns):update(dao,columns);
     }
@@ -116,10 +116,10 @@ public class BaseEntity {
      * @return
      */
     public int delete(IDao dao){
-        String tableName = getTableName();
+        String tableName = table();
         if(Strings.isBlank(tableName))return -1;
         FieldInfo field = _pk ;
-        if(field==null)field = getPk();
+        if(field==null)field = primarykey();
         if (field == null) return -1;
         boolean iscreate = false;
         if (dao == null){
@@ -144,7 +144,7 @@ public class BaseEntity {
      * @return
      */
     public int insert(IDao dao , String columns){
-        String  tableName = getTableName();
+        String  tableName = table();
         if (Strings.isBlank(tableName)) return -1;
         boolean iscreate = false;
         if (dao == null)
@@ -220,7 +220,7 @@ public class BaseEntity {
      * @return
      */
     public <T extends BaseEntity> List<T> select(IDao dao,Cnd cnd){
-        String table = getTableName();
+        String table = table();
         if (Strings.isBlank(table)) return null;
         if(cnd==null) cnd = new Cnd();
         boolean iscreate = false;
@@ -235,9 +235,9 @@ public class BaseEntity {
             else dao = _mdao;
         }
         List<T> rs = ( List<T>) dao.query(new SqlText("select "
-                        + Strings.ArrayToString(getColumns(), ",", null)
+                        + Strings.ArrayToString(columns(), ",", null)
                         + " from "
-                        + getTableName()+" "+ cnd.getWhere(true,false)
+                        + table()+" "+ cnd.getWhere(true,false)
                 ,cnd.parameters), this.getClass());
         if(iscreate)dao.close();
         return rs;
@@ -246,7 +246,7 @@ public class BaseEntity {
      * 获取列文本数组
      * @return
      */
-    public List<String> getColumns(){
+    public List<String> columns(){
         List<String> columns = new ArrayList<String>();
         Field[] fs = this.getClass().getFields();
         for (Field field : fs)
@@ -267,8 +267,8 @@ public class BaseEntity {
      * 设置主键
      * @param property 类的属性名
      */
-    public void setPk(String property){
-        setPk(property,null,null);
+    public void primarykey(String property){
+        primarykey(property,null,null);
     }
 
     /**
@@ -276,8 +276,8 @@ public class BaseEntity {
      * @param property 类的属性名
      * @param gen 主键生成类型
      */
-    public void setPk(String property, DbGenType gen){
-        setPk(property,null,gen);
+    public void primarykey(String property, DbGenType gen){
+        primarykey(property,null,gen);
     }
 
     /**
@@ -286,7 +286,7 @@ public class BaseEntity {
      * @param fieldname 表单字段名
      * @param gen 主键生成类型
      */
-    public void setPk(String property, String fieldname,DbGenType gen){
+    public void primarykey(String property, String fieldname,DbGenType gen){
         if (Strings.isBlank(fieldname)) fieldname = property;
         try {
             Field field = this.getClass().getField(property);
@@ -316,7 +316,7 @@ public class BaseEntity {
      * 获取表名
      * @return
      */
-    public String getTableName(){
+    public String table(){
         Table attr = getClass().getAnnotation(Table.class);
         return attr==null?"":attr.value();
     }
@@ -342,7 +342,7 @@ public class BaseEntity {
                         switch (config.gen()) {
                             case ID:
                                 if (value == null)
-                                    value = "{ sql: '(select Max(" + key + ")+1 from " + getTableName() + ")'}";
+                                    value = "{ sql: '(select Max(" + key + ")+1 from " + table() + ")'}";
                                 break;
                             case UUID:
                                 if (value == null) value = Core.genUuid();
@@ -371,8 +371,8 @@ public class BaseEntity {
      * 获取主键信息
      * @return
      */
-    public FieldInfo getPk(){
-        String tableName = getTableName();
+    public FieldInfo primarykey(){
+        String tableName = table();
         if(Strings.isBlank(tableName))return null;
         FieldInfo reField = new FieldInfo();
         Field[] ps = this.getClass().getFields();

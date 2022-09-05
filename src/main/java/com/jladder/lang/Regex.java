@@ -1,13 +1,8 @@
 package com.jladder.lang;
 
-import com.jladder.db.annotation.Table;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-@Table("")
 public class Regex {
-
-
     public static String[] split(String source,String reg){
         if(Strings.isBlank(source))return null;
         return source.split(reg);

@@ -3,27 +3,19 @@ package com.jladder.taobao;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.google.gson.JsonObject;
-import com.jladder.data.ReStruct;
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-
 import com.jladder.db.Rs;
-import com.jladder.db.datasource.DataSourceUtils;
-import com.jladder.lang.R;
+import com.jladder.lang.Json;
 import com.jladder.lang.Regex;
 import com.jladder.lang.Strings;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.taobao.message.ActionCard;
-import sun.misc.BASE64Encoder;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -160,7 +152,7 @@ public class DingTalk {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
-            String sign = URLEncoder.encode(new String(new BASE64Encoder().encode(signData)),"UTF-8");
+            String sign = URLEncoder.encode(new String(Base64.getEncoder().encode(signData)),"UTF-8");
             String msg = new Record("msgtype", "text").put("text", new Record("content", content)).toString();
             //如果Token是WebHook路径
             if(Regex.isMatch(token,"http[s]?://")){
@@ -189,7 +181,7 @@ public class DingTalk {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
-            String sign = URLEncoder.encode(new String(new BASE64Encoder().encode(signData)),"UTF-8");
+            String sign = URLEncoder.encode(new String(Base64.getEncoder().encode(signData)),"UTF-8");
             Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/robot/send?access_token=" + token + "&timestamp=" + timestamp + "&sign=" + sign, message, new Record("timestamp", timestamp).put("sign", sign));
             if (!ret.result) return ret;
             Record record = Record.parse(ret.data);
@@ -335,7 +327,7 @@ public class DingTalk {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getAppsecret().getBytes("UTF-8"), "HmacSHA256"));
             byte[] signatureBytes  = mac.doFinal((timestamp+"").getBytes("UTF-8"));
-            String signature = new String(new BASE64Encoder().encode(signatureBytes));
+            String signature = new String(Base64.getEncoder().encode(signatureBytes));
             if(Strings.isBlank(signature)) {
                 return new Receipt<>(false,"签名计算失败[248]");
             }
@@ -364,7 +356,7 @@ public class DingTalk {
      * @return
      */
     public static Receipt<Record> getUserInfoByAuthCode(DingSecret secret,String code){
-        Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/user/getuserinfo?access_token=" +getAccessToken(secret).getData()+"&code="+code, new Record("tmp_auth_code", code),null);
+        Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/user/getuserinfo?access_token=" +getAccessToken(secret).getData()+"&code="+code, new Record("tmp_auth_code", code),null,null,null,"get");
         if (!ret.result) return new Receipt<Record>(false,ret.message);
         JSONObject result = JSON.parseObject(ret.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
@@ -413,4 +405,193 @@ public class DingTalk {
             return user;
         }
     }
+
+    /**
+     * 钉钉创建部门
+     * @param access_token API授权凭证
+     * @param name 部门名称
+     * @param parent_id 部门父级ID
+     * @param outer_dept 是否限制本部门成员查看通讯录
+     * @param hide_dept 是否隐藏本部门
+     * @param create_dept_group 是否创建一个关联此部门的企业群
+     * @param outer_permit_users 指定本部门成员可查看的通讯录用户userId列表
+     */
+    public static Receipt<Record> createDeptForUpdate(String access_token,String name, String parent_id, String outer_dept, String hide_dept, String create_dept_group, String outer_permit_users) {
+        Record rex  = new Record();
+
+        if (Strings.isBlank(name)) return new Receipt<>(false,"部门名称不可为空");
+        if (Strings.isBlank(parent_id)) {
+            return new Receipt<>(false,"部门父级ID不可为空或0");
+        }
+        rex.put("name",name);
+        rex.put("parent_id",Long.parseLong(parent_id));
+        if (!Strings.isBlank(outer_dept)) rex.put("outer_dept",outer_dept);
+        if (!Strings.isBlank(hide_dept)) rex.put("hide_dept",hide_dept);
+        if (!Strings.isBlank(create_dept_group)) rex.put("create_dept_group",create_dept_group);
+        if (!Strings.isBlank(outer_permit_users)) rex.put("outer_permit_users",outer_permit_users);
+
+        return request("https://oapi.dingtalk.com/topapi/v2/department/create",access_token,rex,"post",Record.class);
+    }
+
+    /**
+     * 获取部门
+     * @param access_token API授权凭证
+     * @param parent_id 部门父级ID
+     */
+    public static Receipt<Record> getDeptByParentID(String access_token, String parent_id){
+
+        Record rex  = new Record();
+
+        if (!Strings.isBlank(parent_id)) {
+            if (!Strings.isNumber(parent_id)) return new Receipt<>(false,"部门父级ID错误");
+            rex.put("dept_id",Long.parseLong(parent_id));
+        }
+        return request("https://oapi.dingtalk.com/topapi/v2/department/listsub",access_token,rex,"post",Record.class);
+    }
+
+    /**
+     * 更新用户信息
+     * @param access_token API授权凭证
+     * @param dept_id_list 部门父级ID
+     * @param userid 部门父级ID
+     */
+    public static Receipt<Record> updateUserByDeptLiist(String access_token,String userid,String dept_id_list){
+        Record rex  = new Record();
+
+        if (Strings.isBlank(userid)) return new Receipt<>(false,"用户id不可为空");
+        if (Strings.isBlank(dept_id_list)) return new Receipt<>(false,"部门id不可为空");
+        rex.put("userid",userid);
+        rex.put("dept_id_list",dept_id_list);
+
+        return request("https://oapi.dingtalk.com/topapi/v2/user/update",access_token,rex,"post",Record.class);
+    }
+
+    /**
+     * 删除钉钉部门
+     * @param access_token API授权凭证
+     * @param dept_id 部门ID
+     */
+    public static Receipt<Record> deleteDept(String access_token,String dept_id){
+        Record rex  = new Record();
+        if (Strings.isBlank(dept_id)) return new Receipt<>(false,"部门ID不可为空");
+        rex.put("dept_id",dept_id);
+        return request("https://oapi.dingtalk.com/topapi/v2/user/update",access_token,rex,"post",Record.class);
+    }//https://oapi.dingtalk.com/topapi/v2/user/get
+
+    /**
+     * 获取用户信息
+     * @param access_token API授权凭证
+     * @param userid 用户id
+     */
+    public static Receipt<Record> getUser(String access_token,String userid){
+
+        Record rex  = new Record();
+
+        if (Strings.isBlank(userid)) return new Receipt<>(false,"用户id不可为空");
+        rex.put("userid",userid);
+
+        return request("https://oapi.dingtalk.com/topapi/v2/user/get",access_token,rex,"post",Record.class);
+    }
+
+    /**
+     * jsapi鉴权
+     * @param access_token API授权凭证
+     */
+    public static Receipt<Record> JsApiAuth(String access_token){
+        Record rex  = new Record();
+        return request("https://oapi.dingtalk.com/get_jsapi_ticket",access_token,rex,"get",Record.class);
+    }
+
+    /**
+     * 创建会话群
+     * @param access_token API授权凭证
+     * @param title 群名称
+     * @param owner 群主的userid
+     * @param users 群成员的userid
+     * @param config 配置项
+     * showHistoryType 新成员是否可查看聊天历史消息 0（默认）：不可以查看历史记录  1：可以查看历史记录
+     * searchable 群是否可搜索 0（默认）：不可搜索  1：可搜索
+     * validation_type 入群是否需要验证 0（默认）：不验证入群  1：入群验证
+     * mention_all_authority @all 权限：0（默认）：所有人都可以@all   1：仅群主可@all
+     * management_type 管理类型 0（默认）：所有人可管理  1：仅群主可管理
+     * chat_banned_type 是否开启群禁言：0（默认）：不禁言  1：全员禁言
+     */
+    public static Receipt<Record> chat_create(String access_token,String title,String owner,List<String> users,Record config){
+        if (Strings.isBlank(title)) return new Receipt<>(false,"群名称不可为空");
+        if (Strings.isBlank(owner)) return new Receipt<>(false,"群主不可为空");
+        if (Rs.isBlank(users)) return new Receipt<>(false,"群成员不可为空");
+        Record rex  = new Record();
+        rex.put("name",title);
+        rex.put("owner",owner);
+        rex.put("useridlist", Json.toJson(users));
+        if(config==null)config=new Record();
+        String config_value = config.getString("showHistoryType",true);
+        if (!Strings.isBlank(config_value)) rex.put("showHistoryType",config_value);
+        config_value = config.getString("searchable",true);
+        if (!Strings.isBlank(config_value)) rex.put("searchable",config_value);
+        config_value = config.getString("validation_type,validationType",true);
+        if (!Strings.isBlank(config_value)) rex.put("validationType",config_value);
+        config_value = config.getString("mention_all_authority,mentionAllAuthority",true);
+        if (!Strings.isBlank(config_value)) rex.put("mentionAllAuthority",config_value);
+        config_value = config.getString("management_type,managementType",true);
+        if (!Strings.isBlank(config_value)) rex.put("managementType",config_value);
+        config_value = config.getString("chat_banned_type,chatBannedType",true);
+        if (!Strings.isBlank(config_value)) rex.put("chatBannedType",config_value);
+        return request("https://oapi.dingtalk.com/chat/create",access_token,rex,"post",Record.class);//https://oapi.dingtalk.com/topapi/im/chat/scenegroup/create
+    }
+
+    /**
+     * 发送会话群消息
+     * @param access_token API授权凭证
+     * @param chatid 群会话编号。
+     * @param content 消息内容，如果是文本，以及MarkDown发送
+     */
+    public static Receipt chat_send(String access_token,String chatid,String content){
+        Record req = new Record("chatid",chatid);
+        if(Strings.isJson(content)){
+            req.put("msg",content);
+        }else{
+            req.put("msg",new Record("msgtype","markdown").put("markdown",new Record("text",content).put("title","提示消息")));
+        }
+        return request("https://oapi.dingtalk.com/chat/send",access_token,req,"post",null);
+    }
+
+    /**
+     * 新增会话群成员
+     * @param access_token 调用服务端API的应用凭证
+     * @param chatid 接收消息的群的openConversationId，可通过创建场景群接口获取。
+     * @param user_ids 批量增加的成员userid，多个userid之间使用英文逗号分隔。
+     */
+    public static Receipt chat_addMember(String access_token,String chatid,String user_ids){
+        Record req = new Record("chatid",chatid);
+        req.put("add_useridlist",user_ids.split(","));
+        return request("https://oapi.dingtalk.com/chat/update",access_token,req,"post",null);
+    }
+
+    /**
+     * 请求API
+     * @param access_token API授权凭证
+     * @param url API链接
+     * @param rex 参数
+     * @param method 请求方式
+     * @return com.jladder.data.AjaxResult
+     */
+    private static <T> Receipt<T> request(String url,String access_token,Record rex,String method,Class<T> clazz){
+        if (Strings.isBlank(access_token)) return new Receipt<>(false,"API授权凭证不可为空");
+        if(Strings.isBlank(method)) method = "post";
+        try {
+            Receipt<String> ret = HttpHelper.requestByJson (url+"?access_token=" + access_token, rex,null,null,null,method);
+            if (!ret.result) return new Receipt<T>(false,ret.message);
+            JSONObject result = JSON.parseObject(ret.getData());
+            if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<T>(false,result==null?"请求失败[0588]":result.getString("errmsg"));
+            if(clazz==null || clazz.equals(JSONObject.class))return new Receipt<T>().setData((T)result);
+            if(clazz.equals(Record.class)) return new Receipt<T>().setData((T)Record.parse(result.getInnerMap()));
+            return new Receipt<T>().setData(result.toJavaObject(clazz));
+        }
+        catch(Exception ex){
+            ex.printStackTrace();
+            return new Receipt<T>(false, "请求出现异常，"+ex.getMessage());
+        }
+    }
+
 }

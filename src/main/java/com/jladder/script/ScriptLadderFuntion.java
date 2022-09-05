@@ -1,4 +1,4 @@
-package com.jladder.lang.script;
+package com.jladder.script;
 
 import com.jladder.actions.impl.QueryAction;
 import com.jladder.actions.impl.SaveAction;
@@ -8,6 +8,7 @@ import com.jladder.data.Record;
 import com.jladder.db.*;
 import com.jladder.db.jdbc.impl.Dao;
 import com.jladder.lang.Json;
+import com.jladder.lang.Refs;
 import com.jladder.lang.Strings;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.proxy.ProxyService;
@@ -15,15 +16,13 @@ import com.jladder.proxy.ProxyService;
 import java.util.List;
 
 public class ScriptLadderFuntion{
-    /// <summary>
-    /// httpget请求
-    /// </summary>
-    /// <param name="url">路径</param>
-    /// <param name="data">数据</param>
-    /// <returns></returns>
 
-    public AjaxResult http(String url)
-    {
+    /**
+     * 网络请求
+     * @param url 路径
+     * @return
+     */
+    public AjaxResult http(String url) {
         Receipt<String> ret = HttpHelper.request(url, null, "GET");
         return ret.toResult();
     }
@@ -130,7 +129,7 @@ public class ScriptLadderFuntion{
     /// <param name="pagesize"></param>
     /// <param name="recordCount"></param>
     /// <returns></returns>
-    public AjaxResult getPageData(Object tableName,Object condition,String columns, Object param,int start,int pageNumber, int pagesize, int recordCount)
+    public AjaxResult getPageData(Object tableName,Object condition,String columns, Object param,int start,int pageNumber, int pagesize, String recordCount)
     {
         AjaxResult result = QueryAction.getPageData(Json.toJson(tableName), Json.toJson(condition), columns, Json.toJson(param), start, pageNumber, pagesize, recordCount);
         return result;
@@ -185,27 +184,28 @@ public class ScriptLadderFuntion{
     {
         return SaveAction.saveBean(Json.toJson(tableName),Json.toJson(bean) ,Json.toJson(condition), 3,"");
     }
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="pool"></param>
-    /// <param name="tableName"></param>
-    /// <param name="bean"></param>
-    /// <param name="option"></param>
-    /// <param name="condition"></param>
-    /// <param name="rel"></param>
-    /// <returns></returns>
-    public AjaxResult keepsave(KeepDaoPool pool, String tableName, String bean, int option, String condition, String rel)
-    {
+
+
+    /**
+     * 持续保存
+     * @param pool
+     * @param tableName
+     * @param bean
+     * @param option
+     * @param condition
+     * @param rel
+     * @return
+     */
+    public AjaxResult keepsave(KeepDaoPool pool, String tableName, String bean, int option, String condition, String rel){
         if (option == 0) option = 1;
         return SaveAction.saveBean(pool, tableName, bean, option, condition, rel);
     }
-    /// <summary>
-    /// 执行查询方法
-    /// </summary>
-    /// <param name="sqltext">sql语句</param>
-    /// <param name="name">数据库连接</param>
-    /// <returns></returns>
+
+    /**
+     * 执行查询方法
+     * @param sqltext sql语句
+     * @return
+     */
     public AjaxResult query(String sqltext){
         Dao dao = new Dao();
         try{
@@ -226,12 +226,13 @@ public class ScriptLadderFuntion{
             dao.close();
         }
     }
-    /// <summary>
-    /// 执行sql方法
-    /// </summary>
-    /// <param name="sqltext">sql语句</param>
-    /// <param name="name">数据库连接</param>
-    /// <returns></returns>
+
+    /**
+     * 执行sql方法
+     * @param sqltext sql语句
+     * @param name 数据库连接
+     * @return
+     */
     public int exec(String sqltext, String name)
     {
         IDao dao = new Dao(name);
@@ -246,16 +247,32 @@ public class ScriptLadderFuntion{
         }
     }
 
-    /// <summary>
-    /// 调用代理
-    /// </summary>
-    /// <param name="name">代理名称</param>
-    /// <param name="data">数据</param>
-    /// <returns></returns>
+
+    /**
+     * 调用接口服务代理
+     * @param name 接口名称
+     * @param data 数据
+     * @return
+     */
     public AjaxResult proxy(String name, Object data)
     {
         return ProxyService.execute(name, Record.parse(data));
     }
 
-
+    public AjaxResult invoke(String path){
+        return Refs.invoke(path,"",null).toResult();
+    }
+    public AjaxResult invoke(String path,String method){
+        return Refs.invoke(path,method,null).toResult();
+    }
+    /**
+     * 调用内部方法
+     * @param path 路径
+     * @param method 方法名
+     * @param data 执行参数
+     * @return
+     */
+    public AjaxResult invoke(String path,String method,Object data){
+        return Refs.invoke(path,method,Record.parse(data)).toResult();
+    }
 }

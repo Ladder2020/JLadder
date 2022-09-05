@@ -46,8 +46,7 @@ public class SqlText {
         String[] names = Regex.split(name, ",|\\|");
         int index = 0;
         int length = value.length;
-        for (String s : names)
-        {
+        for (String s : names){
             parameters.add(new DbParameter(s,index >= length ? value[value.length-1]:value[index]));
             index++;
         }

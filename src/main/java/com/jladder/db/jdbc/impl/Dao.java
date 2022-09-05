@@ -3,7 +3,6 @@ package com.jladder.db.jdbc.impl;
 import com.jladder.data.Pager;
 import com.jladder.data.Record;
 import com.jladder.db.*;
-import com.jladder.db.annotation.Column;
 import com.jladder.db.annotation.Pk;
 import com.jladder.db.annotation.Table;
 import com.jladder.db.bean.BaseEntity;
@@ -20,7 +19,6 @@ import com.jladder.lang.func.Func3;
 import com.jladder.lang.func.Tuple3;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Date;
@@ -65,14 +63,6 @@ public  class Dao implements IDao {
     /// 标签名称,数据模型标签
     /// </summary>
     public String Tag =null;
-
-
-    /// <summary>
-    /// 数据库方言
-    /// </summary>
-    public DbDialectType Dialect=null;
-
-
 
 
     @Override
@@ -206,32 +196,80 @@ public  class Dao implements IDao {
         return support.getValue(new SqlText("select count(*) from "+tableName+cnd.getWhere(true,false),cnd.getParameters()),int.class);
     }
 
+    /**
+     * 获取记录数
+     * @param tableName 表名
+     * @param where 条件
+     * @return
+     */
     @Override
     public int count(String tableName, SqlText where) {
         String whereText = where.getCmd();
-        if (!Strings.isBlank(whereText) && !Regex.isMatch(whereText, "^\\s*where"))
-        {
+        if (!Strings.isBlank(whereText) && !Regex.isMatch(whereText, "^\\s*where"))        {
             whereText = " where " + whereText;
         }
         return support.getValue(new SqlText("select count(*) from " + tableName + " " + whereText , where.getParameters()),int.class);
     }
 
     @Override
+    public boolean exist(String tableName, Cnd cnd) {
+        return support.exist(tableName,cnd);
+    }
+
+    /**
+     * 是否存在
+     * @param tableName 表名
+     * @param where 条件
+     * @return
+     */
+    @Override
+    public boolean exist(String tableName, SqlText where) {
+        return support.exist(tableName,where);
+    }
+
+    /**
+     * 删除操作
+     * @param tableName 表名
+     * @param where 条件文本
+     * @return
+     */
+    @Override
     public int delete(String tableName, SqlText where) {
         return support.exec(new SqlText("delete from "+tableName+" "+where.getCmd(),where.parameters));
     }
 
+    /**
+     * 删除操作
+     * @param tableName 表名
+     * @param cnd 条件
+     * @return
+     */
     @Override
     public int delete(String tableName, Cnd cnd) {
         return support.exec(new SqlText("delete from "+tableName+" "+cnd.getWhere(true,false),cnd.parameters));
     }
 
+    /**
+     * 删除操作
+     * @param bean 实体对象
+     * @param <T>
+     * @return
+     */
     @Override
     public <T extends BaseEntity> int delete(T bean) {
 
         return bean.delete(this);
     }
 
+    /**
+     * 更新操作
+     * @param tableName 表名
+     * @param data 数据
+     * @param cnd 条件
+     * @param columns 列选
+     * @param adjust 自动纠正
+     * @return
+     */
     @Override
     public int update(String tableName, Object data, Object cnd, String columns, boolean adjust) {
 
@@ -250,44 +288,53 @@ public  class Dao implements IDao {
         return update(tableName,entry,_cnd);
     }
 
+    /***
+     * 更新操作
+     * @param tableName 表名 数据库表名
+     * @param record 记录数据
+     * @param cnd 条件对象
+     * @return
+     */
     @Override
     public int update(String tableName, Map<String, Object> record, Cnd cnd) {
         if (record == null || record.size() < 1) return 0;
         String wherestr = "";
-        if (cnd != null)
-        {
+        if (cnd != null){
             wherestr = cnd.getWhere(true, false);
         }
         String sqltext = "update " + tableName + " set ";
-
         List<DbParameter> vals = new ArrayList<>();
-        if (!Core.isEmpty(cnd.parameters))
-        {
+        if (!Core.isEmpty(cnd.parameters)) {
             vals.addAll(cnd.parameters);
         }
         Record changeRecord = new Record();
-        int i = 0;
-        for (Map.Entry<String, Object> kv : record.entrySet())
-        {
+        for (Map.Entry<String, Object> kv : record.entrySet()){
             Object obj = kv.getValue();
             String key = kv.getKey();
             if (Regex.isMatch(key, "^!")) continue;
-            if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null)
-            {
+            if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null) {
                 sqltext += key.substring(1) + " = " + com.jladder.lang.Collections.getString(record,key,"") + ",";
                 continue;
             }
-            sqltext += key + " = " + "@" + key + ",";
-
+            DbDialectType dialect = getDialect();
+            if(dialect!=null){
+                switch (getDialect()){
+                    case MYSQL:
+                        sqltext += "`" +key +"`" + " = " + "@" + key + ",";
+                        break;
+                    default:
+                        sqltext += key + " = " + "@" + key + ",";
+                        break;
+                }
+            }else{
+                sqltext += key + " = " + "@" + key + ",";
+            }
             if (obj == null) obj = null;
-            else
-            {
+            else{
                 //如果文本串是一个sql语句，提取并执行，注意只能有一个sql键
-                if ((obj instanceof String) && Regex.isMatch((String)obj, "^\\s*\\{\\s*sql:[\\w\\W]*}$"))
-                {
+                if ((obj instanceof String) && Regex.isMatch((String)obj, "^\\s*\\{\\s*sql:[\\w\\W]*}$")){
                     Record hands = Json.toObject((String)obj,Record.class);
-                    if (hands != null && hands.size() == 1)
-                    {
+                    if (hands != null && hands.size() == 1){
                         String handlekey = com.jladder.lang.Collections.haveKey(hands,"sql");
                         if (Strings.hasValue(handlekey))
                         {
@@ -309,10 +356,7 @@ public  class Dao implements IDao {
         return bean.update(this,columns);
     }
 
-//    @Override
-//    public int update(String tableName, Map<String, Object> record, String wherestr) {
-//        return 0;
-//    }
+
     @Override
     public int insert(String tableName, Object bean){
         return insert(tableName,bean,null,false);
@@ -321,8 +365,7 @@ public  class Dao implements IDao {
     public int insert(String tableName, Object bean, String columns, boolean adjust) {
         if (Strings.isBlank(tableName)) return -1;
         //是字典且不纠正自动 就直接执行
-        if ((bean instanceof Map) && !adjust)
-        {
+        if ((bean instanceof Map) && !adjust){
             return insertData(tableName, SaveColumn.clip((Map<String, Object>)bean, columns), null);
         }
         //转化数据类型到Record类型
@@ -346,31 +389,37 @@ public  class Dao implements IDao {
         String valtext = " values (";// 值语句
         List<DbParameter> vals = new ArrayList<>();
         Record changeRecord = new Record();
-
-        for (Map.Entry<String, Object> entry  : record.entrySet())
-        {
+        for (Map.Entry<String, Object> entry  : record.entrySet()){
             String key = entry.getKey();
             Object obj = entry.getValue();
-            if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null)
-            {
+            if (Regex.isMatch(key, "^[\\$@#\\*][\\w]*") && obj != null){
                 sqltext += key.substring(1) + ",";
                 valtext += com.jladder.lang.Collections.getString(record,key,"") + ",";
                 continue;
             }
-            sqltext += key + ",";
+            DbDialectType dialect = getDialect();
+            if(dialect!=null){
+                switch (getDialect()){
+                    case MYSQL:
+                        sqltext += "`" + key + "`"+ ",";
+                        break;
+                    default:
+                        sqltext += key + ",";
+                        break;
+                }
+            }else{
+                sqltext += key + ",";
+            }
             valtext += "@" + key + ",";
             if (obj == null) obj = null;
             else{
                 //如果文本串是一个sql语句，提取并执行，注意只能有一个sql键
-                if ((obj instanceof String) && Regex.isMatch((String)obj, "^\\s*\\{\\s*sql:[\\w\\W]*}$"))
-                {
+                if ((obj instanceof String) && Regex.isMatch((String)obj, "^\\s*\\{\\s*sql:[\\w\\W]*}$")){
                     Record hands = Json.toObject((String)obj,Record.class);
-                    if (hands != null && hands.size() == 1)
-                    {
+                    if (hands != null && hands.size() == 1){
 
                         String handlekey = com.jladder.lang.Collections.haveKey(hands,"sql");
-                        if (!Strings.isBlank(handlekey))
-                        {
+                        if (!Strings.isBlank(handlekey)){
                             obj = this.getValue(new SqlText(com.jladder.lang.Collections.getString(hands,handlekey,"")),Object.class);
                             changeRecord.put(key, obj);
                         }
@@ -414,7 +463,7 @@ public  class Dao implements IDao {
 
     @Override
     public <T extends BaseEntity> int save(T bean) {
-        FieldInfo field = bean.getPk();
+        FieldInfo field = bean.primarykey();
         if(field==null){
             support.error="主键不存在";
             return -1;
@@ -430,7 +479,7 @@ public  class Dao implements IDao {
 
     @Override
     public <T extends BaseEntity> int save(T bean, Cnd cnd, String columns) {
-        String tableName = bean.getTableName();
+        String tableName = bean.table();
         if(Strings.isBlank(tableName)){
             support.error="实体对象的关联表未配置";
             return -1;
@@ -555,12 +604,12 @@ public  class Dao implements IDao {
 
     @Override
     public SqlText onlySqltext(SqlText sqltext, boolean isAppend){
-        return onlySqltext(sqltext, Dialect, isAppend);
+        return onlySqltext(sqltext, getDialect(), isAppend);
     }
 
     @Override
     public SqlText onlySqltext(SqlText sqltext) {
-        return onlySqltext(sqltext, Dialect, false);
+        return onlySqltext(sqltext, getDialect(), false);
     }
 
     /***
@@ -652,9 +701,14 @@ public  class Dao implements IDao {
 
     }
 
+    /**
+     * 数据表是否存在
+     * @param tableName 表名
+     * @return
+     */
     @Override
-    public boolean exists(String tableName) {
-        return support.exists(tableName);
+    public boolean exist(String tableName) {
+        return support.exist(tableName);
     }
 
     @Override
@@ -663,8 +717,8 @@ public  class Dao implements IDao {
     }
 
     @Override
-    public boolean isTraning() {
-        return support.isTraning();
+    public boolean isTransacting() {
+        return support.isTransacting();
     }
 
     @Override
@@ -693,12 +747,12 @@ public  class Dao implements IDao {
     }
 
     @Override
-    public void AddRollbackEvent(Action0 action) {
+    public void addRollbackEvent(Action0 action) {
 
     }
 
     @Override
-    public void AddCommitEvent(Action0 action) {
+    public void addCommitEvent(Action0 action) {
 
     }
 

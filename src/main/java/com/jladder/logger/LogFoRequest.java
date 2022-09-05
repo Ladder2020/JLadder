@@ -3,18 +3,17 @@ package com.jladder.logger;
 import com.jladder.Ladder;
 import com.jladder.actions.impl.EnvAction;
 import com.jladder.configs.Configure;
-import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.web.ArgumentMapping;
 import com.jladder.web.WebContext;
-import com.jladder.web.WebScope;
 
 import javax.servlet.http.HttpServletRequest;
-import java.net.InetAddress;
+import java.io.Serializable;
 import java.util.Date;
 
-public class LogFoRequest {
+public class LogFoRequest implements Serializable {
+    private String watchpoint;
     /**
      * 唯一标识
      */
@@ -44,7 +43,7 @@ public class LogFoRequest {
     /**
      * 站点
      */
-    public String site;
+    private String site;
     /**
      * 服务器
      */
@@ -124,19 +123,12 @@ public class LogFoRequest {
     /**
      * 标签,用于模型名称
      */
-    public String tag;
+    private String tag;
     /**
      * 基线
      */
     public int baseline=0;
 
-    public int getBaseline() {
-        return baseline;
-    }
-
-    public void setBaseline(int baseline) {
-        this.baseline = baseline;
-    }
 
 
 
@@ -203,11 +195,17 @@ public class LogFoRequest {
         }
         long time = (endtime.getTime() - starttime.getTime());
         duration = (int)time;
-        this.tag = WebContext.getTag();
+        String tag =  WebContext.getTag();
+        if(Strings.isBlank(tag))this.tag =tag;
         server = Configure.getString("_MachineInfo_IP_");
         if(Strings.isBlank(server)){
             server=Machine.getLocalIp();
             Configure.put("_MachineInfo_IP_",server);
+        }
+        watchpoint = Configure.getString("_MachineInfo_CPUID_");
+        if(Strings.isBlank(watchpoint)){
+            watchpoint= Machine.getCpuId();
+            Configure.put("_MachineInfo_CPUID_",watchpoint);
         }
         if(Strings.isBlank(userinfo))userinfo = EnvAction.getEnvValue("username");
         env=Ladder.Settings().getEnv();
@@ -240,5 +238,37 @@ public class LogFoRequest {
     public LogFoRequest setEnv(int env) {
         this.env = env;
         return this;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    public String getWatchpoint() {
+        return watchpoint;
+    }
+
+    public void setWatchpoint(String watchpoint) {
+        this.watchpoint = watchpoint;
+    }
+
+    public String getSite() {
+        return site;
+    }
+
+    public void setSite(String site) {
+        this.site = site;
+    }
+
+    public int getBaseline() {
+        return baseline;
+    }
+
+    public void setBaseline(int baseline) {
+        this.baseline = baseline;
     }
 }

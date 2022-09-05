@@ -45,7 +45,7 @@ public class KeepDaoPool
     {
         if (dao == null) return;
         KeepDao keepDao=new KeepDao();
-        if (dao.isTraning()) keepDao.isManageTran = false;
+        if (dao.isTransacting()) keepDao.isManageTran = false;
         keepDao.isAllowClose = false;
         IncreaseSequence();
         keepDao.sequence = Sequence;
@@ -54,11 +54,11 @@ public class KeepDaoPool
         //当外部Dao不容许管理事务时，池中的事务由外部Dao事务引发
         if (!keepDao.isManageTran)
         {
-            dao.AddRollbackEvent(() ->{
+            dao.addRollbackEvent(() ->{
                 keepDao.isManageTran = true;
                 AllRollBack();
             });
-            dao.AddCommitEvent(() ->{
+            dao.addCommitEvent(() ->{
                             keepDao.isManageTran = true;
                 AllCommit();
             });

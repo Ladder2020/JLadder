@@ -14,7 +14,7 @@ public class RefsTest extends TestCase {
 
     public void testInvoke() {
 
-        Receipt ret = Refs.invoke("com.jladder.core.lang.Strings.mapping(chars)", new Record("str", "${$date}"), null);
+        Receipt ret = Refs.invoke("com.jladder.core.lang.Strings.mapping(chars)", new Record("str", "${$date}"));
 
 
     }

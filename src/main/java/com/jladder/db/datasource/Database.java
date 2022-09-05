@@ -2,6 +2,7 @@ package com.jladder.db.datasource;
 import com.jladder.db.DbInfo;
 import com.jladder.db.datasource.impl.DataSourceByDruid;
 import com.jladder.db.datasource.impl.DataSourceByHikari;
+import com.jladder.db.enums.DbDialectType;
 import com.jladder.lang.Strings;
 
 import javax.sql.DataSource;
@@ -9,15 +10,18 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class Database implements DataSource, Closeable, Cloneable{
 
     private String pn;
     private final DataSource ds;
-//    private final String driver;
+    private DbDialectType dialect;
     private final DbInfo info;
     private int error=0;
     /**
@@ -88,6 +92,7 @@ public class Database implements DataSource, Closeable, Cloneable{
         Connection ret;
         try{
             ret = ds.getConnection();
+            if(dialect==null)dialect=getDialect(ret);
         }catch (SQLException e){
             e.printStackTrace();
             return null;
@@ -134,4 +139,68 @@ public class Database implements DataSource, Closeable, Cloneable{
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
         return ds.getParentLogger();
     }
+
+    public DbDialectType getDialect() {
+        return dialect;
+    }
+
+    public void setDialect(DbDialectType dialect) {
+        this.dialect = dialect;
+    }
+    public static DbDialectType getDialect(Connection conn){
+        try {
+            DatabaseMetaData dbmd = conn.getMetaData();
+            String dataBaseType = dbmd.getDatabaseProductName();	              //获取数据库类型
+            if("Microsoft SQL Server".equals(dataBaseType)){
+                return DbDialectType.SQLSERVER;
+            }else if("HSQL Database Engine".equals(dataBaseType)){
+                return DbDialectType.H2;
+            }else if("MySQL".equals(dataBaseType)){
+                return DbDialectType.MYSQL;
+            }else if("Oracle".equals(dataBaseType)){
+                return DbDialectType.ORACLE;
+            }else if("PostgreSQL".equals(dataBaseType)){
+                return DbDialectType.PostgreSql;
+            }else{
+                System.out.println(dataBaseType);
+            }
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        finally {
+
+        }
+        return null;
+    }
+    private static final Map<DataSource, DbDialectType> dialects = new HashMap<DataSource,DbDialectType>();
+    public static DbDialectType getDialect(DataSource source){
+        if(source==null)return null;
+        if(dialects.containsKey(source))return dialects.get(source);
+        else {
+            synchronized (dialects){
+                Connection conn  = null;
+                try {
+                    conn = source.getConnection();
+                    DbDialectType d = Database.getDialect(conn);
+                    dialects.put(source,d);
+                    return d;
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }finally {
+                    if(conn!=null) {
+                        try {
+                            conn.close();
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+
+            }
+        }
+        return null;
+    }
+
 }

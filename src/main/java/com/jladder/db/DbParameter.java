@@ -4,6 +4,7 @@ import com.jladder.db.enums.DbParameterDataType;
 import com.jladder.lang.Core;
 import com.jladder.lang.Json;
 
+import java.io.InputStream;
 import java.util.Date;
 
 public class DbParameter {
@@ -46,6 +47,14 @@ public class DbParameter {
         if(value==null || Core.isBaseType(value.getClass(),true))this.value=value;
         else{
             if(value instanceof Date){
+                this.value = value;
+                return;
+            }
+            if(value instanceof InputStream){
+                this.value = value;
+                return;
+            }
+            if(value instanceof byte[] || value instanceof Byte[]){
                 this.value = value;
                 return;
             }

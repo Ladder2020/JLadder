@@ -2,11 +2,9 @@ package com.jladder.lang;
 
 import com.jladder.lang.ext.BiMap;
 import com.jladder.lang.func.Action2;
-import com.sun.xml.internal.ws.util.UtilException;
 import org.springframework.util.Assert;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
-
 import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.namespace.QName;
@@ -43,14 +41,14 @@ public class Xmls {
      * @return 匹配返回类型的值
      * @since 3.2.0
      */
-    public static Object getByXPath(String expression, Object source, QName returnType) {
+    public static Object getByXPath(String expression, Object source, QName returnType) throws XPathExpressionException {
         NamespaceContext nsContext = null;
         if (source instanceof Node) {
             nsContext = new UniversalNamespaceCache((Node) source, false);
         }
         return getByXPath(expression, source, returnType, nsContext);
     }
-    public static Object getByXPath(String expression, Object source, QName returnType, NamespaceContext nsContext) {
+    public static Object getByXPath(String expression, Object source, QName returnType, NamespaceContext nsContext) throws XPathExpressionException {
         final XPath xPath = createXPath();
         if (null != nsContext) {
             xPath.setNamespaceContext(nsContext);
@@ -62,7 +60,7 @@ public class Xmls {
                 return xPath.evaluate(expression, source, returnType);
             }
         } catch (XPathExpressionException e) {
-            throw new UtilException(e);
+            throw e;
         }
     }
     public static XPath createXPath() {
@@ -150,7 +148,7 @@ public class Xmls {
      * @param xml XML字符串
      * @return XML文档
      */
-    public static Document parseXml(String xml) {
+    public static Document parseXml(String xml) throws Exception {
         if (Strings.isBlank(xml)) {
             throw new IllegalArgumentException("XML content string is empty !");
         }
@@ -170,13 +168,13 @@ public class Xmls {
         return xmlContent.replaceAll(INVALID_REGEX, "");
     }
 
-    public static Document readXML(File file) {
+    public static Document readXML(File file){
         Assert.notNull(file, "Xml file is null !");
         if (false == file.exists()) {
-            throw new UtilException("File [{}] not a exist!", file.getAbsolutePath());
+            throw Core.makeThrow("[{}] not a file!"+file.getAbsolutePath());
         }
         if (false == file.isFile()) {
-            throw new UtilException("[{}] not a file!", file.getAbsolutePath());
+            throw Core.makeThrow("[{}] not a file!"+file.getAbsolutePath());
         }
 
         try {
@@ -188,12 +186,17 @@ public class Xmls {
         BufferedInputStream in = null;
         try {
             in = Files.getInputStream(file);
-            return readXML(in);
+            try {
+                return readXML(in);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } finally {
             Streams.close(in);
         }
+        return null;
     }
-    public static Document readXML(InputStream inputStream) throws UtilException {
+    public static Document readXML(InputStream inputStream) throws Exception {
         return readXML(new InputSource(inputStream));
     }
 
@@ -202,9 +205,9 @@ public class Xmls {
      *
      * @param reader XML流
      * @return XML文档对象
-     * @throws UtilException IO异常或转换异常
+     * @throws Exception IO异常或转换异常
      */
-    public static Document readXML(Reader reader) throws UtilException {
+    public static Document readXML(Reader reader) throws Exception {
         return readXML(new InputSource(reader));
     }
     /**

@@ -3,106 +3,103 @@ package com.jladder.data;
 import com.jladder.lang.Core;
 import com.jladder.lang.Files;
 import com.jladder.lang.Security;
+import com.jladder.lang.Strings;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 
-/// <summary>
-/// 上传文件结构
-/// </summary>
-public class UploadFile
-{
-    /// <summary>
-    /// 文件名
-    /// </summary>
+/**
+ * 上传文件结构
+ */
+public class UploadFile {
+    /**
+     * 文件名
+     */
     private String filename;
-    /// <summary>
-    /// 表单名
-    /// </summary>
+    /**
+     * 表单名
+     */
     private String formname;
-    /// <summary>
-    /// 数据体
-    /// </summary>
+    /**
+     * 数据体
+     */
     private byte[] data;
-    /// <summary>
-    /// 格式
-    /// </summary>
+    /**
+     * 格式
+     */
     private String format;
-    /// <summary>
-    /// 文件前二位代码
-    /// </summary>
+    /**
+     * 文件前二位代码
+     */
     private String filecode;
-    /// <summary>
-    /// md5值
-    /// </summary>
+    /**
+     * md5值
+     */
     private String md5;
 
-    /// <summary>
-    /// 文件长度
-    /// </summary>
+    /**
+     * 文件长度
+     */
     private long length;
 
-    /// <summary>
-    ///
-    /// </summary>
+
     public UploadFile()
     {
     }
-
-    /// <summary>
-    /// 初始化
-    /// </summary>
-    /// <param name="filename">文件名</param>
-    /// <param name="data">数据</param>
-    /// <param name="formname">表单名称</param>
+    /**
+     * 初始化
+     * @param filename 文件名
+     * @param data 数据
+     * @param formname 表单名称
+     */
     public UploadFile(String filename, byte[] data,String formname)
     {
         this.filename = filename;
         this.formname = formname;
         this.data = data;
         this.format = Files.getExt(filename);
-        if (data.length > 3)
-        {
+        if (data.length > 3){
             this.filecode = data[0]+ "," + data[1]+ "," + data[2];
             this.md5 = Security.md5(this.data);
         }
-
+        if(data!=null)this.length=data.length;
     }
-    /// <summary>
-    /// 设置上传数据
-    /// </summary>
-    /// <param name="data">数据</param>
-    /// <returns></returns>
-    public UploadFile SetData(byte[] data)
+    /**
+     * 设置上传数据
+     * @param data 数据
+     * @return
+     */
+    public UploadFile setData(byte[] data)
     {
         this.data = data;
-        if (data!=null && data.length > 3)
-        {
+        if (data!=null && data.length > 3){
             this.filecode = data[0]+ "," + data[1]+ "," + data[2];
             this.md5 = Security.md5(this.data);
         }
-        else
-        {
+        else{
             this.filecode = "";
             this.md5  = "";
         }
+        if(data!=null)this.length=data.length;
         return this;
     }
-    /// <summary>
-    /// 设置长度
-    /// </summary>
-    /// <param name="length">长度</param>
-    /// <returns></returns>
-    public UploadFile SetLength(long length)
+    /**
+     * 设置长度
+     * @param length 长度
+     * @return
+     */
+    public UploadFile setLength(long length)
     {
         this.length = length;
         return this;
     }
-    /// <summary>
-    /// 另存
-    /// </summary>
-    /// <returns></returns>
-    public boolean SaveAs(String filename)
+
+    /**
+     * 另存
+     * @param filename 文件名称
+     * @return
+     */
+    public boolean saveAs(String filename)
     {
         if (Core.isEmpty(this.data)) return false;
         try {
@@ -117,11 +114,11 @@ public class UploadFile
         return data;
     }
 
-    public String getFilename() {
+    public String getFileName() {
         return filename;
     }
 
-    public String getFormname() {
+    public String getFormName() {
         return formname;
     }
 
@@ -129,12 +126,15 @@ public class UploadFile
         return md5;
     }
 
-    public String getFilecode() {
+    public String getFileCode() {
         return filecode;
     }
 
     public String getFormat() {
-        return format;
+        if(Strings.isBlank(this.format)){
+            this.format = Files.getExt(this.filename);
+        }
+        return Strings.isBlank(this.format)?"":this.format;
     }
 
     public long getLength() {

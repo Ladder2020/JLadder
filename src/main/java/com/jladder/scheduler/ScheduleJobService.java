@@ -8,8 +8,7 @@ import com.jladder.db.Rs;
 import com.jladder.db.enums.DbSqlDataType;
 import com.jladder.lang.*;
 import com.jladder.lang.func.*;
-import com.jladder.lang.script.Script;
-import com.jladder.logger.LogWriter;
+import com.jladder.script.Script;
 import com.jladder.logger.Logs;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.proxy.ProxyService;
@@ -208,12 +207,26 @@ public class ScheduleJobService {
                 if(instance().onSchedule!=null){
                     Receipt ret = instance().onSchedule.invoke(x);
                     if(!ret.isSuccess()){
+                        if(instance().onScheduleResult!=null){
+                            instance().onScheduleResult.callback(job,"ScheduleSkip",ret.message);
+                        }
                         Logs.writeLog("任务名称:" + x.getJobname() + System.lineSeparator() +
                                 "任务分组:" + x.getGroupname() + System.lineSeparator() +
                                 "Cron表达式:" + x.getCronexpress() + System.lineSeparator()+
                                 "跳出原因:" + ret.message+ System.lineSeparator(), "ScheduleJob_onSchedule");
                         return;
                     }
+                }
+                if(!job.canDay()){
+                    String msg = Times.getDate()+" in("+job.getExclude()+")";
+                    if(instance().onScheduleResult!=null){
+                        instance().onScheduleResult.callback(job,"ScheduleSkip",msg);
+                    }
+                    Logs.writeLog("任务名称:" + x.getJobname() + System.lineSeparator() +
+                            "任务分组:" + x.getGroupname() + System.lineSeparator() +
+                            "Cron表达式:" + x.getCronexpress() + System.lineSeparator()+
+                            "跳出原因:" + msg + System.lineSeparator(), "ScheduleJob_onSchedule");
+                    return;
                 }
                 if (Maths.isBitEq1(job.getWatchoption(),SchedulerWatchOption.Begin))
                     Logs.writeLog("任务名称:" + x.getJobname() + System.lineSeparator() +
@@ -489,8 +502,7 @@ public class ScheduleJobService {
         if (job.getEnable() == 0) return new Receipt(false, "任务未运行");
         if (job.getEndtime()!=null && job.getEndtime().getTime() < new Date().getTime()) return new Receipt(false, "结束时间过早未运行");
         if (Strings.hasValue(job.getEventype()) && Strings.isBlank(job.getCronexpress())){
-            switch (job.getEventype().toLowerCase())
-            {
+            switch (job.getEventype().toLowerCase()){
                 case "year":
                 case "1":
                     job.setCronexpress( "1 1 1 1 1/" + job.getEvenvalue());

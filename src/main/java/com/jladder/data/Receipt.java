@@ -1,21 +1,23 @@
 package com.jladder.data;
 
-/// <summary>
-/// 操作结果回执类
-/// </summary>
+/***
+ * 操作结果回执类
+ */
+
 public class Receipt<T>
 {
     /**
      * 信息数据
      */
     public String message;
-    /// <summary>
-    /// 结果
-    /// </summary>
+    /**
+     * 结果
+     */
+
     public boolean result;
-    /// <summary>
-    /// 对象数据
-    /// </summary>
+    /**
+     *对象数据
+     */
     public T data;
     /// <summary>
     /// 基本构造
@@ -25,6 +27,7 @@ public class Receipt<T>
         result = true;
         message = "";
     }
+
     /// <summary>
     /// 基本构造
     /// </summary>
@@ -56,84 +59,116 @@ public class Receipt<T>
     public T getData(){
         return data;
     }
-    /// <summary>
-    /// 设置携带数据
-    /// </summary>
-    /// <param name="obj">携带数据</param>
-    /// <returns></returns>
-    public Receipt<T> setData(T obj)
-    {
+    /**
+     * 设置携带数据
+     * @param obj 携带数据
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:35
+     */
+    public Receipt<T> setData(T obj){
         data = obj;
         return this;
     }
-    /// <summary>
-    /// 是否成功
-    /// </summary>
-    /// <returns></returns>
-    public boolean isSuccess()
-    {
+    /**
+     * 是否成功
+     * @return boolean
+     * @author YiFeng
+     * @date 2022/4/19 15:34
+     */
+    public boolean isSuccess(){
         return result;
     }
 
-    /// <summary>
-    /// 置错误信息
-    /// </summary>
-    /// <param name="message">错误信息</param>
-    /// <param name="data">数据</param>
-    /// <returns></returns>
-    public Receipt<T> error(String message,T data)
-    {
+    /**
+     * 置错误信息
+     * @param message  错误信息
+     * @param data 数据
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:34
+     */
+
+    public Receipt<T> error(String message,T data){
         this.message = message;
         result = false;
         this.data = data;
         return this;
     }
-    /// <summary>
-    /// 置错误信息
-    /// </summary>
-    /// <param name="message">错误信息</param>
-    /// <returns></returns>
-    public Receipt<T> error(String  message)
-    {
+    /**
+     * 置错误信息
+     * @param message 错误信息
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:33
+     */
+
+    public Receipt<T> error(String  message){
         this.message = message;
         this.result = false;
         return this;
     }
-    /// <summary>
-    /// 置错误信息
-    /// </summary>
-    /// <returns></returns>
-    public Receipt<T> Error()
-    {
+    /**
+     * 置错误信息
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:33
+     */
+
+    public Receipt<T> Error(){
         message = "出现错误";
         result = false;
         return this;
     }
-    /// <summary>
-    /// 设置成功
-    /// </summary>
-    /// <returns></returns>
-    public Receipt<T> ok()
-    {
+    /**
+     * 设置成功
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:33
+     */
+
+    public Receipt<T> ok(){
         result = true;
         return this;
     }
-    /// <summary>
-    /// 设置成功
-    /// </summary>
-    /// <param name="data">携带数据</param>
-    /// <returns></returns>
-    public Receipt<T> ok(T data)
-    {
+    /**
+     * 设置成功
+     * @param data 携带数据
+     * @return com.jladder.data.Receipt<T>
+     * @author YiFeng
+     * @date 2022/4/19 15:32
+     */
+
+    public Receipt<T> ok(T data){
         result = true;
         this.data = data;
         message = "";
         return this;
     }
-    public  AjaxResult toResult(){
+    /**
+     * 转换AjaxResult对象
+     * @return com.jladder.data.AjaxResult
+     * @author YiFeng
+     * @date 2022/4/19 15:32
+     */
+
+    public AjaxResult toResult(){
         AjaxResult ret = new AjaxResult(this.result?200:500,this.message);
+        if(!this.result)ret.setDataType(AjaxResultDataType.Error);
         ret.data = this.data;
         return ret;
+    }
+    /**
+     * 创建回执对象
+     * @param e 异常对象
+     * @return com.jladder.data.Receipt<T> 
+     * @author YiFeng
+     * @date 2022/4/19 15:32
+     */
+    
+    public static <T> Receipt<T> create(Exception e){
+        e.printStackTrace();
+        return new Receipt(false,e.getMessage());
     }
 }
 

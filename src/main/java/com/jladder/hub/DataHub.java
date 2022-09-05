@@ -18,9 +18,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/// <summary>
-/// 数据模型管理中心
-/// </summary>
+/**
+ *数据集线器
+ */
 public class DataHub {
     /// <summary>
     /// 实例
@@ -220,14 +220,10 @@ public class DataHub {
         long lasttime = file.lastModified();
         Document xdoc = Xmls.readXML(file);
         if(xdoc==null)return;
-        if (xdoc.getDocumentElement() != null && xdoc.hasChildNodes())
-        {
+        if (xdoc.getDocumentElement() != null && xdoc.hasChildNodes()){
             List<Element> elements = Xmls.getElements(xdoc.getDocumentElement(), "mapping");
-            if (elements!=null && elements.size()>0)
-            {
-                for (Element element : elements)
-                {
-
+            if (elements!=null && elements.size()>0){
+                for (Element element : elements){
                     String name = element.getAttribute("name");
                     if (Strings.isBlank(name)) continue;
                     DataModelInfo dminfo = new DataModelInfo("xml",file.getAbsolutePath(),name,lasttime);
@@ -238,15 +234,11 @@ public class DataHub {
                 }
             }
             List<Element> includes = Xmls.getElements(xdoc.getDocumentElement(), "include");
-            if (includes != null && includes.size()>0)
-            {
+            if (includes != null && includes.size()>0){
                 includes.forEach(x -> LoadXmlFile(x.getTextContent()));
             }
-
         }
     }
-
-
     /**
      * 加载json文件
      * @param path json文件路径
@@ -271,15 +263,13 @@ public class DataHub {
             DataHub.WorkCache.removeDataModelCache(name);
         });
     }
-
     /**
      * 通过配置信息加载
      * @param info
      */
     public static void load(DataModelInfo info){
         if (info == null) return;
-        switch (info.type)
-        {
+        switch (info.type) {
             case "xml":
                 LoadXmlFile(info.path);
                 break;
@@ -289,7 +279,6 @@ public class DataHub {
                 break;
         }
     }
-
     /**
      * 添加xml文件
      * @param path 文件路径
@@ -307,15 +296,12 @@ public class DataHub {
      * @return
      */
     public static DataModelInfo Get(String key, boolean ignore) {
-        if (ignore)
-        {
-
+        if (ignore){
             key = Collections.haveKey(DataModelConfigs,key);
             if (Strings.isBlank(key)) return null;
             else return DataModelConfigs.get(key);
         }
-        else
-        {
+        else{
             if (DataModelConfigs.containsKey(key)) return DataModelConfigs.get(key);
             else return null;
         }
@@ -331,14 +317,12 @@ public class DataHub {
         if (info == null) return null;
         String path = info.path;;
         DataModelForMap ret = null;
-        switch (info.type)
-        {
+        switch (info.type){
             case "xml":
                 if (!Files.exist(path)) return null;
                 Document doc = Xmls.readXML(new File(path));
                 List<Element> elements = Xmls.getElements(doc.getDocumentElement(), "mapping");
                 Tuple2<Boolean, Element> rett = Collections.first(elements, x -> info.node.equals(x.getAttribute("name")));
-
                 if (!rett.item1) return null;
                 return new DataModelForMap(rett.item2,null);
             case "json":

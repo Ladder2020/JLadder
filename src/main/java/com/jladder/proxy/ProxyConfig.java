@@ -6,11 +6,10 @@ import com.jladder.db.Cnd;
 import com.jladder.db.Rs;
 import com.jladder.entity.DbProxy;
 import com.jladder.lang.*;
+import com.jladder.lang.Collections;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 public class ProxyConfig {
 
     /// <summary>
@@ -73,22 +72,22 @@ public class ProxyConfig {
     /// 初始化构造
     /// </summary>
     /// <param name="raw">数据表原型数据</param>
-    public ProxyConfig(DbProxy raw)
-    {
+    public ProxyConfig(DbProxy raw){
         this.raw = raw;
         if (Strings.hasValue(raw.params))
         {
             params = Json.toObject(raw.params, new TypeReference<List<ProxyParam>>() {});
+            if(this.params!=null && this.params.size()>1){
+                this.params.sort(Comparator.comparing(x->x.level));
+            }
         }
-        if (Strings.hasValue(raw.mappings))
-        {
+        if (Strings.hasValue(raw.mappings)){
             this.mappings = Json.toObject(raw.mappings, new TypeReference<List<ProxyMapping>>() {});
+            if(this.mappings !=null && this.mappings.size()>1)this.mappings.sort(Comparator.comparing(x -> x.level));
         }
-        if (Strings.hasValue(raw.funinfo))
-        {
-            if (Strings.isJson(raw.funinfo))
-            {
-                functioninfo = Json.toObject(raw.funinfo, ProxyFunctionInfo.class);
+        if (Strings.hasValue(raw.funinfo)){
+            if (Strings.isJson(raw.funinfo)){
+                functioninfo = new ProxyFunctionInfo(raw.funinfo);
             }
             else
             {
@@ -111,7 +110,6 @@ public class ProxyConfig {
                 functioninfo.path = raw.debugging;
             }
         }
-
         if (Strings.hasValue(raw.callinfo))
         {
             List<Record> debugs = Json.toObject(raw.callinfo, new TypeReference<List<Record>>() {
@@ -184,6 +182,8 @@ public class ProxyConfig {
                 break;
             }
         });
+
+
     }
     /// <summary>
     /// 获取调用环境配置

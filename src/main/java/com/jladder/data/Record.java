@@ -114,15 +114,25 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
         return com.jladder.lang.Collections.toClass(this,clazz);
     }
 
-    public <T>  T get(int index,Class<T> clazz){
+    /***
+     * 获取值
+     * @param index 序号
+     * @param clazz 类型
+     * @return T 泛型
+     * @author YiFeng
+     */
+    public <T> T get(int index,Class<T> clazz){
         int i = 0;
         Object v=null;
-        for(String key:this.keySet()){
-            if(i==index){
-                v=this.get(key);
-                break;
+        if(index<0)index=this.size()+index;
+        if(index >= 0 && index<this.size()){
+            for(String key:this.keySet()){
+                if(i==index){
+                    v=this.get(key);
+                    break;
+                }
+                else i++;
             }
-            else i++;
         }
         if(Object.class.equals(clazz))return (T)v;
         if(v==null)return null;
@@ -180,7 +190,6 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
         return get(index,Integer.class);
     }
     public int getInt(String key) {
-
         return com.jladder.lang.Collections.getInt(this,key,false);
     }
     public int getInt(String key, boolean ignoreCase) {
@@ -314,6 +323,9 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
                 {
                     if (Strings.isJson(((String)data),1)) data = Record.parse(data);
                 }
+                if(!(data instanceof Record)){
+                    data= Record.parse(data);
+                }
                 if (data instanceof Record)
                 {
 
@@ -406,14 +418,21 @@ public class Record extends LinkedHashMap<String,Object> implements java.io.Seri
     public String[] sortKeys() {
         return this.keySet().stream().sorted(Comparator.comparing(x -> x.toString())).toArray(String[]::new);
     }
-    public Record mapping(Map<String,Object> data){
-        if (this.size() < 1) return null;
 
-        for (String key : this.keySet())
-        {
-            if (get(key) instanceof String)
-            {
-                put(key, Strings.mapping(get(key).toString(),data));
+    public Record mapping(Map<String,Object> data){
+        return mapping(data,true);
+    }
+    /**
+     *
+     * @param data
+     * @param ispaading
+     * @return
+     */
+    public Record mapping(Map<String,Object> data,boolean ispaading){
+        if (this.size() < 1) return this;
+        for (String key : this.keySet()){
+            if (get(key) instanceof String){
+                put(key, Strings.mapping(get(key).toString(),data,ispaading));
             }
         }
         return this;

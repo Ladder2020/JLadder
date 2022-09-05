@@ -41,6 +41,13 @@ public class DbInfo {
                     case "sqlite":
                         this.connection = "jdbc:sqlite:"+server+database + (Strings.isBlank(parameters)?"":"?"+parameters);
                         break;
+                    case "sqlsever":
+                    case "mssql":
+                        this.connection = "jdbc:sqlserver:"+server + (Strings.isBlank(port) ? "" : ":" + port) + "/" +database + (Strings.isBlank(parameters)?"":"?"+parameters);
+                        break;
+                    default:
+                        this.connection = "jdbc:"+dialect+":"+server + (Strings.isBlank(port) ? "" : ":" + port) + "/" +database + (Strings.isBlank(parameters)?"":"?"+parameters);
+                        break;
                 }
                 return this.connection;
             }catch (Exception e){

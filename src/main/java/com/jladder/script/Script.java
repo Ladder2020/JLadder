@@ -1,21 +1,22 @@
-package com.jladder.lang.script;
+package com.jladder.script;
 
 import com.jladder.data.Receipt;
 import com.jladder.data.Record;
 import com.jladder.lang.Convert;
 import com.jladder.lang.Strings;
 import javax.script.*;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-public class Script {
+public class Script implements Serializable {
 
     /**
      * 执行js表达式,未注入Ladder库
      * @param express 表达式代码
      * @param glass 泛型类
      * @param <T> 泛型
-     * @return
+     * @return 返回执行结果
      */
     public static <T> T eval(String express,Class<T> glass){
         ScriptEngineManager manager = new ScriptEngineManager();
@@ -34,7 +35,7 @@ public class Script {
 
     /**
      * 执行脚本,注入Ladder库
-     * @param express
+     * @param express 表达式
      * @return
      */
     public static Object execute(String express){
@@ -42,8 +43,7 @@ public class Script {
         ScriptEngine engine = manager.getEngineByName("javascript");
         try{
             engine.put("Ladder", new ScriptLadderFuntion());
-            Object ret = engine.eval(express);
-            return ret;
+            return engine.eval(express);
         }catch(ScriptException e){
             e.printStackTrace();
         }
