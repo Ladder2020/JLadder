@@ -22,18 +22,19 @@ public class Receipt<T>
     /// <summary>
     /// 基本构造
     /// </summary>
-    public Receipt()
-    {
+    public Receipt(){
         result = true;
         message = "";
     }
-
+    public Receipt(Exception e){
+        result=false;
+        message=e.getMessage();
+    }
     /// <summary>
     /// 基本构造
     /// </summary>
     /// <param name="msg">消息文本</param>
-    public Receipt(String msg)
-    {
+    public Receipt(String msg){
         result = false;
         message = msg;
     }
@@ -42,8 +43,7 @@ public class Receipt<T>
     /// </summary>
     /// <param name="result">结果</param>
     /// <param name="message">消息文本</param>
-    public Receipt(boolean result, String message)
-    {
+    public Receipt(boolean result, String message){
         this.result = result;
         this.message = message;
     }

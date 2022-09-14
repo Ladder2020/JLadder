@@ -217,7 +217,7 @@ public class Strings {
         if (Strings.isBlank(endText)) return source.substring(startIndex);
         int endIndex = source.indexOf(endText, startIndex);
         if (endIndex < 0) return "";
-        return source.substring(startIndex + startText.length(), endIndex - startIndex - startText.length());
+        return source.substring(startIndex + startText.length(), endIndex);
     }
     public static String removeBlock(String source, String startText){
         return removeBlock(source,startText,null);

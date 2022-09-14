@@ -1,4 +1,5 @@
 package com.jladder.lang;
+
 import com.jladder.data.Receipt;
 import com.jladder.lang.func.Func1;
 import com.jladder.lang.func.Tuple2;
@@ -7,11 +8,16 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Core {
@@ -58,7 +64,16 @@ public class Core {
             return null == parameterizedType ? null : parameterizedType.getActualTypeArguments();
         }
     }
+    /**
+     * 过去服务启动时间
+     * @return long
+     * @author YiFeng
+     */
 
+    public static long getStartTime(){
+        RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+        return runtimeMXBean.getStartTime();
+    }
     /**
      * 用运行时异常包裹抛出对象，如果抛出对象本身就是运行时异常，则直接返回
      * 如果是 InvocationTargetException，那么将其剥离，只包裹其 TargetException
