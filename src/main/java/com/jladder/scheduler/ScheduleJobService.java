@@ -208,12 +208,12 @@ public class ScheduleJobService {
                     Receipt ret = instance().onSchedule.invoke(x);
                     if(!ret.isSuccess()){
                         if(instance().onScheduleResult!=null){
-                            instance().onScheduleResult.callback(job,"ScheduleSkip",ret.message);
+                            instance().onScheduleResult.callback(job,"ScheduleSkip",ret.getMessage());
                         }
                         Logs.writeLog("任务名称:" + x.getJobname() + System.lineSeparator() +
                                 "任务分组:" + x.getGroupname() + System.lineSeparator() +
                                 "Cron表达式:" + x.getCronexpress() + System.lineSeparator()+
-                                "跳出原因:" + ret.message+ System.lineSeparator(), "ScheduleJob_onSchedule");
+                                "跳出原因:" + ret.getMessage()+ System.lineSeparator(), "ScheduleJob_onSchedule");
                         return;
                     }
                 }
@@ -382,16 +382,16 @@ public class ScheduleJobService {
                         case "post": {
                             for (int i = 0; i < 5; i++) {
                                 Receipt<String> r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
-                                if (!r.isSuccess() && r.message.contains("基础连接已经关闭")) {
+                                if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
                                     r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
                                 }
-                                if (!r.isSuccess() && r.message.contains("(502) 错误的网关")) {
+                                if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
                                     r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
                                 }
-                                if (r.result) {
+                                if (r.isSuccess()) {
                                     ret = r.getData();
                                     break;
-                                } else error = r.message;
+                                } else error = r.getMessage();
                             }
                         }
                         break;
@@ -399,17 +399,17 @@ public class ScheduleJobService {
                         case "get": {
                             for (int i = 0; i < 5; i++) {
                                 Receipt<String> r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");
-                                if (!r.isSuccess() && r.message.contains("基础连接已经关闭")) {
+                                if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
                                     r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");;
                                 }
-                                if (!r.isSuccess() && r.message.contains("(502) 错误的网关")) {
+                                if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
                                     r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");;
                                 }
 
-                                if (r.result) {
+                                if (r.isSuccess()) {
                                     ret = r.getData();
                                     break;
-                                } else error = r.message;
+                                } else error = r.getMessage();
                             }
                         }
                         break;
@@ -418,17 +418,17 @@ public class ScheduleJobService {
                         {
                             for (int i = 0; i < 5; i++) {
                                 Receipt<String>  r = HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
-                                if (!r.isSuccess() && r.message.contains("基础连接已经关闭")) {
+                                if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
                                     r =HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
                                 }
-                                if (!r.isSuccess() && r.message.contains("(502) 错误的网关")) {
+                                if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
                                     r = HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
                                 }
 
-                                if (r.result) {
+                                if (r.isSuccess()) {
                                     ret = r.getData();
                                     break;
-                                } else error = r.message;
+                                } else error = r.getMessage();
                             }
                         }
                         break;

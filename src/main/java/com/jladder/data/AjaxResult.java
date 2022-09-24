@@ -17,6 +17,9 @@ public class AjaxResult<T,TXt> implements Serializable {
      * 状态码 200:成功返回;500+服务程序码，400+结果代码 ：404不存在 403,密码错误，401：输入无有效数据，402:数据存在或重复
      */
     public int statusCode=200;
+
+
+
     /***
      * 留言信息
      */
@@ -388,11 +391,7 @@ public class AjaxResult<T,TXt> implements Serializable {
      * @return
      */
     public Receipt toReceipt(){
-        Receipt ret = new Receipt();
-        ret.data =data;
-        ret.message =message;
-        ret.result = (statusCode == 200 ? true : false);
-        return ret;
+        return new Receipt(statusCode == 200 ? true : false,message).setData(data);
     }
 
     /***
@@ -425,4 +424,11 @@ public class AjaxResult<T,TXt> implements Serializable {
     public boolean isSuccess(){
         return statusCode==200;
     }
+
+
+    public String getMessage() {
+        return message;
+    }
+
+
 }

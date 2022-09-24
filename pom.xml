@@ -7,7 +7,7 @@
     <!--    groupId需要为Sonatype的groupId-->
     <groupId>com.github.ladder2020</groupId>
     <artifactId>jladder</artifactId>
-    <version>3.4.76</version>
+    <version>3.4.81</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <!--    <name>jladder</name>-->

@@ -2,6 +2,7 @@ package com.jladder.actions.impl;
 
 import com.jladder.actions.Curd;
 import com.jladder.data.*;
+import com.jladder.data.Record;
 import com.jladder.datamodel.DataModelType;
 import com.jladder.datamodel.GenBeanTool;
 import com.jladder.datamodel.IDataModel;
@@ -487,7 +488,7 @@ public class SaveAction{
                 }
                 //新增前动作
                 List<Record> relations = dm.getRelationAction("insertbefore");
-                ret = handAction(keepDaoPool, relations, rs, null, dm,false,(Record)ret.data);
+                ret = handAction(keepDaoPool, relations, rs, null, dm,false,(Record)ret.getData());
                 if (relations != null && !ret.isSuccess()){
                     return EndPoint.invoke().setStatusCode(500).setMessage("新增操作失败").setData(ret).setDuration(startTime).setDataName(dm.getName());
                 }
@@ -517,7 +518,7 @@ public class SaveAction{
                 }
                 analyze.setDataForAfter(bean);
                 List<Record> irelations = dm.getRelationAction("insertafter");
-                ret = handAction(keepDaoPool, irelations, rs, null, dm,false, (Record)ret.data);
+                ret = handAction(keepDaoPool, irelations, rs, null, dm,false, (Record)ret.getData());
                 if (irelations != null && !ret.isSuccess()){
                     return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(startTime).setDataName(dm.getName());
                 }
@@ -615,7 +616,7 @@ public class SaveAction{
                 relations = dm.getRelationAction("updatebefore");
                 if (!Core.isEmpty(relations)){
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
-                    ret = handAction(keepDaoPool, relations, old.invoke(), bean, dm, false, (Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), bean, dm, false, (Record)ret.getData());
                     if (ret.isSuccess()){
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(startTime).setDataName(dm.getName());
                     }
@@ -636,7 +637,7 @@ public class SaveAction{
                 //更新后事件
                 relations = dm.getRelationAction("updateafter");
                 if (!Core.isEmpty(relations)){
-                    ret = handAction(keepDaoPool, relations, old.invoke(), bean, dm, false, ret==null?null:(Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), bean, dm, false, ret==null?null:(Record)ret.getData());
                     if (!ret.isSuccess()){
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(startTime).setDataName(dm.getName());
                     }
@@ -647,7 +648,7 @@ public class SaveAction{
                     Record report = new Record();
                     report.put("oldrows", old.invoke().size());
                     report.put("summary", analyze.getDifferentReport(null));
-                    ret = handAction(keepDaoPool, relations, old.invoke(), bean.put("$report", report), dm, false, (Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), bean.put("$report", report), dm, false, (Record)ret.getData());
                     if (!ret.isSuccess()){
                         return EndPoint.invoke().setStatusCode(500).setMessage("更新操作失败").setData(ret).setDuration(startTime).setDataName(dm.getName());
                     }
@@ -673,7 +674,7 @@ public class SaveAction{
                 relations = dm.getRelationAction("deletebefore");
                 if (!Core.isEmpty(relations)){
                     if (Core.isEmpty(old.invoke())) return assertBlank.invoke();
-                    ret = handAction(keepDaoPool, relations, old.invoke(), null, dm, false, ret==null?null:(Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), null, dm, false, ret==null?null:(Record)ret.getData());
                     if ( !ret.isSuccess()){
                         return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dm.getName()).setData(ret).setDuration(startTime).setDataName(dm.getName());
                     }
@@ -716,7 +717,7 @@ public class SaveAction{
                 }
                 //删除后事件处理
                 if (!Core.isEmpty(relations)){
-                    ret = handAction(keepDaoPool, relations, old.invoke(), null, dm, false, ret==null?null:(Record)ret.data);
+                    ret = handAction(keepDaoPool, relations, old.invoke(), null, dm, false, ret==null?null:(Record)ret.getData());
                     if (!ret.isSuccess()){
                         return EndPoint.invoke().setStatusCode(500).setMessage("删除操作失败").setDataName(dm.getName()).setData(ret).setDuration(startTime).setDataName(dm.getName());
                     }
@@ -859,8 +860,8 @@ public class SaveAction{
                         if (method == null) continue;
                         Receipt ret = Refs.invoke(method, methodRecord);
                         if (ret == null) continue;
-                        if (ret.data instanceof Boolean && !(Boolean)ret.data) return new Receipt(false);
-                        if (ret.data instanceof AjaxResult && !((AjaxResult)ret.data).success) return new Receipt(false, ((AjaxResult)ret.data).message);
+                        if (ret.getData() instanceof Boolean && !(Boolean)ret.getData()) return new Receipt(false);
+                        if (ret.getData() instanceof AjaxResult && !((AjaxResult)ret.getData()).success) return new Receipt(false, ((AjaxResult)ret.getData()).message);
                         if (Strings.hasValue(actionName)) retData.put(actionName, ret);
                         continue;
                     }
@@ -1032,10 +1033,10 @@ public class SaveAction{
                         StringBuilder message = new StringBuilder();
                         if (context) {
                             Receipt<Record> re_t = GenBeanTool.match(data, (Record) bean);
-                            if (!re_t.result) {
-                                return new AjaxResult(400, re_t.message).setData(bean).setDataType(AjaxResultDataType.Record).setDataName(tableName);
+                            if (!re_t.isSuccess()) {
+                                return new AjaxResult(400, re_t.getMessage()).setData(bean).setDataType(AjaxResultDataType.Record).setDataName(tableName);
                             }
-                            entrybean = GenBeanTool.gen(dm, re_t.data, DbSqlDataType.get(Convert.toInt(option)), message);
+                            entrybean = GenBeanTool.gen(dm, re_t.getData(), DbSqlDataType.get(Convert.toInt(option)), message);
                             //entrybean =  re_t.data;
                         } else{
                             entrybean = GenBeanTool.gen(dm, (Record) bean, DbSqlDataType.get(Convert.toInt(option)), message);
@@ -1133,9 +1134,9 @@ public class SaveAction{
                 if (method == null)  return new AjaxResult(500,"执行方法不存在");
                 ret = Refs.invoke(method, methodRecord);
                 if (ret == null) return new AjaxResult();
-                if (ret.data instanceof Boolean && !(Boolean)ret.data) return new AjaxResult(false);
-                if (ret.data instanceof AjaxResult && !((AjaxResult)ret.data).success) return (AjaxResult)ret.data;
-                return new AjaxResult().setData(ret.data);
+                if (ret.getData() instanceof Boolean && !(Boolean)ret.getData()) return new AjaxResult(false);
+                if (ret.getData() instanceof AjaxResult && !((AjaxResult)ret.getData()).success) return (AjaxResult)ret.getData();
+                return new AjaxResult().setData(ret.getData());
             case "9999":
             case "sql":
                 if(pool==null){

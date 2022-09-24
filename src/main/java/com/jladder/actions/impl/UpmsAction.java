@@ -356,7 +356,7 @@ public class UpmsAction {
         String ssoserver = Ladder.Settings().getBusiness().getSso();
         String site = Ladder.Settings().getSite();
         if(site==null)site = Ladder.Settings().getSite();
-        String resultInfo = HttpHelper.request(ssoserver + "/LoginBySub.aspx?systemcode=" + site + "&username=" + username, null, "GET",null).data;
+        String resultInfo = HttpHelper.request(ssoserver + "/LoginBySub.aspx?systemcode=" + site + "&username=" + username, null, "GET",null).getData();
         if (!Strings.isBlank(resultInfo))
         {
             Record ret = Record.parse(resultInfo);

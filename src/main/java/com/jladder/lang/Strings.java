@@ -13,8 +13,6 @@ import java.util.regex.Matcher;
 
 public class Strings {
     protected Strings() {}
-
-
     public static List<String> list(String ...str){
         if(str==null)return null;
         List<String> array = new ArrayList<>();
@@ -23,8 +21,7 @@ public class Strings {
         }
         return array;
     }
-    public static boolean isNumber(String str)
-    {
+    public static boolean isNumber(String str) {
 
         return !isBlank(str) && Regex.isMatch(str, "^-?\\d*\\.?\\d*$");
     }
@@ -36,21 +33,20 @@ public class Strings {
     }
 
     /***
-     *
-     * @param src
-     * @param len
-     * @param ch
+     * 左填充
+     * @param source 源文本串
+     * @param length 长度
+     * @param ch asc码字符
      * @return
      */
-    public static String padLeft(String src, int len, char ch) {
-        int diff = len - src.length();
+    public static String padLeft(String source, int length, char ch) {
+        int diff = length - source.length();
         if (diff <= 0) {
-            return src;
+            return source;
         }
-
-        char[] charr = new char[len];
-        System.arraycopy(src.toCharArray(), 0, charr, 0, src.length());
-        for (int i = src.length(); i < len; i++) {
+        char[] charr = new char[length];
+        System.arraycopy(source.toCharArray(), 0, charr, diff, source.length());
+        for (int i = 0; i < diff; i++) {
             charr[i] = ch;
         }
         return new String(charr);
@@ -67,34 +63,31 @@ public class Strings {
         return new StringReader(str.toString());
     }
     /***
-     *
-     * @param src
-     * @param len
-     * @param ch
+     * 右填充
+     * @param source 源字符串
+     * @param length 长度
+     * @param ch asc码字符
      * @return
      */
-    public static String padRight(String src, int len, char ch) {
-        int diff = len - src.length();
+    public static String padRight(String source, int length, char ch) {
+        int diff = length - source.length();
         if (diff <= 0) {
-            return src;
+            return source;
         }
-
-        char[] charr = new char[len];
-        System.arraycopy(src.toCharArray(), 0, charr, diff, src.length());
-        for (int i = 0; i < diff; i++) {
+        char[] charr = new char[length];
+        System.arraycopy(source.toCharArray(), 0, charr, 0, source.length());
+        for (int i = source.length(); i < length; i++) {
             charr[i] = ch;
         }
         return new String(charr);
     }
-
-    /// <summary>
-    /// 取右截去文本
-    /// </summary>
-    /// <param name="str">原文本</param>
-    /// <param name="len">舍去的长度</param>
-    /// <returns>剩下的文本</returns>
-    public static String rightLess(CharSequence str, int len)
-    {
+    /**
+     * 取右截去文本
+     * @param str 原文本
+     * @param len 舍去的长度
+     * @return 剩下的文本
+     */
+    public static String rightLess(CharSequence str, int len){
         if (isBlank(str)) return "";
         if (str.length() <= len) return "";
         return str.subSequence(0,str.length() - len).toString();
@@ -975,5 +968,9 @@ public class Strings {
         return new Receipt(true);
 
 
+    }
+
+    public static String toString(Object data) {
+       return data==null?"":data.toString();
     }
 }

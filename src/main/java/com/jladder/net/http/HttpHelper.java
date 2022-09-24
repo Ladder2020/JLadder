@@ -455,13 +455,13 @@ public class HttpHelper{
     }
 
     public static String post(String url, Record data) {
-        return request(url, data, "POST", null).data;
+        return request(url, data, "POST", null).getData();
     }
     public static String get(String url){
-        return request(url, null, "GET", null).data;
+        return request(url, null, "GET", null).getData();
     }
     public static String get(String url, Record data) {
-        return request(url, data, "GET", null).data;
+        return request(url, data, "GET", null).getData();
     }
 
     /**

@@ -51,7 +51,7 @@ public class ScriptAction {
                     if(Strings.hasValue(param.getValid())){
                         Receipt check = Strings.check(data.getString(key),param.getValid());
                         if (!check.isSuccess()){
-                            return new AjaxResult(444, "参数[" + param.getParamname() + "]" + check.message);
+                            return new AjaxResult(444, "参数[" + param.getParamname() + "]" + check.getMessage());
                         }
                     }
 

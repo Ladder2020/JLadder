@@ -26,8 +26,8 @@ public class ViewAction {
         Record tt =Record.parse(config);
         if(tt==null)tt=new Record();
         Receipt<String> ret = GetView(view, 1, tt,null);
-        if (ret.result){
-            code = ret.data;
+        if (ret.isSuccess()){
+            code = ret.getData();
             code = Strings.findBlock(code,"//基本代码start", "//基本代码end");
             code = Security.encryptByBase64(code);
             ret.setData(code);

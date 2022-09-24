@@ -165,9 +165,9 @@ public class Mappings {
                     }
                 }
                 Receipt reData = reData(mapping, value);
-                if (reData.result){
-                    d.put(last, reData.data);
-                    return new Receipt().setData(reData.data);
+                if (reData.isSuccess()){
+                    d.put(last, reData.getData());
+                    return new Receipt().setData(reData.getData());
                 }else{
                     return reData;
                 }

@@ -21,7 +21,21 @@ public class Task {
     public static void start(Runnable run){
         Executors.newSingleThreadScheduledExecutor().submit(run);
     }
-    public static void start(Runnable run, int time, TimeUnit unit){
+    /**
+     * 延时执行
+     * @param run 执行回调
+     * @param second 秒值
+     */
+    public static void start(Runnable run,int second){
+        factory.schedule(run,second,TimeUnit.SECONDS);
+    }
+    /**
+     * 延时执行
+     * @param run 执行回调
+     * @param time 时间值
+     * @param unit 时间单位
+     */
+    public static void start(Runnable run, TimeUnit unit, int time){
         factory.schedule(run,time,unit);
     }
     public static void startNew(Action0 fun){

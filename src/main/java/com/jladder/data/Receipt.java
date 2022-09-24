@@ -4,8 +4,7 @@ package com.jladder.data;
  * 操作结果回执类
  */
 
-public class Receipt<T>
-{
+public class Receipt<T> {
     /**
      * 信息数据
      */
@@ -169,6 +168,9 @@ public class Receipt<T>
     public static <T> Receipt<T> create(Exception e){
         e.printStackTrace();
         return new Receipt(false,e.getMessage());
+    }
+    public String getMessage(){
+        return this.message;
     }
 }
 

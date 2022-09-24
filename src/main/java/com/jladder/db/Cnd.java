@@ -17,8 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Cnd {
 
-    public final int AND=0;
-    public final int OR=1;
+    public final static int AND=0;
+    public final static int OR=1;
+    public final static String In="in";
     public DbDialectType dialect;
     public List<List<CndStruct>> Most = new ArrayList<List<CndStruct>>();
     public List<DbParameter>  parameters = new ArrayList<>();;
@@ -243,6 +244,17 @@ public class Cnd {
     public Cnd put(String fields, String op, Object val){
         return put(fields,op,val,this.AND);
     }
+
+    /**
+     * 放置In条件
+     * @param fields 字段
+     * @param value 数据值 自动识别
+     * @return
+     */
+    public Cnd in(String fields,Object value){
+        return put(fields,"in",value);
+    }
+
     /**
      * 解析条件
      * @param cnd 原数据对象
@@ -462,11 +474,11 @@ public class Cnd {
             {
                 //获取条件回溯
                 Receipt<SqlText> recall = getDataModelSql(val);
-                if (recall.result)
+                if (recall.isSuccess())
                 {
                     _q = "("; _h = ")";
-                    currentText += propname + " " + op + " " + _q + " " + recall.data.getCmd() + _h + " or ";
-                    parameters.addAll(recall.data.getParameters());
+                    currentText += propname + " " + op + " " + _q + " " + recall.getData().getCmd() + _h + " or ";
+                    parameters.addAll(recall.getData().getParameters());
                     // val = recall;
                 }
                 else
@@ -686,9 +698,9 @@ public class Cnd {
             for (Object o : datas)
             {
                 Receipt<SqlText> sql = getDataModelSql(o);
-                if (sql.result){
-                    sqltext += sql.message + " union ";
-                    parameters.addAll(sql.data.getParameters());
+                if (sql.isSuccess()){
+                    sqltext += sql.getMessage() + " union ";
+                    parameters.addAll(sql.getData().getParameters());
                 }
             }
             return Strings.hasValue(sqltext) ? new Receipt<SqlText>().setData(new SqlText(Strings.rightLess(sqltext,7),parameters)) : new Receipt<SqlText>(false);

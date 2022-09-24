@@ -160,8 +160,8 @@ public class DingTalk {
                 token=token.substring(index+14);
             }
             Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/robot/send?access_token=" + token + "&timestamp=" + timestamp + "&sign=" + sign, msg, new Record("timestamp", timestamp).put("sign", sign));
-            if (!ret.result) return ret;
-            Record record = Record.parse(ret.data);
+            if (!ret.isSuccess()) return ret;
+            Record record = Record.parse(ret.getData());
             return "0".equals(record.getString("errcode")) ? new Receipt() : ret;
         }catch (Exception e){
             return new Receipt(false);
@@ -183,8 +183,8 @@ public class DingTalk {
             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
             String sign = URLEncoder.encode(new String(Base64.getEncoder().encode(signData)),"UTF-8");
             Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/robot/send?access_token=" + token + "&timestamp=" + timestamp + "&sign=" + sign, message, new Record("timestamp", timestamp).put("sign", sign));
-            if (!ret.result) return ret;
-            Record record = Record.parse(ret.data);
+            if (!ret.isSuccess()) return ret;
+            Record record = Record.parse(ret.getData());
             return "0".equals(record.getString("errcode")) ? new Receipt() : ret;
         }catch (Exception e){
             return new Receipt(false);
@@ -203,7 +203,7 @@ public class DingTalk {
     public static Receipt sendMessageByRobot(DingSecret secret, List<String> userIds,String msgKey,String msgParam){
         Receipt<String> ret = HttpHelper.requestByJson(Api_oToMessages_batchSend,
                 new Record("robotCode",secret.getAppkey()).put("userIds",userIds).put("msgKey",msgKey).put("msgParam",msgParam),
-                new Record("x-acs-dingtalk-access-token", getAccessToken(secret).data));
+                new Record("x-acs-dingtalk-access-token", getAccessToken(secret).getData()));
         return ret;
     }
 
@@ -217,7 +217,7 @@ public class DingTalk {
     public static Receipt<Map<Long,Record>> getDepartmentMap(DingSecret secret, Long dept_id, Map<Long,Record> dic){
         if(dic==null)dic=new HashMap<Long,Record>();
         Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/topapi/v2/department/listsub?access_token=" + getAccessToken(secret).getData() , new Record("dept_id", dept_id),null);
-        if (!ret.result) return new Receipt<Map<Long,Record>>(false,ret.message);
+        if (!ret.isSuccess()) return new Receipt<Map<Long,Record>>(false,ret.getMessage());
         JSONObject result = JSON.parseObject(ret.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Map<Long,Record>>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
         JSONArray depts = result.getJSONArray("result");
@@ -241,7 +241,7 @@ public class DingTalk {
                         .put("dept_path",path)
             );
             Receipt<Map<Long, Record>> rett = getDepartmentMap(secret, this_dept_id, dic);
-            if(rett.isSuccess())dic.putAll(rett.data);
+            if(rett.isSuccess())dic.putAll(rett.getData());
         }
         return new Receipt<Map<Long,Record>>().setData(dic);
     }
@@ -258,7 +258,7 @@ public class DingTalk {
         List<Record> ret = new ArrayList<Record>();
         Receipt<String> rett = HttpHelper.requestByJson("https://oapi.dingtalk.com/topapi/v2/user/list?access_token=" + getAccessToken(secret).getData() ,
                 new Record("dept_id", dept_id).put("size",100).put("cursor",cursor),null);
-        if (!rett.result) return new Receipt<List<Record>>(false,rett.message);
+        if (!rett.isSuccess()) return new Receipt<List<Record>>(false,rett.getMessage());
         JSONObject result = JSON.parseObject(rett.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<List<Record>>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
         JSONObject ur = result.getJSONObject("result");
@@ -282,14 +282,14 @@ public class DingTalk {
      */
     public static Receipt<Record> getUserInfo(DingSecret secret,String userid){
         Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/topapi/v2/user/get?access_token=" + getAccessToken(secret).getData(), new Record("userid", userid),null);
-        if (!ret.result) return new Receipt<Record>(false,ret.message);
+        if (!ret.isSuccess()) return new Receipt<Record>(false,ret.getMessage());
         JSONObject result = JSON.parseObject(ret.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
         JSONObject data = result.getJSONObject("result");
         Record user = toUserInfo(data);
         if(user.containsKey("dept_id")){
             Receipt<Record> dept = getDepartmentInfo(secret, user.getString("dept_id"));
-            if(dept.isSuccess())user.put("dept_name",dept.data.get("name"));
+            if(dept.isSuccess())user.put("dept_name",dept.getData().get("name"));
         }
         return new Receipt<Record>().setData(user);
     }
@@ -302,7 +302,7 @@ public class DingTalk {
      */
     public static Receipt<Record> getDepartmentInfo(DingSecret secret,String dept_id){
         Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/topapi/v2/department/get?access_token=" + getAccessToken(secret).getData(), new Record("dept_id", dept_id),null);
-        if (!ret.result) return new Receipt<Record>(false,ret.message);
+        if (!ret.isSuccess()) return new Receipt<Record>(false,ret.getMessage());
         JSONObject result = JSON.parseObject(ret.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
         JSONObject data = result.getJSONObject("result");
@@ -334,12 +334,12 @@ public class DingTalk {
             String encoded = URLEncoder.encode(signature, "UTF-8");
             String urlEncodeSignature = encoded.replace("+", "%20").replace("*", "%2A").replace("~", "%7E").replace("/", "%2F");
             Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/sns/getuserinfo_bycode?accessKey=" + secret.getAppkey()+"&timestamp="+timestamp+"&signature="+urlEncodeSignature, new Record("tmp_auth_code", code),null);
-            if (!ret.result) return new Receipt<Record>(false,ret.message);
+            if (!ret.isSuccess()) return new Receipt<Record>(false,ret.getMessage());
             JSONObject result = JSON.parseObject(ret.getData());
             if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
             String unionid = result.getJSONObject("user_info").getString("unionid");
             ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/topapi/user/getbyunionid?access_token=" + getAccessToken(secret).getData(), new Record("unionid", unionid),null);
-            if (!ret.result) return new Receipt<Record>(false,ret.message);
+            if (!ret.isSuccess()) return new Receipt<Record>(false,ret.getMessage());
             result = JSON.parseObject(ret.getData());
             if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0263]":result.getString("errmsg"));
             String userid = result.getJSONObject("result").getString("userid");
@@ -357,7 +357,7 @@ public class DingTalk {
      */
     public static Receipt<Record> getUserInfoByAuthCode(DingSecret secret,String code){
         Receipt<String> ret = HttpHelper.requestByJson("https://oapi.dingtalk.com/user/getuserinfo?access_token=" +getAccessToken(secret).getData()+"&code="+code, new Record("tmp_auth_code", code),null,null,null,"get");
-        if (!ret.result) return new Receipt<Record>(false,ret.message);
+        if (!ret.isSuccess()) return new Receipt<Record>(false,ret.getMessage());
         JSONObject result = JSON.parseObject(ret.getData());
         if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<Record>(false,result==null?"请求失败[0193]":result.getString("errmsg"));
         String userid = result.getString("userid");
@@ -581,7 +581,7 @@ public class DingTalk {
         if(Strings.isBlank(method)) method = "post";
         try {
             Receipt<String> ret = HttpHelper.requestByJson (url+"?access_token=" + access_token, rex,null,null,null,method);
-            if (!ret.result) return new Receipt<T>(false,ret.message);
+            if (!ret.isSuccess()) return new Receipt<T>(false,ret.getMessage());
             JSONObject result = JSON.parseObject(ret.getData());
             if(result==null|| !"0".equals(result.getString("errcode")))return new Receipt<T>(false,result==null?"请求失败[0588]":result.getString("errmsg"));
             if(clazz==null || clazz.equals(JSONObject.class))return new Receipt<T>().setData((T)result);

@@ -2,8 +2,24 @@ package com.jladder.net.mail;
 
 import com.jladder.lang.Strings;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class MailAccount {
 
+    private final static Map<String,MailAccount> channels  = new HashMap<String,MailAccount>();
+    public static void reg(MailAccount account){
+        channels.put("_default_",account);
+    }
+    public static void reg(String channel, MailAccount account){
+        channels.put(channel,account);
+    }
+    public static MailAccount get(){
+        return channels.get("_default_");
+    }
+    public static MailAccount get(String channel){
+       return channels.get(channel);
+    }
     private String host;
     private String sender;
     private String sendname;

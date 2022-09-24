@@ -244,10 +244,8 @@ public class Refs {
             return new Receipt().setData(ret);
         } catch (Exception e) {
             e.printStackTrace();
-            new Receipt(false,e.getMessage());
+            return new Receipt(false,e.getMessage());
         }
-        return new Receipt(false,"未有效执行");
-
     }
 
     /***
@@ -257,7 +255,6 @@ public class Refs {
      * @return java.lang.Object[]
      * @author YiFeng
      */
-
     public static Object[] mappingMethodParam(Method method, Object data){
         Record record = Record.parse(data);
         int count = method.getParameters().length;
@@ -281,6 +278,10 @@ public class Refs {
             }
             if (Integer.class.equals(type) || int.class.equals(type)) {
                 ret[i] = index > -1 ? record.getInt(index) :  record.getInt(name,true);
+                continue;
+            }
+            if(char.class.equals(type) || Character.class.equals(type)){
+                ret[i] = index > -1 ? (char)record.getInt(index) :  (char)record.getInt(name,true);
                 continue;
             }
             if(String[].class.equals(type)){

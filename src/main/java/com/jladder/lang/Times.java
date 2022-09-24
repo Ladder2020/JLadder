@@ -1173,9 +1173,19 @@ public abstract class Times {
         return format.format(new Date(Long.parseLong(timestamp * 1000 + "")));
     }
 
+    public static int timestamp(Date time){
+        return (int)(time.getTime()/ 1000);
+    }
+    public static int timestamp(Date time,int length){
+        if (length > 13) length = 13;
+        return (int)(time.getTime() / Math.pow(10, 13 - length));
+    }
+
+
     public static String timestamp(){
         return String.valueOf(getTS());
     }
+
     /**
      * 取Unix时间戳
      * 

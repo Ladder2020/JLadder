@@ -52,7 +52,7 @@ public class NetUtils {
         String url = "http://opendata.baidu.com/api.php?query=" + ip + "&co=&resource_id=6006&oe=utf8";
         Receipt<String> ret = HttpHelper.request(url, null, "GET");
         if(!ret.isSuccess())return ret;
-        Record data = Record.parse(ret.data);
+        Record data = Record.parse(ret.getData());
         //ret = Record.parse(HttpHelper.get(service));
         if (data == null) return new Receipt<String>(false,"未查询到结果");
         Object value = data.find("data[0].location");

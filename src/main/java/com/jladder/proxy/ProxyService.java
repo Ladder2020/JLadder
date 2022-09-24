@@ -126,7 +126,7 @@ public class ProxyService {
                         if (v == null) return end(new AjaxResult(444, "参数[" + mapping.paramname + "]未通过验证[0155]"), running);
                         Receipt check = Strings.check(v.toString(),mapping.valid);
                         if (!check.isSuccess())
-                            return end(new AjaxResult(444, "参数[" + mapping.paramname + "]" + check.message), running);
+                            return end(new AjaxResult(444, "参数[" + mapping.paramname + "]" + check.getMessage()), running);
                     }
                     //格式化
                     if (Strings.hasValue(mapping.format)){
@@ -202,7 +202,7 @@ public class ProxyService {
                     }
                     if (Strings.hasValue(param.valid)){
                         Receipt check = Strings.check(stringvalue,param.valid);
-                        if (!check.isSuccess())return end(new AjaxResult(444, "映射参数[" + param.paramname + "]" + check.message), running);
+                        if (!check.isSuccess())return end(new AjaxResult(444, "映射参数[" + param.paramname + "]" + check.getMessage()), running);
                     }
                     switch (param.datatype.toLowerCase()){
                         case "int":
@@ -664,7 +664,7 @@ public class ProxyService {
                 ///region 内部应用环境
             case "controller":
                 Receipt handleresult = Refs.invoke(funInfo.path,Core.or(funInfo.uri,funInfo.functionname),running.paramdata);
-                return handleresult.result ? new AjaxResult(handleresult.data) : new AjaxResult(500).setMessage(handleresult.message);
+                return handleresult.isSuccess() ? new AjaxResult(handleresult.getData()) : new AjaxResult(500).setMessage(handleresult.getMessage());
             case "script":
                 {
                     if(Strings.isBlank(funInfo.code))return new AjaxResult(500).setMessage("脚本指令为空[0670]");
@@ -680,12 +680,12 @@ public class ProxyService {
             case "services":
                 {
                     Receipt result = Refs.invoke(funInfo.path,Core.or(funInfo.uri,funInfo.functionname), running.paramdata);
-                    return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
+                    return result.isSuccess() ? new AjaxResult().setData(result.getData()) : new AjaxResult(500, result.getMessage());
                 }
             case "program":
                 {
                     Receipt result = Refs.invoke(funInfo.path,funInfo.functionname, running.paramdata);
-                    return result.result ? new AjaxResult().setData(result.data) : new AjaxResult(500, result.message);
+                    return result.isSuccess() ? new AjaxResult().setData(result.getData()) : new AjaxResult(500, result.getMessage());
                 }
             case "replace":
                 {
@@ -698,20 +698,20 @@ public class ProxyService {
             case "postjson":{
                 fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
-                if (!rpath.result) return new AjaxResult(501, rpath.message);
-                Receipt<String> re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
-                    re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
+                if (!rpath.isSuccess()) return new AjaxResult(501, rpath.getMessage());
+                Receipt<String> re = HttpHelper.requestByJson(rpath.getData(), running.paramdata.toString(), running.header);
+                if (!re.isSuccess() && re.getMessage().contains("基础连接已经关闭")){
+                    re = HttpHelper.requestByJson(rpath.getData(), running.paramdata.toString(), running.header);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")) {
-                    re = HttpHelper.requestByJson(rpath.data, running.paramdata.toString(), running.header);
+                if (!re.isSuccess() && re.getMessage().contains("(502) 错误的网关")) {
+                    re = HttpHelper.requestByJson(rpath.getData(), running.paramdata.toString(), running.header);
                 }
                 if (!re.isSuccess()){
 //                    Logs.WriteLog($"错误消息:{re.Message}\n数据备注:{re.Data}", "proxy_error_httpjson");
-                    return new AjaxResult(505, re.message+"[0717]").setData(re.data);
+                    return new AjaxResult(505, re.getMessage()+"[0717]").setData(re.getData());
                 }
                 else{
-                    String retText = re.data;
+                    String retText = re.getData();
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
                         //WebReply.SetContentTypeToJson();
@@ -728,20 +728,20 @@ public class ProxyService {
             case "web":{
                 fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
-                if (!rpath.result) return new AjaxResult(501, rpath.message);
-                Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
-                    re = HttpHelper.request(rpath.data, running.paramdata, "get",running.header);
+                if (!rpath.isSuccess()) return new AjaxResult(501, rpath.getMessage());
+                Receipt<String> re = HttpHelper.request(rpath.getData(), running.paramdata, "get", running.header);
+                if (!re.isSuccess() && re.getMessage().contains("基础连接已经关闭")){
+                    re = HttpHelper.request(rpath.getData(), running.paramdata, "get",running.header);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
-                    re = HttpHelper.request(rpath.data, running.paramdata, "get", running.header);
+                if (!re.isSuccess() && re.getMessage().contains("(502) 错误的网关")){
+                    re = HttpHelper.request(rpath.getData(), running.paramdata, "get", running.header);
                 }
                 if (!re.isSuccess()){
-                    Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httpget");
-                    return new AjaxResult(505, re.message+"[0754]").setData(re.data);
+                    Logs.writeLog(rpath.getData()+System.lineSeparator()+"错误消息:"+re.getMessage()+"\n数据备注:"+re.getData(), "proxy_error_httpget");
+                    return new AjaxResult(505, re.getMessage()+"[0754]").setData(re.getData());
                 }
                 else {
-                    String retText = re.data;
+                    String retText = re.getData();
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
 //                        WebReply.SetContentTypeToJson();
@@ -758,20 +758,20 @@ public class ProxyService {
                 {
                     fillLadderHeader(running);
                     Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
-                    if (!rpath.result) return new AjaxResult(501, rpath.message);
-                    Receipt<String> re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
-                    if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
-                        re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
+                    if (!rpath.isSuccess()) return new AjaxResult(501, rpath.getMessage());
+                    Receipt<String> re = HttpHelper.request(rpath.getData(), running.paramdata, "post", running.header);
+                    if (!re.isSuccess() && re.getMessage().contains("基础连接已经关闭")){
+                        re = HttpHelper.request(rpath.getData(), running.paramdata, "post", running.header);
                     }
-                    if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
-                        re = HttpHelper.request(rpath.data, running.paramdata, "post", running.header);
+                    if (!re.isSuccess() && re.getMessage().contains("(502) 错误的网关")){
+                        re = HttpHelper.request(rpath.getData(), running.paramdata, "post", running.header);
                     }
                     if (!re.isSuccess()){
-                        Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_httppost");
-                        return new AjaxResult(505, re.message+"[0791]").setData(re.data);
+                        Logs.writeLog(rpath.getData()+System.lineSeparator()+"错误消息:"+re.getMessage()+"\n数据备注:"+re.getData(), "proxy_error_httppost");
+                        return new AjaxResult(505, re.getMessage()+"[0791]").setData(re.getData());
                     }
                     else{
-                        String  retText = re.data;
+                        String  retText = re.getData();
                         boolean isJson = Strings.isJson(retText);
                         if (isJson){
     //                        WebReply.SetContentTypeToJson();
@@ -786,7 +786,7 @@ public class ProxyService {
             case "httpupload":{
                 fillLadderHeader(running);
                 Receipt<String> rpath = WebHub.CrossAccess.doPath(Strings.mapping(funInfo.path,"host", WebContext.getHost()), running.config, running.paramdata, running.header);
-                if (!rpath.result) return new AjaxResult(501, rpath.message);
+                if (!rpath.isSuccess()) return new AjaxResult(501, rpath.getMessage());
                 List<UploadFile> files = new ArrayList<UploadFile>();
                 Record ps = new Record();
                 running.paramdata.forEach((k,v)->{
@@ -804,16 +804,16 @@ public class ProxyService {
                     }
                     ps.put(k,v);
                 });
-                Receipt<String> re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
-                if (!re.isSuccess() && re.message.contains("基础连接已经关闭")){
-                    re = HttpHelper.upload(rpath.data, files, ps);
+                Receipt<String> re = Core.isEmpty(files) ? HttpHelper.request(rpath.getData(), running.paramdata, "post", running.header) : HttpHelper.upload(rpath.getData(), files, ps);
+                if (!re.isSuccess() && re.getMessage().contains("基础连接已经关闭")){
+                    re = HttpHelper.upload(rpath.getData(), files, ps);
                 }
-                if (!re.isSuccess() && re.message.contains("(502) 错误的网关")){
-                    re = Core.isEmpty(files) ? HttpHelper.request(rpath.data, running.paramdata, "post", running.header) : HttpHelper.upload(rpath.data, files, ps);
+                if (!re.isSuccess() && re.getMessage().contains("(502) 错误的网关")){
+                    re = Core.isEmpty(files) ? HttpHelper.request(rpath.getData(), running.paramdata, "post", running.header) : HttpHelper.upload(rpath.getData(), files, ps);
                 }
                 if (!re.isSuccess()){
-                    Logs.writeLog(rpath.data+System.lineSeparator()+"错误消息:"+re.message+"\n数据备注:"+re.data, "proxy_error_upload");
-                    return new AjaxResult(505, re.message);
+                    Logs.writeLog(rpath.getData()+System.lineSeparator()+"错误消息:"+re.getMessage()+"\n数据备注:"+re.getData(), "proxy_error_upload");
+                    return new AjaxResult(505, re.getMessage());
                 }
                 else{
                     if(!Core.isEmpty(files)){
@@ -827,7 +827,7 @@ public class ProxyService {
                         });
                         running.trace.put("upload", uploadlog);
                     }
-                    String  retText = re.data;
+                    String  retText = re.getData();
                     boolean isJson = Strings.isJson(retText);
                     if (isJson){
                         return Strings.hasValue(funInfo.uri) ? new AjaxResult().setData(Record.parse(retText).find(funInfo.uri)).setDataType(AjaxResultDataType.Json) : new AjaxResult().setData(Json.toObject(retText)).setDataType(AjaxResultDataType.Json);
@@ -1184,9 +1184,9 @@ public class ProxyService {
         Receipt<Record> hhh = Security.encryptByHead(tag, data, sign, key, version, envcode, header);
         if (hhh.isSuccess())
         {
-            return HttpHelper.request(service, data, method, hhh.data).toResult();
+            return HttpHelper.request(service, data, method, hhh.getData()).toResult();
         }
-        return new AjaxResult(500,hhh.message);
+        return new AjaxResult(500,hhh.getMessage());
     }
 
     public static Object getResultCache(String key)

@@ -215,8 +215,8 @@ public class QueryAction
         if (dm.isNull()) return null;
         dm.setCondition(condition);
         Receipt ret = LatchAction.getData(dm);
-        if (ret.result){
-            List<Record> rs = (List<Record>) ret.data;
+        if (ret.isSuccess()){
+            List<Record> rs = (List<Record>) ret.getData();
             return Rs.toClass(rs,clazz);
         }
         else{
@@ -355,8 +355,8 @@ public class QueryAction
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetData);
         Receipt latchresult = LatchAction.getData(dm);
         List<Record> subQueryAction = dm.getRelationAction("query");
-        if (subQueryAction == null && latchresult.result) {
-            return analyze.countCacheDataEnd((List<Record>)latchresult.data);
+        if (subQueryAction == null && latchresult.isSuccess()) {
+            return analyze.countCacheDataEnd((List<Record>)latchresult.getData());
         }
         SqlText sqltext = dm.getSqlText();
         if (subQueryAction == null){
@@ -365,8 +365,8 @@ public class QueryAction
             return analyze.countDataEnd(recordes);
         }
         else {
-            if (latchresult.result) {
-                List<Record> rs = (List<Record>) latchresult.data;
+            if (latchresult.isSuccess()) {
+                List<Record> rs = (List<Record>) latchresult.getData();
                 for (Record record : rs){
                     if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
                 }
@@ -408,17 +408,17 @@ public class QueryAction
         Receipt latchresult = LatchAction.getData(dm);
         //静态数据逻辑
         if (DataModelType.Data.equals(dm.Type)){
-            if(latchresult == null || !latchresult.result)return analyze.countDataEnd((List<Record>)null);
+            if(latchresult == null || !latchresult.isSuccess())return analyze.countDataEnd((List<Record>)null);
             List<Record> subQueryAction1 = dm.getRelationAction("query");
-            if (subQueryAction1 == null && latchresult.result)
+            if (subQueryAction1 == null && latchresult.isSuccess())
             {
-                return analyze.countCacheDataEnd((List<Record>)latchresult.data);
+                return analyze.countCacheDataEnd((List<Record>)latchresult.getData());
             }
         }
         //含有dao对象视为无后续动作查询
         if (dao != null){
-            if (latchresult.result){
-                return analyze.countCacheDataEnd((List<Record>)latchresult.data);
+            if (latchresult.isSuccess()){
+                return analyze.countCacheDataEnd((List<Record>)latchresult.getData());
             }
             else{
                 dm.setDialect(dao.getDialect());
@@ -430,8 +430,8 @@ public class QueryAction
             }
         }
         List<Record> subQueryAction = dm.getRelationAction("query");
-        if (subQueryAction == null && latchresult.result){
-            return analyze.countCacheDataEnd((List<Record>)latchresult.data);
+        if (subQueryAction == null && latchresult.isSuccess()){
+            return analyze.countCacheDataEnd((List<Record>)latchresult.getData());
         }
         KeepDaoPool keepDaoPool = new KeepDaoPool(supportTran);
         try{
@@ -448,8 +448,8 @@ public class QueryAction
                 return analyze.countDataEnd(rs);
             }
             else{
-                if (latchresult.result) {
-                    List<Record> rs = (List<Record>) latchresult.data;
+                if (latchresult.isSuccess()) {
+                    List<Record> rs = (List<Record>) latchresult.getData();
                     for (Record record : rs)
                     {
                         if (record != null) subActionQuery(keepDaoPool, record, subQueryAction, dm);
@@ -961,7 +961,7 @@ public class QueryAction
         if (dm.isNull()) return new AjaxResult(701).setDataType(AjaxResultDataType.Error);
         if (dm.Type == DataModelType.Data){
             Receipt latch = LatchAction.getData(dm);
-            if(latch.result)return new AjaxResult(Collections.first(((List<Record>)latch.data),null)).setDataType(AjaxResultDataType.Record);
+            if(latch.isSuccess())return new AjaxResult(Collections.first(((List<Record>)latch.getData()),null)).setDataType(AjaxResultDataType.Record);
         }
         //dao不为，表示以此数据库连接执行模版的sql语句,并且不再执行事件
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetBean);
@@ -1047,7 +1047,7 @@ public class QueryAction
         dm.setCondition(cnd);
         if (DataModelType.Data.equals(dm.Type)){
             Receipt latch = LatchAction.getData(dm);
-            if (latch.isSuccess()) return Collections.first(((List<Record>)latch.data),null).item2.get(dm.getColumn(),clazz);
+            if (latch.isSuccess()) return Collections.first(((List<Record>)latch.getData()),null).item2.get(dm.getColumn(),clazz);
         }
         SqlText where = dm.getWhere();
         String querySqlText = "select " + dm.getColumn() + " from " + dm.getTableName() + where.getCmd() + dm.getGroup() + dm.getOrder();
@@ -1113,7 +1113,7 @@ public class QueryAction
             dm.setCondition(Cnd.parse(cnd, dm));
             if (DataModelType.Data.equals(dm.Type)){
                 Receipt latch = LatchAction.getData(dm);
-                if (latch.isSuccess()) return Collections.select(((List<Record>)latch.data),record -> record.get(0,clazz));
+                if (latch.isSuccess()) return Collections.select(((List<Record>)latch.getData()),record -> record.get(0,clazz));
             }
             String querySqlText = "select " + dm.getColumn() + " from " + dm.getTableName() +
                     dm.getWhere() + dm.getGroup() + dm.getOrder();
@@ -1159,7 +1159,7 @@ public class QueryAction
         dm.setCondition(Cnd.parse(condition, dm));
         if (DataModelType.Data.equals(dm.Type)){
             Receipt latch = LatchAction.getData(dm);
-            if (latch.isSuccess()) return ((List<Record>)latch.data).size();
+            if (latch.isSuccess()) return ((List<Record>)latch.getData()).size();
         }
         dao.setTag(dm.getRaw().Name);
         SqlText sqltext = dm.getWhere();
