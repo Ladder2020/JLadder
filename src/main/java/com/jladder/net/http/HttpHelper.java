@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class HttpHelper{
-    static private OkHttpClient OkClient = setSSL(new OkHttpClient.Builder()
+    private static final OkHttpClient OkClient = setSSL(new OkHttpClient.Builder()
             .connectTimeout(60 , TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.MINUTES)
             .writeTimeout(5, TimeUnit.MINUTES))
@@ -38,7 +38,7 @@ public class HttpHelper{
 
     /**
      * 获取客户端IP
-     * @return
+     * @return 当前请求的Ip
      */
     public static String getIp(){
         return getIp(WebContext.getRequest());
@@ -47,7 +47,7 @@ public class HttpHelper{
     /**
      * 获取客户端IP
      * @param request 请求头
-     * @return
+     * @return  客户端IP
      */
     public static String getIp(HttpServletRequest request) {
         String ip = request.getHeader("x-forwarded-for");
@@ -70,7 +70,7 @@ public class HttpHelper{
      * 转为formdata数据 a=1&b=3
      * @param data 源数据
      * @param encoding 是否URL编码
-     * @return
+     * @return 客户端IP
      */
     public static String toFormData(Object data, boolean encoding) {
         final String[] postData = {""};
@@ -81,9 +81,7 @@ public class HttpHelper{
             if (Strings.isJson(poststr, 1)) {
                 Record record = Record.parse(poststr);
                 if (record != null) {
-                    record.forEach((k, v) -> {
-                        postData[0] += k + "=" + (encoding ? encode(v.toString()) : v) + "&";
-                    });
+                    record.forEach((k, v) -> postData[0] += k + "=" + (encoding ? encode(v.toString()) : v) + "&");
                 }
                 postData[0] = Strings.rightLess(postData[0], 1);
             } else {
@@ -94,9 +92,7 @@ public class HttpHelper{
         {
             Record record = Record.parse(data);
             if (record != null) {
-                record.forEach((k, v) -> {
-                    postData[0] += k + "=" + (encoding ? encode(v==null?"":v.toString()) : v)  + "&";
-                });
+                record.forEach((k, v) -> postData[0] += k + "=" + (encoding ? encode(v==null?"":v.toString()) : v)  + "&");
             }
             postData[0] = Strings.rightLess(postData[0], 1);
         }
@@ -105,7 +101,7 @@ public class HttpHelper{
     /**
      * 编码数据
      * @param data 数据
-     * @return
+     * @return 编码数据
      */
     public static String encode(String data) {
         try {
@@ -118,7 +114,7 @@ public class HttpHelper{
     /**
      * 解码数据
      * @param data 数据
-     * @return
+     * @return 解码数据
      */
     public static String decode(String data) {
         try {
@@ -128,6 +124,15 @@ public class HttpHelper{
             return "";
         }
     }
+
+    /**
+     * 以PostJson方式请求
+     * @param url 请求地址
+     * @param data 请求数据
+     * @param header 请求头
+     * @param method 请求方式
+     * @return
+     */
     public static Receipt<String> requestByJson(String url, Object data, Record header,String method){
         return requestByJson(url,data,header,null,null,method);
     }
@@ -209,8 +214,8 @@ public class HttpHelper{
                 return new Receipt<String>(false).setData(response.code()+"["+text+"]");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return new Receipt<String>(false,e.getMessage());
+            System.out.println("ladder-httperror:"+url+","+e.getMessage());
+            return new Receipt<String>(false,e.getMessage()).setData(e.toString());
         }
     }
     public static Receipt<String> request(String url, Object data){
@@ -292,7 +297,6 @@ public class HttpHelper{
 
             //创建"调用" 对象
             Call call = OkClient.newCall(request.build());
-
             Response response = call.execute();//执行
             if (response.isSuccessful()) {
                 return new Receipt<String>(true).setData(response.body().string());
@@ -301,8 +305,8 @@ public class HttpHelper{
                 return new Receipt<String>(false).setData(response.body().string());
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return new Receipt<String>(false).setData(e.toString());
+            System.out.println("ladder-httperror:"+url+","+e.getMessage());
+            return new Receipt<String>(false,e.getMessage()).setData(e.toString());
         }
     }
     public static Receipt<String> upload(String url, Collection<UploadFile> files, Map<String,Object> data){
@@ -314,7 +318,6 @@ public class HttpHelper{
     public static Receipt<String> upload(String url, Map<String,byte[]> files, Map<String,Object> data){
         if (Core.isEmpty(files)) return new Receipt(false, "未有上传数据[209]");
         try{
-
             MultipartBody.Builder requestBodyBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
             if(data!=null){
                 data.forEach((k,v)->{
@@ -339,6 +342,13 @@ public class HttpHelper{
         }
 
     }
+
+    /**
+     * 下载文件
+     * @param url 网络地址
+     * @param filename 文件名称
+     * @return
+     */
     public static Receipt<String> downFile(String url,String filename){
         Request request = new Request.Builder()
                 .url(url)
@@ -375,7 +385,13 @@ public class HttpHelper{
            return new Receipt<String>(false,e.getMessage());
         }
     }
-    public static void downFileByasy(String url,String filename){
+
+    /**
+     * 异步下载文件
+     * @param url 网络路径
+     * @param filename 文件名称
+     */
+    public static void downFileByAsync(String url,String filename){
         Request request = new Request.Builder()
                 .url(url)
                 .build();
