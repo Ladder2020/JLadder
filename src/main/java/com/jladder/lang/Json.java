@@ -50,7 +50,7 @@ public class Json {
             T jsonObject = JSONObject.parseObject(json.toString(),type.getType());
             return jsonObject;
         }catch (Exception e){
-            throw e;
+           throw e;
         }
     }
 

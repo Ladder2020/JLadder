@@ -39,8 +39,10 @@ public class DingTalk {
     }
     /**
      * 获取AccessToken
+     * @param secret 钉钉密钥
      */
     public static Receipt<String> getAccessToken(DingSecret secret){
+        if(secret==null)return new Receipt<String>(false,"密钥为空[044]");
         return getAccessToken(secret.getAppkey(),secret.getAppsecret());
     }
 

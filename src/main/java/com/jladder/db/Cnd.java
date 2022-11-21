@@ -198,7 +198,7 @@ public class Cnd {
         if (condition.length() < 1) return this;
         condition = Regex.replace(condition, "^\\s*where\\s*", "");
         if (Strings.isJson(condition,1)){
-            Map<String, Object> cmap = Json.toObject(condition,new TypeReference<Map<String,Object>>(){});
+            Map<String, Object> cmap = Json.toObject(condition,Record.class);
             return this.put(cmap);
         }
         if (Strings.isJson(condition,2)){
@@ -515,12 +515,10 @@ public class Cnd {
                         case "in":
                         case "not in":
                             _q = "("; _h = ")";
-                            if (Regex.isMatch(val.toString(), "^'*$"))
-                            {
+                            if (Regex.isMatch(val.toString(), "^'*$")){
                                 currentText += propname + " in ('') or ";
                             }
-                            else
-                            {
+                            else{
                                 Tuple2<ArrayList<String>,Boolean> ts = toArrayText(val);
                                 if (ts.item1.size() > 0){
                                     currentText += propname + " " + op + " (";
@@ -573,8 +571,7 @@ public class Cnd {
                             currentText += propname + " " + op + " " + _q + val + _h + " or ";
                             break;
                         default:
-                            if (val!=null && !(val instanceof String)  && Strings.isNumber(val.toString()))
-                            {
+                            if (val!=null && !(val instanceof String)  && Strings.isNumber(val.toString())){
                                 _q = "";
                                 _h = "";
                             }
@@ -587,9 +584,7 @@ public class Cnd {
             canparse.add(new CndStruct(propname,op,val));
         }
 
-        if (!Strings.isBlank(currentText))
-        {
-
+        if (!Strings.isBlank(currentText)){
             currentText =Strings.rightLess(currentText,4);
             pushWhereString(currentText, option);
             if (option == AND) {
@@ -606,13 +601,14 @@ public class Cnd {
         }
         return this;
     }
-    /// <summary>
-    /// 获取模版的条件sql语句(条件回溯)
-    /// </summary>
-    /// <param name="data">数据</param>
-    /// <returns></returns>
-    public static Receipt<SqlText> getDataModelSql(Object data)
-    {
+
+
+    /**
+     * 获取模版的条件sql语句(条件回溯)
+     * @param data 数据
+     * @return
+     */
+    public static Receipt<SqlText> getDataModelSql(Object data){
         Func2<Map<String, Object>, SqlText> func = (dic) ->{
             if (dic == null) return null;
             String tableName = dic.get("tableName")!=null?dic.get("tableName").toString():"";
@@ -690,13 +686,11 @@ public class Cnd {
 //            }
 //            return sqltext.HasValue() ? new Receipt<SqlText>().SetData(new SqlText(sqltext.RightLess(7), parameters)) : new Receipt<SqlText>(false);
 //        }
-        if (data instanceof Object[])
-        {
+        if (data instanceof Object[]){
             Object[] datas = (Object[])data;
             String sqltext = "";
             List<DbParameter> parameters = new ArrayList<DbParameter>();
-            for (Object o : datas)
-            {
+            for (Object o : datas) {
                 Receipt<SqlText> sql = getDataModelSql(o);
                 if (sql.isSuccess()){
                     sqltext += sql.getMessage() + " union ";
@@ -788,14 +782,19 @@ public class Cnd {
         }
         return new Tuple2(new ArrayList<String>(Arrays.asList(obj.toString())),false);
     }
-    private void pushWhereString(String sqlStr, int option)
-    {
+
+
+    /**
+     *
+     * @param sqlStr
+     * @param option
+     */
+    private void pushWhereString(String sqlStr, int option){
         if (Strings.isBlank(sqlStr)) return;
         sqlStr = Regex.replace(sqlStr, "^\\s*(where)[\\s]*", "");
         if (Strings.isBlank(sqlStr)) return;
         if (Strings.isBlank(whereText)) whereText = sqlStr;
-        else
-        {
+        else {
             if (option == 1) this.whereText += " or " + sqlStr;
             else this.whereText += " and " + sqlStr;
         }
@@ -823,15 +822,13 @@ public class Cnd {
         return parse(cnd,null,DbDialectType.Default);
     }
 
-
-    /// <summary>
-    /// 解析条件字段
-    /// </summary>
-    /// <param name="cnd">条件字段</param>
-    /// <param name="dm">动态数据模型</param>
-    /// <returns></returns>
-    public static Cnd parse(Object cnd, IDataModel dm)
-    {
+    /**
+     * 解析条件字段
+     * @param cnd 条件字段
+     * @param dm 动态数据模型
+     * @return
+     */
+    public static Cnd parse(Object cnd, IDataModel dm){
         Cnd result= Cnd.parse(cnd, dm.parseColumsList(),dm.getDialect()!=null ? dm.getDialect() : DbDialectType.Default);
         return result;
     }
@@ -845,8 +842,7 @@ public class Cnd {
      * @param dialect 数据库方言
      * @return
      */
-    public static Cnd parse(Object cnd, List<Map<String, Object>> fullcolumn,DbDialectType dialect)
-    {
+    public static Cnd parse(Object cnd, List<Map<String, Object>> fullcolumn,DbDialectType dialect){
 
         if (cnd == null || Strings.isBlank(cnd.toString())) return null;
         if (cnd instanceof String) {
@@ -998,6 +994,5 @@ public class Cnd {
             mapping.put(fieldval.toLowerCase(), dic);
             if (Strings.hasValue(asval)) mapping.put(asval.toLowerCase(), dic);
         }
-
     }
 }

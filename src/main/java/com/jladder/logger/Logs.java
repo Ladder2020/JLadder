@@ -5,7 +5,6 @@ import com.jladder.actions.impl.EnvAction;
 import com.jladder.configs.Configure;
 import com.jladder.data.Record;
 import com.jladder.hub.DataHub;
-import com.jladder.hub.WebHub;
 import com.jladder.lang.*;
 import com.jladder.net.http.HttpHelper;
 import com.jladder.proxy.ProxyRunning;
@@ -59,6 +58,12 @@ public class Logs {
         logQueue.add(new LogStruct(option + ":" + text + "\n", option));
         resetEvent.set();
     }
+
+    /**
+     * 写出数据
+     * @param text 日志文本
+     * @param path 路径
+     */
     private static void write(String text, String path){
         write(text,path, LogOption.Debug);
     }
@@ -337,7 +342,7 @@ public class Logs {
                     Files.createFile(filename);
                 }
                 else{
-                    while (Files.isUse(filename) || Files.getSize(filename) > 1024 * 1024 * 10){
+                    while (Files.isUse(filename) || Files.getSize(filename) > Ladder.Settings().getLogSize()){
                         FileSeed = Times.format("HH_mm_ss_SSSS");
                         filename = Files.getFullPath(path +module+ FileSeed + ext);
                         if (!Files.exist(filename)){

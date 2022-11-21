@@ -1,8 +1,11 @@
 package com.jladder.lang;
 
+import com.carrotsearch.hppc.CharSet;
 import com.jladder.data.Receipt;
+import com.jladder.data.Record;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
@@ -232,11 +235,10 @@ public class Zips {
         // 开始解压
         ZipFile zipFile = null;
         try {
-            zipFile = new ZipFile(src);
+            zipFile = new ZipFile(src, Charset.forName("gbk"));
             Enumeration<?> entries = zipFile.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = (ZipEntry) entries.nextElement();
-                System.out.println("解压" + entry.getName());
                 // 如果是文件夹，就创建个文件夹
                 if (entry.isDirectory()) {
                     String dirPath = dest + "/" + entry.getName();
@@ -263,9 +265,7 @@ public class Zips {
                     is.close();
                 }
             }
-            long end = System.currentTimeMillis();
-            System.out.println("解压完成，耗时：" + (end - start) + " ms");
-            return new Receipt();
+            return new Receipt().setData(new Record("duration",System.currentTimeMillis()-start));
         } catch (Exception e) {
             e.printStackTrace();
             return new Receipt(false,e.getMessage());
@@ -279,6 +279,4 @@ public class Zips {
             }
         }
     }
-
-
 }

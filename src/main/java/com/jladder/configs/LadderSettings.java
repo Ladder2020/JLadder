@@ -15,7 +15,13 @@ import java.util.Map;
 @EnableConfigurationProperties(LadderSettings.class)
 @ConfigurationProperties(prefix = "spring.ladder")
 public class LadderSettings {
+    /**
+     * 站点名称
+     */
     private String site;
+    /**
+     * 应用名称
+     */
     private String app;
     /**
      * 0,生产，1，开发，3，测试
@@ -33,25 +39,51 @@ public class LadderSettings {
     /**
      * 数据分析功能
      */
-    private boolean analyz=true;
-
+    private boolean analyze=true;
+    /**
+     * 模版的链接器
+     */
     private String templateConn="defaultDatabase";
-
+    /**
+     * 接口服务的连接器
+     */
     private String proxyConn="defaultDatabase";
+    /**
+     * 接口服务表模型名称
+     */
     private String proxyTableName="sys_service";
-
-
-
+    /**
+     * ladder的数据库库名
+     */
     private String ladderSchema="ladder";
-
+    /**
+     * sql日志开关
+     */
     private boolean sqlDebug=true;
+    /**
+     * sql执行记录选
+     */
     private String sqlDebugItem="update,delete,insert,create";
+    /**
+     * sql警告线
+     */
     private int sqlWarnTime=60000;
-
-
+    /**
+     * 输出日志等级
+     */
     private LogOption logLevel=LogOption.Debug;
+    /**
+     * 日志输出路径
+     */
     private String logPath="~/log/{yyyy-MM-dd}";
+    /**
+     * 日志收集服务地址
+     */
     private String logServer=null;
+    /**
+     * 日志输出大小
+     */
+    private long logSize=1024*1024*10;
 
     private Map<String,DbInfo> database= new HashMap<>();
 
@@ -99,12 +131,12 @@ public class LadderSettings {
         this.templateConn = templateConn;
     }
 
-    public boolean isAnalyz() {
-        return analyz;
+    public boolean isAnalyze() {
+        return analyze;
     }
 
-    public void setAnalyz(boolean analyz) {
-        this.analyz = analyz;
+    public void setAnalyz(boolean analyze) {
+        this.analyze = analyze;
     }
 
     public String getProxyTableName() {
@@ -238,4 +270,21 @@ public class LadderSettings {
     public void setEnv(int env) {
         this.env = env;
     }
+
+    /**
+     * 获取日志分割大小
+     * @return
+     */
+    public long getLogSize() {
+        return logSize;
+    }
+
+    /**
+     * 设置日志分割大小
+     * @param logSize 大小，1024*1024*10=10MB
+     */
+    public void setLogSize(long logSize) {
+        this.logSize = logSize;
+    }
+
 }

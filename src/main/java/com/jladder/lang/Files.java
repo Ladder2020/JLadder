@@ -3,6 +3,7 @@ import com.jladder.configs.Configure;
 import com.jladder.data.Record;
 import org.springframework.core.io.ClassPathResource;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 public class Files {
 
@@ -246,5 +247,72 @@ public class Files {
     public static long getSize(String filename) {
         File file=new File(filename);
         return file.length();
+    }
+    /**
+     * 删除文件或文件夹
+     * @param path 路径
+     * @return
+     */
+    public static boolean delete(Path path){
+        return new File(path.toString()).isFile()?deleteFile(path.toString()):deleteDirectory(path.toString());
+    }
+    /**
+     * 删除文件或文件夹
+     * @param path 路径
+     * @return
+     */
+    public static boolean delete(String path){
+        return new File(path).isFile()?deleteFile(path):deleteDirectory(path);
+    }
+    /**
+     * 删除文件
+     * @param fileName
+     * @return
+     */
+    public static boolean deleteFile(String fileName) {
+        File file = new File(fileName);
+        if (file.exists() && file.isFile()) {
+            if (file.delete()) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 删除目录
+     * @param dir
+     * @return
+     */
+    public static boolean deleteDirectory(String dir) {
+        // 如果dir不以文件分隔符结尾，自动添加文件分隔符
+        if (!dir.endsWith(File.separator))dir = dir + File.separator;
+        File dirFile = new File(dir);
+        // 如果dir对应的文件不存在，或者不是一个目录，则退出
+        if ((!dirFile.exists()) || (!dirFile.isDirectory())) {
+            return false;
+        }
+        boolean flag = true;
+        // 删除文件夹中的所有文件包括子文件夹
+        File[] files = dirFile.listFiles();
+        for (int i = 0; i < files.length; i++) {
+            // 删除子文件
+            if (files[i].isFile()) {
+                flag = deleteFile(files[i].getAbsolutePath());
+                if (!flag)
+                    break;
+            }
+            // 删除子文件夹
+            else if (files[i].isDirectory()) {
+                flag = deleteDirectory(files[i].getAbsolutePath());
+                if (!flag)
+                    break;
+            }
+        }
+        if (!flag) return false;
+        return dirFile.delete();
     }
 }

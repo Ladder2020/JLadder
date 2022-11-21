@@ -3,15 +3,12 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <!--    <groupId>com.jladder</groupId>-->
-    <!--    groupId需要为Sonatype的groupId-->
     <groupId>com.github.ladder2020</groupId>
     <artifactId>jladder</artifactId>
-    <version>3.4.82</version>
+    <version>3.4.92</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
-    <!--    <name>jladder</name>-->
-    <description>To introduce classes in the Java project POM</description>
+    <description>with java,a low code SDK,通用低代码开发包</description>
     <url>https://github.com/Ladder2020/JLadder</url>
     <properties>
         <!-- versions -->
@@ -35,28 +32,19 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
- 
     <!-- 许可证信息 -->
     <licenses>
-        <!-- Apache许可证 -->
-        <!--        <license>-->
-        <!--            <name>The Apache Software License, Version 2.0</name>-->
-        <!--            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>-->
-        <!--        </license>-->
-        <!-- MIT许可证 -->
         <license>
-            <name>MIT License</name>
-            <url>https://www.opensource.org/licenses/mit-license.php</url>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
         </license>
     </licenses>
-
-    <!-- SCM信息 -> git在github上托管 -->
+    <!-- SCM信息 -->
     <scm>
         <connection>scm:git:git://github.com/Ladder2020/JLadder.git</connection>
         <developerConnection>scm:git:ssh://github.com/Ladder2020/JLadder.git</developerConnection>
         <url>https://github.com/Ladder2020/JLadder/tree/master</url>
     </scm>
-
     <!-- 开发者信息 -->
     <developers>
         <developer>

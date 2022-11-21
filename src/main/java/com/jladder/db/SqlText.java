@@ -123,6 +123,22 @@ public class SqlText {
             c = this.cmd.charAt(i);
             if (c == ':' || c == '@' || c == '?') {
                 nameStartChar = c;
+                //以第二次变量前置字符变量结束
+                if(name.length()>0){
+                    String nameStr = name.toString();
+                    if(paramMap.containsKey(nameStr)) {
+                        // 有变量对应值（值可以为null），替换占位符
+                        final Object paramValue = paramMap.get(nameStr);
+                        sqlBuilder.append('?');
+                        params.add(paramValue);
+                    } else {
+                        // 无变量对应值，原样输出
+                        sqlBuilder.append(nameStartChar).append(name);
+                    }
+                    nameStartChar = null;
+                    name.delete(0, name.length());
+                    sqlBuilder.append(c);
+                }
             } else if (null != nameStartChar) {
                 // 变量状态
                 if (isGenerateChar(c)) {
@@ -167,6 +183,9 @@ public class SqlText {
         ret.value = params.toArray();
         return ret;
     }
+
+
+
     /**
      * 是否为标准的字符，包括大小写字母、下划线和数字
      *

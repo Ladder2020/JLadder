@@ -72,7 +72,7 @@ public  class AnalyzeAction{
      * Init方法
      */
     private void init(){
-        if (!Ladder.Settings().isAnalyz()) return;
+        if (!Ladder.Settings().isAnalyze()) return;
         String items = "," + DataModel.getRaw().AnalyzeItems + ",";
         //访问统计
         if (items.indexOf(",visit,") > -1){
@@ -124,7 +124,7 @@ public  class AnalyzeAction{
     public void endPoint(){
         if (isEnd) return;
         isEnd = true;
-        if (!Ladder.Settings().isAnalyz()) return;
+        if (!Ladder.Settings().isAnalyze()) return;
         Object isAnalyz = WebScope.getValue(WebScopeOption.Analyz);
         if(isAnalyz != null && isAnalyz.equals(false))return;
         if (logs.containsKey(AnalyzeOption.Visit)) {

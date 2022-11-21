@@ -27,6 +27,9 @@ public class QueryAction
     /// </summary>
 //    public static List<KeyValue<String, List<DbParameter>>> Recent => BaseSupport.Recent;
 
+
+
+
     /// <summary>
     /// 获取数据通过树级层次
     /// </summary>
@@ -181,16 +184,14 @@ public class QueryAction
         dm.setCondition(Record.parse(condition));
         return getData(dm,null,false);
     }
-
-
-    /// <summary>
-    /// 获取实体列表
-    /// </summary>
-    /// <param name="tableName">模版名称</param>
-    /// <param name="condition">条件</param>
-    /// <param name="clazz">类泛型</param>
-    /// <param name="<T>"></param>
-    /// <returns></returns>
+    /**
+     * 获取实体列表
+     * @param tableName 模版名称
+     * @param condition 条件
+     * @param clazz 类泛型
+     * @param <T>
+     * @return
+     */
     public static <T> List<T> getData(CharSequence tableName, Cnd condition, Class<T> clazz) {
         return getData(tableName,condition,null,null,clazz);
     }
@@ -229,17 +230,6 @@ public class QueryAction
             return result;
         }
     }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="dao">Dao工具</param>
-    /// <param name="dm">Dao助手</param>
-    /// <param name="condition">条件文本</param>
-    /// <param name="param">参数文本</param>
-    /// <param name="columns">字段文本</param>
-    /// <returns></returns>
-
     /**
      * 获取数据(对外处理)
      * @param dao 数据库操作对象
@@ -276,8 +266,7 @@ public class QueryAction
      * @param rel 资源索引
      * @return
      */
-    public static AjaxResult getData(CharSequence tableName, String condition, String columns, String param, String rel)
-    {
+    public static AjaxResult getData(CharSequence tableName, String condition, String columns, String param, String rel){
         if (Strings.isBlank(tableName)) return new AjaxResult(444).setRel(rel);
         long startTime = Times.getTS();
         IDataModel dm = DaoSeesion.getDataModel(tableName, param);
@@ -313,7 +302,6 @@ public class QueryAction
      * @param param 扩展参数
      * @return
      */
-
     public static List<Record> getData(CharSequence tableName, Cnd condition, String columns, Object param) {
         if (Strings.isBlank(tableName)) return null;
         IDataModel dm = DaoSeesion.getDataModel(tableName, (param instanceof String?(String)param : Json.toJson(Record.parse(param))));
@@ -322,7 +310,6 @@ public class QueryAction
         dm.setCondition(condition);
         return getData(dm,null,false);
     }
-
     /**
      * 获取数据(对内服务)
      * @param tableName 模型名称
@@ -908,15 +895,13 @@ public class QueryAction
         dm.setCondition(Cnd.parse(condition, dm));
         return getBean(dm).setRel(rel).setDuration(starttime);
     }
-    /// <summary>
-    /// 获取单对象
-    /// </summary>
-    /// <param name="keepDaoPool">持续数据库连接池</param>
-    /// <param name="dm">动态数据模型</param>
-    /// <returns></returns>
-
-    public static Record getBean(KeepDaoPool keepDaoPool, IDataModel dm)
-    {
+    /**
+     * 获取单对象
+     * @param keepDaoPool 持续数据库连接池
+     * @param dm 动态数据模型
+     * @return
+     */
+    public static Record getBean(KeepDaoPool keepDaoPool, IDataModel dm){
         if (dm.isNull()) return null;
         AnalyzeAction analyze = new AnalyzeAction(dm, DbSqlDataType.GetBean);
         if (keepDaoPool == null) return null;
@@ -1167,6 +1152,32 @@ public class QueryAction
         dao.close();
         return count;
     }
+    /***
+     * 是否存在数据记录
+     * @param tableName 模版名称
+     * @param condition 条件
+     * @param param 扩展参数
+     * @return
+     */
+
+    public static boolean have(CharSequence tableName, Object condition, String param){
+        IDataModel dm = DaoSeesion.getDataModel(tableName.toString(), param);
+        if (dm.isNull()) return false;
+        IDao dao = DaoSeesion.NewDao(dm.getConn());
+        try {
+            dm.setDialect( dao.getDialect());
+            dm.setCondition(Cnd.parse(condition, dm));
+            if (DataModelType.Data.equals(dm.Type)){
+                Receipt latch = LatchAction.getData(dm);
+                if (latch.isSuccess()) return ((List<Record>)latch.getData()).size()>0;
+            }
+            dao.setTag(dm.getRaw().Name);
+            SqlText sqltext = dm.getWhere();
+            return dao.exist(dm.getTableName(),sqltext);
+        }finally {
+            dao.close();
+        }
+    }
 
     /**
      * 处理查询结果集
@@ -1198,10 +1209,11 @@ public class QueryAction
         String RegStr_FieldName="^\\*(\\*?)([\\w]*)\\.([\\w]*)$";
         for (Record action : actionlist){
             int option = action.getInt("option", true);
-            String tablename = action.getString("tableName", true);
+            String tablename = action.getString("tablename", true);
             String fieldname = action.getString("fieldname", true);
             String relation = action.getString("relation");
             String condition = action.getString("condition");
+            if(Strings.hasValue(tablename)&&Strings.hasValue(relation)&&option==0)option=15;
             switch (DbSqlDataType.get(option)){
                 case GetData:
                 {
@@ -1400,17 +1412,23 @@ public class QueryAction
 
 
     /// <summary>
-    /// 子属查询动作
+    ///
     /// </summary>
-    /// <param name="keepDaoPool">持续数据库链接池</param>
-    /// <param name="record">本记录对象</param>
-    /// <param name="actionlList">子动作列表</param>
+    /// <param name="keepDaoPool"></param>
+    /// <param name="record"></param>
+    /// <param name="actionlList"></param>
     /// <param name="parentDaoHelp"></param>
-    public static void subActionQuery(KeepDaoPool keepDaoPool, Record record, List<Record> actionlList,IDataModel parentDaoHelp)
-    {
+
+    /**
+     * 子属查询动作
+     * @param pool 持续数据库链接池
+     * @param record 本记录对象
+     * @param actions 子动作列表
+     * @param dm 数据模型
+     */
+    public static void subActionQuery(KeepDaoPool pool, Record record, List<Record> actions,IDataModel dm){
         if (record == null) return;
-        for (Record res : actionlList)
-        {
+        for (Record res : actions){
             Curd curd = res.toClass(Curd.class);
             if (curd == null) continue;
             if (Strings.isBlank(curd.SqlText)) curd.SqlText = res.getString("sql");
@@ -1561,50 +1579,43 @@ public class QueryAction
         }
     }
 
-    /// <summary>
-    /// 单次综合查询
-    /// </summary>
-    /// <param name="tableName">键表名</param>
-    /// <param name="columns">列字段</param>
-    /// <param name="condition">条件</param>
-    /// <param name="psize">分页数量</param>
-    /// <param name="param">参数列表</param>
-    /// <param name="rel">资源回执</param>
-    /// <param name="option">操作选项</param>
-    /// <param name="start">起始页</param>
-    /// <param name="pageNumber">当前页</param>
-    /// <param name="recordCount">记录数量</param>
-    /// <returns></returns>
-    public static AjaxResult query(String tableName, String columns, String condition, String option, String param, String psize, int start, int pageNumber, String recordCount, String rel)
-    {
+    /**
+     * 单次综合查询
+     * @param tableName 键表名
+     * @param columns 列字段
+     * @param condition 条件
+     * @param option 分页数量
+     * @param param 扩展参数
+     * @param psize 分页数量
+     * @param start 起始记录号
+     * @param pageNumber 当前页号
+     * @param recordCount 记录数量
+     * @param rel 资源索引
+     * @return
+     */
+    public static AjaxResult query(String tableName, String columns, String condition, String option, String param, String psize, int start, int pageNumber, String recordCount, String rel) {
         long starttime = Times.getTS();
         if (!Strings.isBlank(condition)) condition = Strings.mapping(condition);
         if (Strings.isBlank(tableName) ) return new AjaxResult(444);
         if (Strings.isBlank(psize)) psize = "20";
         if (Strings.isBlank(option)) option = "11";
-        if (Strings.isBlank(option)  ||  option.equals("0") || option.equals("10"))
-        {
+        if (Strings.isBlank(option)  ||  option.equals("0") || option.equals("10")){
             return getBean(tableName, condition, columns, param, rel);
         }
-        if (option.equals("11"))
-        {
+        if (option.equals("11")){
             return getData(tableName, condition, columns, param, rel);
         }
-        if (option.equals("12"))
-        {
+        if (option.equals("12")){
             int pagesize = Integer.parseInt(psize);
             return getPageData(tableName, condition, columns, param, start, pageNumber, pagesize,recordCount);
         }
-        if (option.equals("22"))
-        {
+        if (option.equals("22")){
             return queryData(tableName, condition, Integer.parseInt(psize), param,null);
         }
-        if (option.equals("111"))
-        {
+        if (option.equals("111")){
             return getValue(tableName, columns, condition, param, rel);
         }
-        if (option.equals("123"))
-        {
+        if (option.equals("123")){
             IDao dao = DaoSeesion.NewDao(); //GetDao(); ?????getdao ne?
             IDataModel daoHelp = DaoSeesion.getDataModel(tableName, param);
             if (daoHelp.isNull()) return new AjaxResult(700);

@@ -96,6 +96,12 @@ public class AjaxResult<T,TXt> implements Serializable {
 
             return;
         }
+        if(result instanceof Exception){
+            statusCode = 500;
+            success=false;
+            message = ((Exception)result).getMessage();
+            return;
+        }
         if (result instanceof Boolean){
             boolean re = (boolean)result;
             if (re){

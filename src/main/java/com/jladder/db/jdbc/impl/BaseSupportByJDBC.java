@@ -273,7 +273,10 @@ public class BaseSupportByJDBC extends IBaseSupport {
             }
             else{
                 log.setEnd();
-                if(clazz.equals(Integer.class)||clazz.equals(Long.class)) return (T)((Object) 0);
+                //if(String.class.equals(clazz))return (T)"0";
+                if(Integer.class.equals(clazz))return (T)Integer.valueOf(0);
+                if(Long.class.equals(clazz))return (T)Long.valueOf(0);
+                //if(clazz.equals(Integer.class)||clazz.equals(Long.class)) return (T)((Object) 0);
                 return null;
             }
         }

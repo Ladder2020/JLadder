@@ -48,13 +48,13 @@ public class ScheduleJobService {
     }
 
 
-    /// <summary>
-    /// 每次计划事件
-    /// </summary>
+    /**
+     * 每次计划事件
+     */
     public Func2<ScheduleJob,Receipt> onSchedule;
-//    /// <summary>
-//    ///
-//    /// </summary>
+    /**
+     * 每次结果事件
+     */
     public OnScheduleResult onScheduleResult;
 
 
@@ -152,12 +152,11 @@ public class ScheduleJobService {
             return null;
         }
     }
-
-    /// <summary>
-    /// 添加自动运行任务
-    /// </summary>
-    /// <param name="job"></param>
-    /// <returns></returns>
+    /**
+     * 添加自动运行任务
+     * @param job 任务计划
+     * @return
+     */
     public static AjaxResult addAutoRunJob(ScheduleJob job){
         if (0==job.getEnable()){
             if (Maths.isBitEq1(job.getWatchoption(),SchedulerWatchOption.Begin)||Maths.isBitEq1(job.getWatchoption(),SchedulerWatchOption.Create))
@@ -170,8 +169,7 @@ public class ScheduleJobService {
             return new AjaxResult(200, "结束时间过早未运行");
         }
         if (Strings.hasValue(job.getEventype()) && Strings.isBlank(job.getCronexpress())){
-            switch (job.getEventype())
-            {
+            switch (job.getEventype()){
                 case "year":
                     job.setCronexpress( "1 1 1 1 1/" + job.getEvenvalue());
                     break;
@@ -200,9 +198,9 @@ public class ScheduleJobService {
                     "时间表达式:"+job.getCronexpress()+"操作类型:"+job.getType()+System.lineSeparator() +
                     "命令代码:"+job.getCmdcode(), "ScheduleJob_Create");
         }
-
         Tuple2<Boolean, String> result = instance().session.createScheduleJob(job, (x) ->{
             try {
+                Record dic = new Record("_id_",job.getId()).put("_time_",Times.getNow());
                 x.setLasttime(Times.now());
                 if(instance().onSchedule!=null){
                     Receipt ret = instance().onSchedule.invoke(x);
@@ -252,49 +250,14 @@ public class ScheduleJobService {
                                 String methodName = config.getString("method,function", true);
                                 if (Strings.isBlank(className)) break;
                                 if (Strings.isBlank(methodName)) {
-                                    methodName = Collections.last(className.split("."));
+                                    methodName = Collections.last(className.split("\\."));
                                     className = Strings.rightLess(className,methodName.length() + 1);
                                 }
                                 String ps = Strings.mapping(config.getString("params,bean"));
-                                Record methodRecord = Core.or(Record.parse(ps),new Record());
-                                String path = config.getString("path", true);
-//                                Type pclass = null;
-//                                if (path.HasValue()) {
-//                                    className = className.Replace("|", ".");
-//                                    if (path.Contains("~")) path = path.Replace("~", Configs.BasicPath());
-//                                    if (!path.Contains("/") && !path.Contains("\\")) {
-//                                        path = Configs.BasicPath() + "/bin/" + path;
-//                                        path = Path.GetFullPath(path);
-//                                        if (!Files.IsExistFile(path))
-//                                            throw new Exception("dll文件[" + path + "]不存在或者内容为空");
-//                                        var assembly = Assembly.LoadFile(path);
-//                                        pclass = assembly.GetType(className);
-//                                    } else {
-//                                        path = Path.GetFullPath(path);
-//                                        byte[] btyes = Files.GetFileBytes(path); //驱动文件的字节集
-//                                        if (btyes == null) throw new Exception("dll文件[" + path + "]不存在或者内容为空");
-//                                        var assembly = Assembly.Load(btyes);
-//                                        pclass = assembly.GetType(className);
-//                                    }
-//                                } else {
-//                                    var cp = className.Split('.')[0];
-//                                    if (className.IndexOf("|", StringComparison.Ordinal) > 0) {
-//                                        cp = className.Split('|')[0];
-//                                        className = className.Replace("|", ".");
-//                                    }
-//                                    var assembly = Assembly.Load(cp);
-//                                    pclass = assembly.GetType(className);
-//                                }
-//                                if (pclass == null) throw new Exception("类[" + className + "]不存在");
-//                                var method = pclass.GetMethod(methodName,
-//                                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public |
-//                                                BindingFlags.Static);
-//                                if (method == null) break;
-//                                var instance = Activator.CreateInstance(pclass, true);
-//                                ret = method.Invoke(instance, ArgumentMapping.MappingMethodParam(method, methodRecord));
+                                Record data = Core.or(Record.parse(ps),new Record());
+                                ret = Refs.invoke(className,methodName,data);
                             }
                             break;
-
                             case  Http:
                                 ret = Regex.isMatch(config.getString("method,type"), "post")
                                         ? HttpHelper.post(config.getString("url,class,type,function,tablename", true),
@@ -361,7 +324,7 @@ public class ScheduleJobService {
                         case "exe":
                         case "jar":
                         {
-                            String command = "java -jar "+Strings.mapping(cmd);
+                            String command = "java -jar "+Strings.mapping(cmd,dic);
                             String line = null;
                             StringBuilder sb = new StringBuilder();
                             Runtime runtime = Runtime.getRuntime();
@@ -381,12 +344,12 @@ public class ScheduleJobService {
                         case "httppost":
                         case "post": {
                             for (int i = 0; i < 5; i++) {
-                                Receipt<String> r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
+                                Receipt<String> r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "post", null);
                                 if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
-                                    r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
+                                    r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "post", null);
                                 }
                                 if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
-                                    r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "post", null);
+                                    r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "post", null);
                                 }
                                 if (r.isSuccess()) {
                                     ret = r.getData();
@@ -398,12 +361,12 @@ public class ScheduleJobService {
                         case "httpget":
                         case "get": {
                             for (int i = 0; i < 5; i++) {
-                                Receipt<String> r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");
+                                Receipt<String> r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "get");
                                 if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
-                                    r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");;
+                                    r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "get");
                                 }
                                 if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
-                                    r = HttpHelper.request(Strings.mapping(cmd), Strings.mapping(job.getData()), "get");;
+                                    r = HttpHelper.request(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic), "get");
                                 }
 
                                 if (r.isSuccess()) {
@@ -417,12 +380,12 @@ public class ScheduleJobService {
                         case "json":
                         {
                             for (int i = 0; i < 5; i++) {
-                                Receipt<String>  r = HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
+                                Receipt<String>  r = HttpHelper.requestByJson(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic),null);
                                 if (!r.isSuccess() && r.getMessage().contains("基础连接已经关闭")) {
-                                    r =HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
+                                    r =HttpHelper.requestByJson(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic),null);
                                 }
                                 if (!r.isSuccess() && r.getMessage().contains("(502) 错误的网关")) {
-                                    r = HttpHelper.requestByJson(Strings.mapping(cmd), Strings.mapping(job.getData()),null);
+                                    r = HttpHelper.requestByJson(Strings.mapping(cmd,dic), Strings.mapping(job.getData(),dic),null);
                                 }
 
                                 if (r.isSuccess()) {
@@ -433,7 +396,7 @@ public class ScheduleJobService {
                         }
                         break;
                         case "script":
-                            ret = Script.execute(cmd);
+                            ret = Script.execute(cmd,dic);
                             break;
                         case "mq":
                             ret = RabbitHelper.send(Json.toObject(cmd, RabbitConfig.class));
@@ -454,14 +417,6 @@ public class ScheduleJobService {
                         x.setEnable(0);
                         instance().session.deleteScheduleJob(x.getJobname(),x.getGroupname());
                     }
-                }
-
-                //如果任务的是单次运行使能停止
-                if ((Strings.isBlank(x.getCronexpress()) && Strings.isBlank(x.getEventype())) || Strings.isBlank(x.getState()) || "0".equals(x.getState())) {
-                    //                    var dao = new Dao(dm.Conn);
-                    //                    sj.Enable = 0;
-                    //                    sj.Update(dao);
-                    //                    dao.Close();
                 }
                 if (x.getEnable() == 0) {
                     instance().session.deleteScheduleJob(x.getJobname(),x.getGroupname());
@@ -491,12 +446,12 @@ public class ScheduleJobService {
         startAllScheduler();
         return new AjaxResult(result.item1).setData(result.item2);
     }
-    /// <summary>
-    /// 添加自动运行任务
-    /// </summary>
-    /// <param name="job">任务信息</param>
-    /// <param name="func">回调委托</param>
-    /// <returns></returns>
+    /**
+     * 添加自动运行任务
+     * @param job 任务信息
+     * @param func 回调委托
+     * @return
+     */
     public static Receipt addAutoRunJob(ScheduleJob job, Func2<ScheduleJob, Boolean> func) {
         if (func == null) return addAutoRunJob(job).toReceipt();
         if (job.getEnable() == 0) return new Receipt(false, "任务未运行");
@@ -527,11 +482,11 @@ public class ScheduleJobService {
                 case "6":
                     job.setCronexpress("1 1/" + job.getEvenvalue() + " * * * ? *") ;
                     break;
-                case "second":
-                case "":
-                case "0":
-                    job.setCronexpress( "1/" + job.getEvenvalue() + " * * * * ? *" );
-                    break;
+//                case "second":
+//                case "":
+//                case "0":
+//                    job.setCronexpress( "1/" + job.getEvenvalue() + " * * * * ? *");
+//                    break;
                 default:
                     job.setCronexpress ("1/" + job.getEvenvalue() + " * * * * ? *");
                     break;
@@ -541,18 +496,14 @@ public class ScheduleJobService {
         startAllScheduler();
         return result.item1 ? new Receipt() : new Receipt(false, result.item2);
     }
-
-
-    /// <summary>
-    /// 添加自动完成任务
-    /// </summary>
-    /// <param name="startTime"></param>
-    /// <param name="action"></param>
-    /// <param name="jobGroup"></param>
-    /// <returns></returns>
+    /**
+     * 添加自动完成任务
+     * @param startTime 开始时间
+     * @param action 执行动作
+     * @param jobGroup 任务组
+     */
     public static Receipt addAutoRunJob(Date startTime, Action0 action, String jobGroup) {
-        try
-        {
+        try{
             JobDetail job = Strings.isBlank(jobGroup) ? JobBuilder.newJob(BaseJob.class).build() : JobBuilder.newJob(BaseJob.class).withIdentity(jobGroup, jobGroup).build();
             job.getJobDataMap().put("type", 0);
             job.getJobDataMap().put("fun", action);
@@ -561,19 +512,16 @@ public class ScheduleJobService {
             startAllScheduler();
             return new Receipt();
         }
-        catch (Exception e)
-        {
+        catch (Exception e){
             return new Receipt(false,e.getMessage());
         }
     }
-    /// <summary>
-    /// 添加自动运行工作
-    /// </summary>
-    /// <param name="cron">cron表达式</param>
-    /// <param name="func">回调委托，如果返回值为false,取消任务下次运行</param>
-    /// <returns></returns>
-    public static Receipt addAutoRunJob(String cron, Func1<Boolean> func)
-    {
+    /**
+     * 添加自动运行工作
+     * @param cron cron表达式
+     * @param func 回调委托，如果返回值为false,取消任务下次运行
+     */
+    public static Receipt addAutoRunJob(String cron, Func1<Boolean> func){
         try
         {
             JobDetail job = JobBuilder.newJob(BaseJob.class).build();
@@ -589,27 +537,22 @@ public class ScheduleJobService {
             return new Receipt(false,e.getMessage());
         }
     }
-
-    /// <summary>
-    /// 间隔N秒执行
-    /// </summary>
-    /// <param name="second">秒 1-59之间</param>
-    /// <param name="func">回调委托，如果返回值为false,取消任务下次运行</param>
-    /// <returns></returns>
-    public static Receipt addAutoRunJob(int second, Func1<Boolean> func)
-    {
+    /**
+     * 间隔N秒执行
+     * @param second >秒 1-59之间
+     * @param func 回调委托，如果返回值为false,取消任务下次运行
+     * @return
+     */
+    public static Receipt addAutoRunJob(int second, Func1<Boolean> func){
         return addAutoRunJob(EvenType.Second, second, func);
-
-
     }
-    /// <summary>
-    /// 创建周期自动运行任务
-    /// </summary>
-    /// <param name="eventype">周期类型</param>
-    /// <param name="num">间隔周期数量,不能超出周期的容量，比如second必须在1-59之间</param>
-    /// <param name="func">回调委托，如果返回值为false,取消任务下次运行</param>
-    /// <returns></returns>
-
+    /**
+     * 创建周期自动运行任务
+     * @param eventype 周期类型
+     * @param num 间隔周期数量,不能超出周期的容量，比如second必须在1-59之间
+     * @param func 回调委托，如果返回值为false,取消任务下次运行
+     * @return
+     */
     public static Receipt addAutoRunJob(EvenType eventype, int num, Func1<Boolean> func)
     {
         String cron = null;
@@ -640,14 +583,12 @@ public class ScheduleJobService {
         if (Strings.isBlank(cron)) return new Receipt(false, "时间表达式为空");
         return addAutoRunJob(cron, func);
     }
-
-    /// <summary>
-    /// 添加自动运行的任务调度
-    /// </summary>
-    /// <param name="bean">任务信息</param>
-    /// <returns></returns>
-    public static AjaxResult addAutoRunJob(Record bean)
-    {
+    /**
+     * 添加自动运行的任务调度
+     * @param bean
+     * @return
+     */
+    public static AjaxResult addAutoRunJob(Record bean){
         if (bean == null) return new AjaxResult(false);
         ScheduleJob job = bean.toClass(ScheduleJob.class);
         return addAutoRunJob(job);
@@ -694,24 +635,20 @@ public class ScheduleJobService {
 //        }
     }
 
-    /// <summary>
-    /// 任务服务初始化启动器
-    /// </summary>
-    /// <returns></returns>
-    public int init()
-    {
+
+    /**
+     * 初始化
+     * @return
+     */
+    public int init(){
         AtomicInteger count = new AtomicInteger();
         Record cnd = new Record("enable", 1).put("endtime:>", Times.now());
         List<Record> rs = QueryAction.getData("schedulejob", cnd.toString(), null, null);
-        if (!Rs.isBlank(rs))
-        {
+        if (!Rs.isBlank(rs)){
             rs.forEach(x ->{
                 if (addAutoRunJob(x).success) count.getAndIncrement();
             });
         }
         return count.get();
     }
-
-
-
 }

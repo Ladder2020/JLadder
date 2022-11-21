@@ -6,7 +6,6 @@ import com.jladder.lang.Json;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 public class QueryRelation implements CharSequence{
     private String tableName;
@@ -188,6 +187,6 @@ public class QueryRelation implements CharSequence{
      * @return
      */
     public String toString(){
-        return Json.toJson(this);
+        return Json.toJson(new Record("tableName",tableName).put("type",this.type).put("events",this.events));
     }
 }
